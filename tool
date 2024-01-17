@@ -9,42 +9,13 @@ ob = {
   message: ARGV[0]
 }
 
-TEMP_CHARS = ("a".."z").to_a + ("A".."Z").to_a + ("0".."9").to_a
-
 json = JSON.generate(ob)
-id = Digest::SHA1.hexdigest(json)
-def write_object(oid, content)
-  root_path = Pathname.new(Dir.getwd)
-  git_path  = root_path.join(".git")
-  db_path   = git_path.join("refs").join("bugs")
 
-  object_path = db_path.join(oid[0..1], oid[2..-1])
-  return if File.exists?(object_path)
+oid = `echo #{json} | git hash-object -w --stdin`.tr("\n", "")
+`git update-ref refs/bugs/#{oid} #{oid}`
+puts "Updating ref: 'refs/bugs/#{oid}'"
 
-  dirname     = object_path.dirname
-  temp_path   = dirname.join(generate_temp_name)
-
-  begin
-    flags = File::RDWR | File::CREAT | File::EXCL
-    file = File.open(temp_path, flags)
-  rescue Errno::ENOENT
-    Dir.mkdir(dirname)
-    file = File.open(temp_path, flags)
-  end
-
-  compressed = Zlib::Deflate.deflate(content, Zlib::BEST_SPEED)
-
-  file.write(compressed)
-  file.close
-
-  File.rename(temp_path, object_path)
-end
-
-def generate_temp_name
-  "tmp_obj_#{(1..6).map { TEMP_CHARS.sample }.join("")}"
-end
-
-write_object(id, json)
+puts `git push origin refs/bugs/#{oid}`
 
 # $ ./tool "this is the message"
 #
