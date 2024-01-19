@@ -17,6 +17,7 @@ json = JSON.generate(ob)
 oid = `echo \"#{ob['id']}" | git hash-object -w --stdin`.tr("\n", "")
 
 `git notes add -m \"#{json}\" #{oid}`
+`git push refs/notes/*`
 
 puts "Note added to #{oid}:"
 print `git notes show #{oid}`

@@ -1,5 +1,6 @@
 #!/usr/bin/ruby
 
+`git fetch origin refs/notes/*:refs/notes/*`
 notes = `git notes list`.split("\n").map { |x| x.split(" ") }
 
 notes.each do |note|
