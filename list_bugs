@@ -1,3 +1,11 @@
 #!/usr/bin/ruby
 
-``
+notes = `git notes list`.split("\n").map { |x| x.split(" ") }
+
+notes.each do |note|
+  note_id      = `git cat-file -p #{note[0]}`
+  note_content = `git cat-file -p #{note[1]}`
+  puts "--------"
+  puts "#{note_id}: #{note_content}"
+  puts "--------"
+end
