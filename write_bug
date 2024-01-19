@@ -7,14 +7,14 @@ require "pathname"
 require "securerandom"
 
 ob = {
+  type: "bug",
+  id: SecureRandom.uuid,
   message: ARGV[0]
 }
 
 json = JSON.generate(ob)
 
-oid = `echo \"bug-#{SecureRandom.hex}\" | git hash-object -w --stdin`.tr("\n", "")
-# `git update-ref refs/bugs/#{oid} #{oid}`
-# puts "Updating ref: 'refs/bugs/#{oid}'"
+oid = `echo \"#{ob['id']}" | git hash-object -w --stdin`.tr("\n", "")
 
 `git notes add -m \"#{json}\" #{oid}`
 
