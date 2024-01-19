@@ -6,6 +6,7 @@ notes = `git notes list`.split("\n").map { |x| x.split(" ") }
 notes.each do |note|
   note_content = `git cat-file -p #{note[0]}`
   puts "--------"
-  puts "#{note_content}"
+  puts "#{note[0]}: #{note_content}"
+  puts "#{note[1]}"
   puts "--------"
 end
