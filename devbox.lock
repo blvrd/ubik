@@ -1,0 +1,26 @@
+{
+  "lockfile_version": "1",
+  "packages": {
+    "ruby@3.2.2": {
+      "last_modified": "2024-01-14T03:55:27Z",
+      "plugin_version": "0.0.2",
+      "resolved": "github:NixOS/nixpkgs/dd5621df6dcb90122b50da5ec31c411a0de3e538#ruby_3_2",
+      "source": "devbox-search",
+      "version": "3.2.2",
+      "systems": {
+        "aarch64-darwin": {
+          "store_path": "/nix/store/qr1qhf6x5k4j1apijs1hpml749ahz9fz-ruby-3.2.2"
+        },
+        "aarch64-linux": {
+          "store_path": "/nix/store/4j80nyc2rms2a5gb37qilmlvcn9id31i-ruby-3.2.2"
+        },
+        "x86_64-darwin": {
+          "store_path": "/nix/store/a4jd680azf2bsqfm09l3i1fz8zvwnmpj-ruby-3.2.2"
+        },
+        "x86_64-linux": {
+          "store_path": "/nix/store/4mm3lyj1mmqx25diw044hciai541qcic-ruby-3.2.2"
+        }
+      }
+    }
+  }
+}
