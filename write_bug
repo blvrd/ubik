@@ -4,6 +4,7 @@ require "json"
 require "digest/sha1"
 require "zlib"
 require "pathname"
+require "securerandom"
 
 ob = {
   message: ARGV[0]
@@ -11,11 +12,15 @@ ob = {
 
 json = JSON.generate(ob)
 
-oid = `echo #{json} | git hash-object -w --stdin`.tr("\n", "")
-`git update-ref refs/bugs/#{oid} #{oid}`
-puts "Updating ref: 'refs/bugs/#{oid}'"
+oid = `echo \"bug-#{SecureRandom.hex}\" | git hash-object -w --stdin`.tr("\n", "")
+# `git update-ref refs/bugs/#{oid} #{oid}`
+# puts "Updating ref: 'refs/bugs/#{oid}'"
 
-puts `git push origin refs/bugs/#{oid}`
+`git notes add -m \"#{json}\" #{oid}`
+
+puts "Note added to #{oid}:"
+print `git notes show #{oid}`
+# puts `git push origin refs/bugs/#{oid}`
 
 # $ ./tool "this is the message"
 #
