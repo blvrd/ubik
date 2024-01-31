@@ -1,0 +1,33 @@
+#!/bin/bash
+
+REF_PATH=refs/notes/ubik/tasks
+
+PROJECT_ID=$(./ubik_projects_list | gum choose | jq -r '.id')
+TASK_TITLE=$(gum input --placeholder "Title your task..." --width 120)
+TASK_DESCRIPTION=$(gum input --placeholder "Describe your task..." --width 120)
+UUID=$(uuidgen | tr 'A-Z' 'a-z')
+ROOT_TREE_OID=$(git show -s --format=%T HEAD)
+AUTHOR="garrett@blvrd.co"
+
+JSON=$(jq -n -c \
+  --arg id "$UUID" \
+  --arg title "$TASK_TITLE" \
+  --arg description "$TASK_DESCRIPTION" \
+  --arg author "$AUTHOR" \
+  --arg project_id "$PROJECT_ID" \
+  '{
+    id: $id,
+    type: "project",
+    author: $author,
+    data: {
+      title: $title,
+      description: $description,
+      project_id: $project_id
+    }
+  }'
+)
+
+git notes --ref $REF_PATH append --no-separator -m "$JSON" $ROOT_TREE_OID
+git notes --ref $REF_PATH show $ROOT_TREE_OID
+
+exit 0

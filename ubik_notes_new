@@ -1,0 +1,28 @@
+#!/bin/bash
+
+REF_PATH=refs/notes/ubik/notes
+
+NOTE=$(gum write --placeholder "Add a note about your codebase... (CTRL+D to finish)" --width 120)
+UUID=$(uuidgen | tr 'A-Z' 'a-z')
+ROOT_TREE_OID=$(git show -s --format=%T HEAD)
+AUTHOR="garrett@blvrd.co"
+
+JSON=$(jq -n -c \
+  --arg id "$UUID" \
+  --arg title "$PROJECT_TITLE" \
+  --arg content "$NOTE" \
+  --arg author "$AUTHOR" \
+  '{
+    id: $id,
+    type: "note",
+    author: $author,
+    data: {
+      content: $note
+    }
+  }'
+)
+
+git notes --ref $REF_PATH append --no-separator -m "$JSON" $ROOT_TREE_OID
+git notes --ref $REF_PATH show $ROOT_TREE_OID
+
+exit 0
