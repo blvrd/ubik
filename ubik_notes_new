@@ -1,11 +1,11 @@
 #!/bin/bash
 
-REF_PATH=refs/notes/ubik/notes
+AUTHOR=${GIT_AUTHOR_EMAIL:-$(git config user.email)}
+REF_PATH=refs/notes/ubik/notes/$AUTHOR
 
 NOTE=$(gum write --placeholder "Add a note about your codebase... (CTRL+D to finish)" --width 120)
 UUID=$(uuidgen | tr 'A-Z' 'a-z')
 ROOT_TREE_OID=$(git show -s --format=%T HEAD)
-AUTHOR="garrett@blvrd.co"
 
 JSON=$(jq -n -c \
   --arg id "$UUID" \
@@ -16,9 +16,7 @@ JSON=$(jq -n -c \
     id: $id,
     type: "note",
     author: $author,
-    data: {
-      content: $note
-    }
+    content: $content
   }'
 )
 

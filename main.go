@@ -4,96 +4,19 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+  "os/exec"
 	"time"
   "sync"
+  "bytes"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/google/uuid"
 )
 
-func newItemDelegate(keys *delegateKeyMap) list.DefaultDelegate {
-	d := list.NewDefaultDelegate()
-
-	d.UpdateFunc = func(msg tea.Msg, m *list.Model) tea.Cmd {
-		var title string
-
-		if i, ok := m.SelectedItem().(item); ok {
-			title = i.Title()
-		} else {
-			return nil
-		}
-
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.choose):
-				return m.NewStatusMessage(statusMessageStyle("You chose " + title))
-
-			case key.Matches(msg, keys.remove):
-				index := m.Index()
-				m.RemoveItem(index)
-				if len(m.Items()) == 0 {
-					keys.remove.SetEnabled(false)
-				}
-				return m.NewStatusMessage(statusMessageStyle("Deleted " + title))
-			}
-		}
-
-		return nil
-	}
-
-	help := []key.Binding{keys.choose, keys.remove}
-
-	d.ShortHelpFunc = func() []key.Binding {
-		return help
-	}
-
-	d.FullHelpFunc = func() [][]key.Binding {
-		return [][]key.Binding{help}
-	}
-
-	return d
-}
-
-type delegateKeyMap struct {
-	choose key.Binding
-	remove key.Binding
-}
-
-// Additional short help entries. This satisfies the help.KeyMap interface and
-// is entirely optional.
-func (d delegateKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{
-		d.choose,
-		d.remove,
-	}
-}
-
-// Additional full help entries. This satisfies the help.KeyMap interface and
-// is entirely optional.
-func (d delegateKeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		{
-			d.choose,
-			d.remove,
-		},
-	}
-}
-
-func newDelegateKeyMap() *delegateKeyMap {
-	return &delegateKeyMap{
-		choose: key.NewBinding(
-			key.WithKeys("enter"),
-			key.WithHelp("enter", "choose"),
-		),
-		remove: key.NewBinding(
-			key.WithKeys("x", "backspace"),
-			key.WithHelp("x", "delete"),
-		),
-	}
-}
+type noteItemGenerator
 
 type randomItemGenerator struct {
 	titles     []string
@@ -253,6 +176,88 @@ func (r *randomItemGenerator) next() item {
 	return i
 }
 
+func newItemDelegate(keys *delegateKeyMap) list.DefaultDelegate {
+	d := list.NewDefaultDelegate()
+
+	d.UpdateFunc = func(msg tea.Msg, m *list.Model) tea.Cmd {
+		var title string
+
+		if i, ok := m.SelectedItem().(item); ok {
+			title = i.Title()
+		} else {
+			return nil
+		}
+
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.choose):
+				return m.NewStatusMessage(statusMessageStyle("You chose " + title))
+
+			case key.Matches(msg, keys.remove):
+				index := m.Index()
+				m.RemoveItem(index)
+				if len(m.Items()) == 0 {
+					keys.remove.SetEnabled(false)
+				}
+				return m.NewStatusMessage(statusMessageStyle("Deleted " + title))
+			}
+		}
+
+		return nil
+	}
+
+	help := []key.Binding{keys.choose, keys.remove}
+
+	d.ShortHelpFunc = func() []key.Binding {
+		return help
+	}
+
+	d.FullHelpFunc = func() [][]key.Binding {
+		return [][]key.Binding{help}
+	}
+
+	return d
+}
+
+type delegateKeyMap struct {
+	choose key.Binding
+	remove key.Binding
+}
+
+// Additional short help entries. This satisfies the help.KeyMap interface and
+// is entirely optional.
+func (d delegateKeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{
+		d.choose,
+		d.remove,
+	}
+}
+
+// Additional full help entries. This satisfies the help.KeyMap interface and
+// is entirely optional.
+func (d delegateKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{
+			d.choose,
+			d.remove,
+		},
+	}
+}
+
+func newDelegateKeyMap() *delegateKeyMap {
+	return &delegateKeyMap{
+		choose: key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "choose"),
+		),
+		remove: key.NewBinding(
+			key.WithKeys("x", "backspace"),
+			key.WithHelp("x", "delete"),
+		),
+	}
+}
+
 var (
 	appStyle = lipgloss.NewStyle().Padding(1, 2)
 
@@ -267,13 +272,15 @@ var (
 )
 
 type item struct {
-	title       string
-	description string
+  id          uuid.UUID
+  t           string `json:"type"`
+  author      string
+  content     string
 }
 
-func (i item) Title() string       { return i.title }
-func (i item) Description() string { return i.description }
-func (i item) FilterValue() string { return i.title }
+func (i item) Content() string     { return i.content }
+func (i item) Author() string      { return i.author }
+func (i item) FilterValue() string { return i.content   }
 
 type listKeyMap struct {
 	toggleSpinner    key.Binding
@@ -315,7 +322,6 @@ func newListKeyMap() *listKeyMap {
 
 type model struct {
 	list          list.Model
-	itemGenerator *randomItemGenerator
 	keys          *listKeyMap
 	delegateKeys  *delegateKeyMap
 }
@@ -356,6 +362,29 @@ func newModel() model {
 		delegateKeys:  delegateKeys,
 		itemGenerator: &itemGenerator,
 	}
+}
+
+func initialModel() model {
+	var (
+		itemGenerator noteItemGenerator
+		delegateKeys  = newDelegateKeyMap()
+		listKeys      = newListKeyMap()
+	)
+
+  gitEnvAuthor := os.Getenv("GIT_AUTHOR_EMAIL")
+  gitConfigAuthor, err := exec.Command("git config user.email")
+
+
+  // gitNotesJSON :=
+  // const numItems =
+  items := make([]list.Item, numItems)
+  noteList := list.New(items, delegate, 0, 0)
+
+  return model{
+    list:          noteList,
+    keys:          listKeys,
+    delegateKeys:  delegateKeys,
+  }
 }
 
 func (m model) Init() tea.Cmd {
