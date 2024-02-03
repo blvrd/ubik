@@ -1,205 +1,431 @@
 package main
 
 import (
-	"errors"
 	"fmt"
+	"math/rand"
 	"os"
-	"strconv"
-	"strings"
 	"time"
+  "sync"
 
-	"github.com/charmbracelet/huh"
-	"github.com/charmbracelet/huh/spinner"
+	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	xstrings "github.com/charmbracelet/x/exp/strings"
 )
 
-type Spice int
+func newItemDelegate(keys *delegateKeyMap) list.DefaultDelegate {
+	d := list.NewDefaultDelegate()
 
-const (
-	Mild Spice = iota + 1
-	Medium
-	Hot
-)
+	d.UpdateFunc = func(msg tea.Msg, m *list.Model) tea.Cmd {
+		var title string
 
-func (s Spice) String() string {
-	switch s {
-	case Mild:
-		return "Mild "
-	case Medium:
-		return "Medium-Spicy "
-	case Hot:
-		return "Spicy-Hot "
-	default:
-		return ""
+		if i, ok := m.SelectedItem().(item); ok {
+			title = i.Title()
+		} else {
+			return nil
+		}
+
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.choose):
+				return m.NewStatusMessage(statusMessageStyle("You chose " + title))
+
+			case key.Matches(msg, keys.remove):
+				index := m.Index()
+				m.RemoveItem(index)
+				if len(m.Items()) == 0 {
+					keys.remove.SetEnabled(false)
+				}
+				return m.NewStatusMessage(statusMessageStyle("Deleted " + title))
+			}
+		}
+
+		return nil
+	}
+
+	help := []key.Binding{keys.choose, keys.remove}
+
+	d.ShortHelpFunc = func() []key.Binding {
+		return help
+	}
+
+	d.FullHelpFunc = func() [][]key.Binding {
+		return [][]key.Binding{help}
+	}
+
+	return d
+}
+
+type delegateKeyMap struct {
+	choose key.Binding
+	remove key.Binding
+}
+
+// Additional short help entries. This satisfies the help.KeyMap interface and
+// is entirely optional.
+func (d delegateKeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{
+		d.choose,
+		d.remove,
 	}
 }
 
-type Order struct {
-	Burger       Burger
-	Side         string
-	Name         string
-	Instructions string
-	Discount     bool
+// Additional full help entries. This satisfies the help.KeyMap interface and
+// is entirely optional.
+func (d delegateKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{
+			d.choose,
+			d.remove,
+		},
+	}
 }
 
-type Burger struct {
-	Type     string
-	Toppings []string
-	Spice    Spice
+func newDelegateKeyMap() *delegateKeyMap {
+	return &delegateKeyMap{
+		choose: key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "choose"),
+		),
+		remove: key.NewBinding(
+			key.WithKeys("x", "backspace"),
+			key.WithHelp("x", "delete"),
+		),
+	}
 }
 
-type Project struct {
-  Title  string
-  Author string
+type randomItemGenerator struct {
+	titles     []string
+	descs      []string
+	titleIndex int
+	descIndex  int
+	mtx        *sync.Mutex
+	shuffle    *sync.Once
+}
+
+func (r *randomItemGenerator) reset() {
+	r.mtx = &sync.Mutex{}
+	r.shuffle = &sync.Once{}
+
+	r.titles = []string{
+		"Artichoke",
+		"Baking Flour",
+		"Bananas",
+		"Barley",
+		"Bean Sprouts",
+		"Bitter Melon",
+		"Black Cod",
+		"Blood Orange",
+		"Brown Sugar",
+		"Cashew Apple",
+		"Cashews",
+		"Cat Food",
+		"Coconut Milk",
+		"Cucumber",
+		"Curry Paste",
+		"Currywurst",
+		"Dill",
+		"Dragonfruit",
+		"Dried Shrimp",
+		"Eggs",
+		"Fish Cake",
+		"Furikake",
+		"Garlic",
+		"Gherkin",
+		"Ginger",
+		"Granulated Sugar",
+		"Grapefruit",
+		"Green Onion",
+		"Hazelnuts",
+		"Heavy whipping cream",
+		"Honey Dew",
+		"Horseradish",
+		"Jicama",
+		"Kohlrabi",
+		"Leeks",
+		"Lentils",
+		"Licorice Root",
+		"Meyer Lemons",
+		"Milk",
+		"Molasses",
+		"Muesli",
+		"Nectarine",
+		"Niagamo Root",
+		"Nopal",
+		"Nutella",
+		"Oat Milk",
+		"Oatmeal",
+		"Olives",
+		"Papaya",
+		"Party Gherkin",
+		"Peppers",
+		"Persian Lemons",
+		"Pickle",
+		"Pineapple",
+		"Plantains",
+		"Pocky",
+		"Powdered Sugar",
+		"Quince",
+		"Radish",
+		"Ramps",
+		"Star Anise",
+		"Sweet Potato",
+		"Tamarind",
+		"Unsalted Butter",
+		"Watermelon",
+		"Weißwurst",
+		"Yams",
+		"Yeast",
+		"Yuzu",
+		"Snow Peas",
+	}
+
+	r.descs = []string{
+		"A little weird",
+		"Bold flavor",
+		"Can’t get enough",
+		"Delectable",
+		"Expensive",
+		"Expired",
+		"Exquisite",
+		"Fresh",
+		"Gimme",
+		"In season",
+		"Kind of spicy",
+		"Looks fresh",
+		"Looks good to me",
+		"Maybe not",
+		"My favorite",
+		"Oh my",
+		"On sale",
+		"Organic",
+		"Questionable",
+		"Really fresh",
+		"Refreshing",
+		"Salty",
+		"Scrumptious",
+		"Delectable",
+		"Slightly sweet",
+		"Smells great",
+		"Tasty",
+		"Too ripe",
+		"At last",
+		"What?",
+		"Wow",
+		"Yum",
+		"Maybe",
+		"Sure, why not?",
+	}
+
+	r.shuffle.Do(func() {
+		shuf := func(x []string) {
+			rand.Shuffle(len(x), func(i, j int) { x[i], x[j] = x[j], x[i] })
+		}
+		shuf(r.titles)
+		shuf(r.descs)
+	})
+}
+
+func (r *randomItemGenerator) next() item {
+	if r.mtx == nil {
+		r.reset()
+	}
+
+	r.mtx.Lock()
+	defer r.mtx.Unlock()
+
+	i := item{
+		title:       r.titles[r.titleIndex],
+		description: r.descs[r.descIndex],
+	}
+
+	r.titleIndex++
+	if r.titleIndex >= len(r.titles) {
+		r.titleIndex = 0
+	}
+
+	r.descIndex++
+	if r.descIndex >= len(r.descs) {
+		r.descIndex = 0
+	}
+
+	return i
+}
+
+var (
+	appStyle = lipgloss.NewStyle().Padding(1, 2)
+
+	titleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFDF5")).
+			Background(lipgloss.Color("#25A065")).
+			Padding(0, 1)
+
+	statusMessageStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
+				Render
+)
+
+type item struct {
+	title       string
+	description string
+}
+
+func (i item) Title() string       { return i.title }
+func (i item) Description() string { return i.description }
+func (i item) FilterValue() string { return i.title }
+
+type listKeyMap struct {
+	toggleSpinner    key.Binding
+	toggleTitleBar   key.Binding
+	toggleStatusBar  key.Binding
+	togglePagination key.Binding
+	toggleHelpMenu   key.Binding
+	insertItem       key.Binding
+}
+
+func newListKeyMap() *listKeyMap {
+	return &listKeyMap{
+		insertItem: key.NewBinding(
+			key.WithKeys("a"),
+			key.WithHelp("a", "add item"),
+		),
+		toggleSpinner: key.NewBinding(
+			key.WithKeys("s"),
+			key.WithHelp("s", "toggle spinner"),
+		),
+		toggleTitleBar: key.NewBinding(
+			key.WithKeys("T"),
+			key.WithHelp("T", "toggle title"),
+		),
+		toggleStatusBar: key.NewBinding(
+			key.WithKeys("S"),
+			key.WithHelp("S", "toggle status"),
+		),
+		togglePagination: key.NewBinding(
+			key.WithKeys("P"),
+			key.WithHelp("P", "toggle pagination"),
+		),
+		toggleHelpMenu: key.NewBinding(
+			key.WithKeys("H"),
+			key.WithHelp("H", "toggle help"),
+		),
+	}
+}
+
+type model struct {
+	list          list.Model
+	itemGenerator *randomItemGenerator
+	keys          *listKeyMap
+	delegateKeys  *delegateKeyMap
+}
+
+func newModel() model {
+	var (
+		itemGenerator randomItemGenerator
+		delegateKeys  = newDelegateKeyMap()
+		listKeys      = newListKeyMap()
+	)
+
+	// Make initial list of items
+	const numItems = 24
+	items := make([]list.Item, numItems)
+	for i := 0; i < numItems; i++ {
+		items[i] = itemGenerator.next()
+	}
+
+	// Setup list
+	delegate := newItemDelegate(delegateKeys)
+	groceryList := list.New(items, delegate, 0, 0)
+	groceryList.Title = "Groceries"
+	groceryList.Styles.Title = titleStyle
+	groceryList.AdditionalFullHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			listKeys.toggleSpinner,
+			listKeys.insertItem,
+			listKeys.toggleTitleBar,
+			listKeys.toggleStatusBar,
+			listKeys.togglePagination,
+			listKeys.toggleHelpMenu,
+		}
+	}
+
+	return model{
+		list:          groceryList,
+		keys:          listKeys,
+		delegateKeys:  delegateKeys,
+		itemGenerator: &itemGenerator,
+	}
+}
+
+func (m model) Init() tea.Cmd {
+	return tea.EnterAltScreen
+}
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		h, v := appStyle.GetFrameSize()
+		m.list.SetSize(msg.Width-h, msg.Height-v)
+
+	case tea.KeyMsg:
+		// Don't match any of the keys below if we're actively filtering.
+		if m.list.FilterState() == list.Filtering {
+			break
+		}
+
+		switch {
+		case key.Matches(msg, m.keys.toggleSpinner):
+			cmd := m.list.ToggleSpinner()
+			return m, cmd
+
+		case key.Matches(msg, m.keys.toggleTitleBar):
+			v := !m.list.ShowTitle()
+			m.list.SetShowTitle(v)
+			m.list.SetShowFilter(v)
+			m.list.SetFilteringEnabled(v)
+			return m, nil
+
+		case key.Matches(msg, m.keys.toggleStatusBar):
+			m.list.SetShowStatusBar(!m.list.ShowStatusBar())
+			return m, nil
+
+		case key.Matches(msg, m.keys.togglePagination):
+			m.list.SetShowPagination(!m.list.ShowPagination())
+			return m, nil
+
+		case key.Matches(msg, m.keys.toggleHelpMenu):
+			m.list.SetShowHelp(!m.list.ShowHelp())
+			return m, nil
+
+		case key.Matches(msg, m.keys.insertItem):
+			m.delegateKeys.remove.SetEnabled(true)
+			newItem := m.itemGenerator.next()
+			insCmd := m.list.InsertItem(0, newItem)
+			statusCmd := m.list.NewStatusMessage(statusMessageStyle("Added " + newItem.Title()))
+			return m, tea.Batch(insCmd, statusCmd)
+		}
+	}
+
+	// This will also call our delegate's update function.
+	newListModel, cmd := m.list.Update(msg)
+	m.list = newListModel
+	cmds = append(cmds, cmd)
+
+	return m, tea.Batch(cmds...)
+}
+
+func (m model) View() string {
+	return appStyle.Render(m.list.View())
 }
 
 func main() {
-	var burger Burger
-	var order = Order{Burger: burger}
-  var project Project
+	rand.Seed(time.Now().UTC().UnixNano())
 
-	// Should we run in accessible mode?
-	accessible, _ := strconv.ParseBool(os.Getenv("ACCESSIBLE"))
-
-	form := huh.NewForm(
-		huh.NewGroup(huh.NewNote().
-			Title("Project").
-			Description("Welcome to _Charmburger™_.\n\nHow may we take your order?")),
-
-		// Choose a burger.
-		// We'll need to know what topping to add too.
-		huh.NewGroup(
-			huh.NewSelect[string]().
-				Options(huh.NewOptions("Charmburger Classic", "Chickwich", "Fishburger", "Charmpossible™ Burger")...).
-				Title("Choose your burger").
-				Description("At Charm we truly have a burger for everyone.").
-				Validate(func(t string) error {
-					if t == "Fishburger" {
-						return fmt.Errorf("no fish today, sorry")
-					}
-					return nil
-				}).
-				Value(&order.Burger.Type),
-
-
-			huh.NewMultiSelect[string]().
-				Title("Toppings").
-				Description("Choose up to 4.").
-				Options(
-					huh.NewOption("Lettuce", "Lettuce").Selected(true),
-					huh.NewOption("Tomatoes", "Tomatoes").Selected(true),
-					huh.NewOption("Charm Sauce", "Charm Sauce"),
-					huh.NewOption("Jalapeños", "Jalapeños"),
-					huh.NewOption("Cheese", "Cheese"),
-					huh.NewOption("Vegan Cheese", "Vegan Cheese"),
-					huh.NewOption("Nutella", "Nutella"),
-				).
-				Validate(func(t []string) error {
-					if len(t) <= 0 {
-						return fmt.Errorf("at least one topping is required")
-					}
-					return nil
-				}).
-				Value(&order.Burger.Toppings).
-				Filterable(true).
-				Limit(4),
-		),
-
-		// Prompt for toppings and special instructions.
-		// The customer can ask for up to 4 toppings.
-		huh.NewGroup(
-			huh.NewSelect[Spice]().
-				Title("Spice level").
-				Options(
-					huh.NewOption("Mild", Mild).Selected(true),
-					huh.NewOption("Medium", Medium),
-					huh.NewOption("Hot", Hot),
-				).
-				Value(&order.Burger.Spice),
-
-			huh.NewSelect[string]().
-				Options(huh.NewOptions("Fries", "Disco Fries", "R&B Fries", "Carrots")...).
-				Value(&order.Side).
-				Title("Sides").
-				Description("You get one free side with this order."),
-		),
-
-		// Gather final details for the order.
-		huh.NewGroup(
-			huh.NewInput().
-				Value(&order.Name).
-				Title("What's your name?").
-				Placeholder("Margaret Thatcher").
-				Validate(func(s string) error {
-					if s == "Frank" {
-						return errors.New("no franks, sorry")
-					}
-					return nil
-				}).
-				Description("For when your order is ready."),
-
-			huh.NewText().
-				Value(&order.Instructions).
-				Placeholder("Just put it in the mailbox please").
-				Title("Special Instructions").
-				Description("Anything we should know?").
-				CharLimit(400).
-				Lines(5),
-
-			huh.NewConfirm().
-				Title("Would you like 15% off?").
-				Value(&order.Discount).
-				Affirmative("Yes!").
-				Negative("No."),
-		),
-	).WithAccessible(accessible)
-
-	err := form.Run()
-
-	if err != nil {
-		fmt.Println("Uh oh:", err)
+	if _, err := tea.NewProgram(newModel()).Run(); err != nil {
+		fmt.Println("Error running program:", err)
 		os.Exit(1)
-	}
-
-	prepareBurger := func() {
-		time.Sleep(2 * time.Second)
-	}
-
-	_ = spinner.New().Title("Preparing your burger...").Accessible(accessible).Action(prepareBurger).Run()
-
-	// Print order summary.
-	{
-		var sb strings.Builder
-		keyword := func(s string) string {
-			return lipgloss.NewStyle().Foreground(lipgloss.Color("212")).Render(s)
-		}
-		fmt.Fprintf(&sb,
-			"%s\n\nOne %s%s, topped with %s with %s on the side.",
-			lipgloss.NewStyle().Bold(true).Render("BURGER RECEIPT"),
-			keyword(order.Burger.Spice.String()),
-			keyword(order.Burger.Type),
-			keyword(xstrings.EnglishJoin(order.Burger.Toppings, true)),
-			keyword(order.Side),
-		)
-
-		name := order.Name
-		if name != "" {
-			name = ", " + name
-		}
-		fmt.Fprintf(&sb, "\n\nThanks for your order%s!", name)
-
-		if order.Discount {
-			fmt.Fprint(&sb, "\n\nEnjoy 15% off.")
-		}
-
-		fmt.Println(
-			lipgloss.NewStyle().
-				Width(40).
-				BorderStyle(lipgloss.RoundedBorder()).
-				BorderForeground(lipgloss.Color("63")).
-				Padding(1, 2).
-				Render(sb.String()),
-		)
 	}
 }

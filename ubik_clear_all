@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Navigate to the root of the git repository
+cd "$(git rev-parse --show-toplevel)"
+
+# List all note refs in the repository
+note_refs=$(git for-each-ref --format='%(refname)' refs/notes/)
+
+# Loop through each note ref
+for ref in $note_refs; do
+  # Get list of objects with notes for the current ref
+  objects_with_notes=$(git notes --ref="$ref" list | cut -f1)
+
+  # Remove notes from these objects, ignoring errors
+  for object in $objects_with_notes; do
+    git notes --ref="$ref" remove "$object"
+  done
+done
+
+# Optionally, prune all unreachable objects
+git reflog expire --expire=now --all
+git gc --prune=now
+

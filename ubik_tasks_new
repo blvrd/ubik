@@ -22,7 +22,8 @@ JSON=$(jq -n -c \
     data: {
       title: $title,
       description: $description,
-      project_id: $project_id
+      project_id: $project_id,
+      complete: false
     }
   }'
 )
