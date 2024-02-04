@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	git "github.com/libgit2/git2go/v34"
+	"github.com/spf13/cobra"
 )
 
 type Memo struct {
@@ -51,17 +52,41 @@ const (
 )
 
 func main() {
-	refPath := GetRefPath()
-	notes := GetNotes(refPath)
-	uNotes := UbikNotesFromGitNotes(notes)
+	// ========================
+	// CLI Commands
+	// ========================
 
-	for _, uNotePtr := range uNotes {
-		uNote := *uNotePtr
-		if uNote.Published == "true" {
-			fmt.Println("--------")
-			fmt.Println(uNote.Content)
-			fmt.Println("\n")
-		}
+	// rootCmd represents the base command when called without any subcommands
+	var rootCmd = &cobra.Command{
+		Use:   "ubik",
+		Short: "A brief description of your application",
+		// Run: func(cmd *cobra.Command, args []string) { },
+	}
+
+	var memosCmd = &cobra.Command{
+		Use:   "memos",
+		Short: "List memos",
+		Run: func(cmd *cobra.Command, args []string) {
+			refPath := GetRefPath()
+			notes := GetNotes(refPath)
+			uNotes := UbikNotesFromGitNotes(notes)
+
+			for _, uNotePtr := range uNotes {
+				uNote := *uNotePtr
+				if uNote.Published == "true" {
+					fmt.Println("--------")
+					fmt.Println(uNote.Content)
+					fmt.Println("\n")
+				}
+			}
+		},
+	}
+
+	rootCmd.AddCommand(memosCmd)
+
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }
 
