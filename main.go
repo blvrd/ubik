@@ -65,15 +65,22 @@ func main() {
 
 	var memosCmd = &cobra.Command{
 		Use:   "memos",
-		Short: "List memos",
+		Short: "Memos are notes to yourself or other contributors.",
+	}
+
+	var memosListCmd = &cobra.Command{
+		Use:   "list",
+		Short: "List memos you've written",
 		Run: func(cmd *cobra.Command, args []string) {
+			publishedFlag, _ := cmd.Flags().GetString("published")
+
 			refPath := GetRefPath()
 			notes := GetNotes(refPath)
-			uNotes := UbikNotesFromGitNotes(notes)
+			uNotes := MemosFromGitNotes(notes)
 
 			for _, uNotePtr := range uNotes {
 				uNote := *uNotePtr
-				if uNote.Published == "true" {
+				if publishedFlag == "all" || uNote.Published == publishedFlag {
 					fmt.Println("--------")
 					fmt.Println(uNote.Content)
 					fmt.Println("\n")
@@ -82,7 +89,35 @@ func main() {
 		},
 	}
 
-	rootCmd.AddCommand(memosCmd)
+	memosListCmd.Flags().String(
+		"published",
+		"all",
+		"List published or unpublished memos",
+	)
+
+	var memosAddCmd = &cobra.Command{
+		Use:   "add",
+		Short: "Add a new memo",
+		Run: func(cmd *cobra.Command, args []string) {
+			wd, _ := os.Getwd()
+
+			repo, err := git.OpenRepository(wd)
+			if err != nil {
+				fmt.Printf("Failed to open repository: %v", err)
+				os.Exit(1)
+			}
+
+			head, err := repo.Head()
+		},
+	}
+
+	var projectsCmd = &cobra.Command{
+		Use:   "projects",
+		Short: "Projects",
+	}
+
+	rootCmd.AddCommand(memosCmd, projectsCmd)
+	memosCmd.AddCommand(memosListCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -155,7 +190,7 @@ func GetNotes(refPath string) []*git.Note {
 	return notes
 }
 
-func UbikNotesFromGitNotes(gitNotes []*git.Note) []*Memo {
+func MemosFromGitNotes(gitNotes []*git.Note) []*Memo {
 	var uNotes []*Memo
 	for _, notePtr := range gitNotes {
 		note := *notePtr
