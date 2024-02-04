@@ -41,6 +41,46 @@
         }
       }
     },
+    "libgit2@1.5.0": {
+      "last_modified": "2023-01-31T09:49:33Z",
+      "resolved": "github:NixOS/nixpkgs/e3945057be467f32028ff6b67403be08285ad8c8#libgit2",
+      "source": "devbox-search",
+      "version": "1.5.0",
+      "systems": {
+        "aarch64-darwin": {
+          "store_path": "/nix/store/08x6p3vx2sjgfh5b6skmq48wpm21wqrp-libgit2-1.5.0"
+        },
+        "aarch64-linux": {
+          "store_path": "/nix/store/8aqdd9zi20j6pxfjc044c9r5y4i1xrsw-libgit2-1.5.0"
+        },
+        "x86_64-darwin": {
+          "store_path": "/nix/store/7qafdfhi6dhcsk89b40p7my9c1chns4x-libgit2-1.5.0"
+        },
+        "x86_64-linux": {
+          "store_path": "/nix/store/2jfrmbr2rp859vlz9hjx7y22gr0a42p8-libgit2-1.5.0"
+        }
+      }
+    },
+    "pkg-config@latest": {
+      "last_modified": "2024-01-14T03:55:27Z",
+      "resolved": "github:NixOS/nixpkgs/dd5621df6dcb90122b50da5ec31c411a0de3e538#pkg-config",
+      "source": "devbox-search",
+      "version": "0.29.2",
+      "systems": {
+        "aarch64-darwin": {
+          "store_path": "/nix/store/xfi3vnx2l61v6i0c7kcilwa1zcbrnhgp-pkg-config-wrapper-0.29.2"
+        },
+        "aarch64-linux": {
+          "store_path": "/nix/store/wnn5ynf180a55172klsv49xpbpg7qyv8-pkg-config-wrapper-0.29.2"
+        },
+        "x86_64-darwin": {
+          "store_path": "/nix/store/8sxfnx5pc8d1rzi32nwnwklhsk6nxxbi-pkg-config-wrapper-0.29.2"
+        },
+        "x86_64-linux": {
+          "store_path": "/nix/store/v6n306xw0v850dn01s9fdd0qjwh2j082-pkg-config-wrapper-0.29.2"
+        }
+      }
+    },
     "ruby@3.2.2": {
       "last_modified": "2024-01-14T03:55:27Z",
       "plugin_version": "0.0.2",

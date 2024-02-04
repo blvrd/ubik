@@ -1,4 +1,4 @@
-module github.com/blvrd/git_tool_prototype
+module github.com/blvrd/ubik
 
 go 1.21.5
 
@@ -7,6 +7,7 @@ require (
 	github.com/charmbracelet/bubbletea v0.25.0
 	github.com/charmbracelet/lipgloss v0.9.1
 	github.com/google/uuid v1.6.0
+	github.com/libgit2/git2go/v34 v34.0.0
 )
 
 require (
@@ -23,6 +24,7 @@ require (
 	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/rivo/uniseg v0.4.6 // indirect
 	github.com/sahilm/fuzzy v0.1.1-0.20230530133925-c48e322e2a8f // indirect
+	golang.org/x/crypto v0.0.0-20201203163018-be400aefbc4c // indirect
 	golang.org/x/sync v0.4.0 // indirect
 	golang.org/x/sys v0.13.0 // indirect
 	golang.org/x/term v0.13.0 // indirect

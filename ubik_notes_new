@@ -1,9 +1,11 @@
 #!/bin/bash
 
 AUTHOR=${GIT_AUTHOR_EMAIL:-$(git config user.email)}
-REF_PATH=refs/notes/ubik/notes/$AUTHOR
+REF_PATH=refs/notes/ubik/memos/$AUTHOR
 
 NOTE=$(gum write --placeholder "Add a note about your codebase... (CTRL+D to finish)" --width 120)
+echo "Publish?"
+PUBLISHED=$(gum choose true false)
 UUID=$(uuidgen | tr 'A-Z' 'a-z')
 ROOT_TREE_OID=$(git show -s --format=%T HEAD)
 
@@ -12,11 +14,13 @@ JSON=$(jq -n -c \
   --arg title "$PROJECT_TITLE" \
   --arg content "$NOTE" \
   --arg author "$AUTHOR" \
+  --arg published "$PUBLISHED" \
   '{
     id: $id,
     type: "note",
     author: $author,
-    content: $content
+    content: $content,
+    published: $published
   }'
 )
 

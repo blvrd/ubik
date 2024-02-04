@@ -2,7 +2,9 @@
   "packages": [
     "ruby@3.2.2",
     "go@1.21.5",
-    "gum@0.13.0"
+    "gum@0.13.0",
+    "pkg-config@latest",
+    "libgit2@1.5.0"
   ],
   "shell": {
     "init_hook": [
