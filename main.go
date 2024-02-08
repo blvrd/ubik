@@ -9,6 +9,7 @@ import (
 
 	git "github.com/libgit2/git2go/v34"
 	"github.com/spf13/cobra"
+  "github.com/google/uuid"
 )
 
 type Memo struct {
@@ -74,7 +75,7 @@ func main() {
 		Run: func(cmd *cobra.Command, args []string) {
 			publishedFlag, _ := cmd.Flags().GetString("published")
 
-			refPath := GetRefPath()
+			refPath := memosPath
 			notes := GetNotes(refPath)
 			uNotes := MemosFromGitNotes(notes)
 
@@ -95,29 +96,120 @@ func main() {
 		"List published or unpublished memos",
 	)
 
-	var memosAddCmd = &cobra.Command{
+	var addCmd = &cobra.Command{
 		Use:   "add",
-		Short: "Add a new memo",
+		Short: "Add a new thing",
 		Run: func(cmd *cobra.Command, args []string) {
+			messageFlag, _ := cmd.Flags().GetString("message")
 			wd, _ := os.Getwd()
 
-			repo, err := git.OpenRepository(wd)
-			if err != nil {
-				fmt.Printf("Failed to open repository: %v", err)
-				os.Exit(1)
-			}
+      repo, err := git.OpenRepository(wd)
+      if err != nil {
+        fmt.Printf("Failed to open repository: %v\n", err)
+        os.Exit(1)
+      }
 
-			head, err := repo.Head()
+      revWalk, err := repo.Walk()
+      if err != nil {
+        fmt.Printf("Failed to create revision walker: %v\n", err)
+        os.Exit(1)
+      }
+      defer revWalk.Free()
+
+      // Start from the HEAD
+      err = revWalk.PushHead()
+      if err != nil {
+        fmt.Printf("Failed to start rev walk at HEAD: %v\n", err)
+        os.Exit(1)
+      }
+
+      revWalk.Sorting(git.SortTime)
+
+      // Iterating to find the first commit
+      var firstCommit *git.Commit
+      oid := new(git.Oid)
+      for revWalk.Next(oid) == nil {
+        commit, err := repo.LookupCommit(oid)
+        if err != nil {
+          fmt.Printf("Failed to lookup commit: %v\n", err)
+          os.Exit(1)
+        }
+        // Assuming the first commit we can reach is the oldest/root
+        firstCommit = commit
+      }
+
+      if firstCommit == nil {
+        fmt.Println("No commits found in repository.")
+        os.Exit(1)
+      }
+
+      // Getting the root tree of the first commit
+      rootTree, err := firstCommit.Tree()
+      if err != nil {
+        fmt.Printf("Failed to get root tree: %v\n", err)
+        os.Exit(1)
+      }
+
+      // Constructing the Memo struct
+      memo := Memo{
+        Id:        uuid.New().String(),
+        Author:    GetAuthorEmail(), // Make sure you define this
+        Content:   messageFlag,
+        Published: "false",
+      }
+
+      memoBytes, err := json.Marshal(memo)
+      if err != nil {
+        fmt.Printf("Failed to marshal memo: %v\n", err)
+        os.Exit(1)
+      }
+
+      var newContent string
+
+      note, err := repo.Notes.Read(memosPath, rootTree.Id())
+      if err != nil && !git.IsErrorCode(err, git.ErrNotFound) {
+        newContent = string(memoBytes)
+      } else if err == nil {
+        newContent = note.Message() + "\n" + string(memoBytes)
+      }
+
+      sig, err := repo.DefaultSignature()
+      if err != nil {
+        fmt.Printf("Couldn't find default signature: %v\n", err)
+        os.Exit(1)
+      }
+
+      // Explicitly create a note attached to the tree. Note that
+      // this usage is unconventional and might not be supported by Git interfaces.
+      _, err = repo.Notes.Create(
+        "refs/notes/ubik/memos",
+        sig,
+        sig,
+        rootTree.Id(),
+        newContent,
+        true,
+      )
+      if err != nil {
+        fmt.Printf("Failed to add note to tree: %v\n", err)
+        os.Exit(1)
+      }
+
+      fmt.Println("Memo added successfully to the root tree of the first commit.")
 		},
 	}
+
+	memosAddCmd.Flags().String(
+		"message",
+		"",
+		"Message for the memo",
+	)
 
 	var projectsCmd = &cobra.Command{
 		Use:   "projects",
 		Short: "Projects",
 	}
 
-	rootCmd.AddCommand(memosCmd, projectsCmd)
-	memosCmd.AddCommand(memosListCmd)
+	rootCmd.AddCommand(addCmd, listCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -125,7 +217,7 @@ func main() {
 	}
 }
 
-func GetRefPath() string {
+func GetAuthorEmail() string {
 	configAuthor, err := exec.Command("git", "config", "user.email").Output()
 	if err != nil {
 		fmt.Println(err)
@@ -138,10 +230,7 @@ func GetRefPath() string {
 		author = string(configAuthor)
 	}
 
-	refPath := fmt.Sprintf("refs/notes/ubik/memos/%s", author)
-	sanitizedRefPath := strings.ReplaceAll(refPath, "\n", "")
-
-	return sanitizedRefPath
+  return author
 }
 
 func GetNotes(refPath string) []*git.Note {
