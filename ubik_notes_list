@@ -1,6 +1,6 @@
 #!/bin/bash
 
-REF_PATH=refs/notes/ubik/memos/garrett@blvrd.co
+REF_PATH=refs/notes/ubik/issues
 
 # List all note refs
 note_refs=$(git notes --ref $REF_PATH list)

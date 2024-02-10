@@ -13,43 +13,36 @@ import (
 
 )
 
-type Memo struct {
-	Id          string `json:"id"`
-	Author      string `json:"author"`
-	Title       string `json:"title"`
-	Description string `json:"content"`
-}
-
 type Project struct {
 	Id          string `json:"id"`
 	Author      string `json:"author"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
-	Complete    string `json:"complete"`
-	Status      int    `json:"status"`
+	Closed      string `json:"closed"`
+	Progress    int    `json:"progress"`
 }
 
-type Task struct {
+type Issue struct {
 	Id          string `json:"id"`
 	Author      string `json:"author"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
-	Complete    string `json:"complete"`
-	ProjectId   string `json:"project_id"`
+	Closed    string `json:"closed"`
+	ParentType  string `json:"parent_type"`
+	ParentId    string `json:"parent_id"`
 }
 
 type Comment struct {
-	Id         string `json:"id"`
-	Author     string `json:"author"`
-	Content    string `json:"content"`
-	ParentType string `json:"parent_type"`
-	ParentId   string `json:"parent_id"`
+	Id          string `json:"id"`
+	Author      string `json:"author"`
+	Description string `json:"content"`
+	ParentType  string `json:"parent_type"`
+	ParentId    string `json:"parent_id"`
 }
 
 const (
-	memosPath    = "refs/notes/ubik/memos"
 	projectsPath = "refs/notes/ubik/projects"
-	tasksPath    = "refs/notes/ubik/tasks"
+	issuesPath   = "refs/notes/ubik/issues"
 	commentsPath = "refs/notes/ubik/comments"
 )
 
@@ -71,44 +64,17 @@ func main() {
     Run: func(cmd *cobra.Command, args []string) { fmt.Println("heyyyy from the TUI") },
   }
 
-	var memosCmd = &cobra.Command{
-		Use:   "memos",
-		Short: "Memos are notes to yourself or other contributors.",
-	}
+  var pushCmd = &cobra.Command{
+    Use: "push",
+    Short: "push",
+    Run: func(cmd *cobra.Command, args []string) { fmt.Println("pushing ubik refs to remote:") },
+  }
 
-	var memosListCmd = &cobra.Command{
-		Use:   "list",
-		Short: "List memos you've written",
-		Run: func(cmd *cobra.Command, args []string) { ListMemos() },
-	}
-
-	var memosAddCmd = &cobra.Command{
-		Use:   "add",
-		Short: "Add a new thing",
-		Run: func(cmd *cobra.Command, args []string) {
-      titleFlag, _ := cmd.Flags().GetString("title")
-			descriptionFlag, _ := cmd.Flags().GetString("description")
-
-      AddMemo(titleFlag, descriptionFlag)
-		},
-	}
-
-	memosAddCmd.Flags().StringP(
-		"title",
-    "t",
-		"",
-		"Title for the memo",
-	)
-
-	memosAddCmd.Flags().StringP(
-		"description",
-    "d",
-		"",
-		"description for the memo",
-	)
-
-  memosAddCmd.MarkFlagRequired("title")
-  memosAddCmd.MarkFlagRequired("description")
+  var pullCmd = &cobra.Command{
+    Use: "pull",
+    Short: "pull",
+    Run: func(cmd *cobra.Command, args []string) { fmt.Println("pulling ubik refs from remote:") },
+  }
 
 	var projectsCmd = &cobra.Command{
 		Use:   "projects",
@@ -121,14 +87,40 @@ func main() {
 		Run: func(cmd *cobra.Command, args []string) { ListProjects() },
 	}
 
+  var nukeCmd = &cobra.Command{
+		Use:   "nuke",
+		Short: "Nuke data - use for debugging purposes",
+		Run: func(cmd *cobra.Command, args []string) {
+      Nuke()
+    },
+  }
+
 	var projectsAddCmd = &cobra.Command{
 		Use:   "add",
 		Short: "Add a new thing",
+    PreRunE: func(cmd *cobra.Command, args[]string) error {
+      titleFlag, _ := cmd.Flags().GetString("title")
+			descriptionFlag, _ := cmd.Flags().GetString("description")
+      termUiFlag, _ := cmd.Flags().GetBool("termui")
+
+      if !termUiFlag {
+        if titleFlag == "" || descriptionFlag == "" {
+          return fmt.Errorf("if --termui is not set, then --title and --description must be set.")
+        }
+      }
+
+      return nil
+    },
 		Run: func(cmd *cobra.Command, args []string) {
       titleFlag, _ := cmd.Flags().GetString("title")
 			descriptionFlag, _ := cmd.Flags().GetString("description")
+      termUiFlag, _ := cmd.Flags().GetBool("termui")
 
-      AddProject(titleFlag, descriptionFlag)
+      if termUiFlag {
+        os.Exit(0)
+      } else {
+        AddProject(titleFlag, descriptionFlag)
+      }
 		},
 	}
 
@@ -146,57 +138,62 @@ func main() {
 		"Description for the project",
 	)
 
-  projectsAddCmd.MarkFlagRequired("title")
-  projectsAddCmd.MarkFlagRequired("description")
+	projectsAddCmd.Flags().Bool(
+    "termui",
+    false,
+    "Open the terminal UI",
+  )
 
-	var tasksCmd = &cobra.Command{
-		Use:   "tasks",
-		Short: "tasks",
+  projectsAddCmd.MarkFlagsRequiredTogether("title", "description")
+
+	var issuesCmd = &cobra.Command{
+		Use:   "issues",
+		Short: "issues",
 	}
 
-	var tasksListCmd = &cobra.Command{
+	var issuesListCmd = &cobra.Command{
 		Use:   "list",
-		Short: "List tasks you've created",
-		Run: func(cmd *cobra.Command, args []string) { ListTasks() },
+		Short: "List issues you've created",
+		Run: func(cmd *cobra.Command, args []string) { ListIssues() },
 	}
 
-	var tasksAddCmd = &cobra.Command{
+	var issuesAddCmd = &cobra.Command{
 		Use:   "add",
 		Short: "Add a new thing",
 		Run: func(cmd *cobra.Command, args []string) {
       titleFlag, _ := cmd.Flags().GetString("title")
 			descriptionFlag, _ := cmd.Flags().GetString("description")
-      projectIdFlag, _ := cmd.Flags().GetString("project_id")
+      parentIdFlag, _ := cmd.Flags().GetString("parent_id")
+      parentTypeFlag, _ := cmd.Flags().GetString("parentType")
 
-      AddTask(titleFlag, descriptionFlag, projectIdFlag)
+      AddIssue(titleFlag, descriptionFlag, parentIdFlag, parentTypeFlag)
 		},
 	}
 
-	tasksAddCmd.Flags().String(
+	issuesAddCmd.Flags().String(
 		"title",
 		"",
-		"Title for the task",
+		"Title for the issue",
 	)
 
-	tasksAddCmd.Flags().String(
+	issuesAddCmd.Flags().String(
 		"description",
 		"",
-		"Description for the task",
+		"Description for the issue",
 	)
 
-	tasksAddCmd.Flags().String(
+	issuesAddCmd.Flags().String(
 		"project_id",
 		"",
-		"Project ID for the task",
+		"Project ID for the issue",
 	)
 
-  tasksAddCmd.MarkFlagRequired("title")
-  tasksAddCmd.MarkFlagRequired("description")
+  issuesAddCmd.MarkFlagRequired("title")
+  issuesAddCmd.MarkFlagRequired("description")
 
-  rootCmd.AddCommand(memosCmd, projectsCmd, tasksCmd, termUiCmd)
-	memosCmd.AddCommand(memosAddCmd, memosListCmd)
+  rootCmd.AddCommand(projectsCmd, issuesCmd, termUiCmd, pushCmd, pullCmd, nukeCmd)
   projectsCmd.AddCommand(projectsAddCmd, projectsListCmd)
-  tasksCmd.AddCommand(tasksAddCmd, tasksListCmd)
+  issuesCmd.AddCommand(issuesAddCmd, issuesListCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -204,29 +201,11 @@ func main() {
 	}
 }
 
-func ListMemos() {
-  refPath := memosPath
-  notes := GetNotes(refPath)
-  uNotes := MemosFromGitNotes(notes)
-
-  for _, uNotePtr := range uNotes {
-    uNote := *uNotePtr
-    fmt.Println("--------")
-    fmt.Println(uNote.Title)
-    fmt.Println(uNote.Description)
-    fmt.Println()
-  }
+func Nuke() {
+  exec.Command("./ubik_clear_all").Run()
 }
 
-func AddMemo(title, description string) {
-  wd := GetWd()
-
-  repo, err := git.OpenRepository(wd)
-  if err != nil {
-    fmt.Printf("Failed to open repository: %v\n", err)
-    os.Exit(1)
-  }
-
+func GetFirstCommit(repo *git.Repository) *git.Commit {
   revWalk, err := repo.Walk()
   if err != nil {
     fmt.Printf("Failed to create revision walker: %v\n", err)
@@ -261,58 +240,18 @@ func AddMemo(title, description string) {
     os.Exit(1)
   }
 
+  return firstCommit
+}
+
+func GetTree(commit *git.Commit) *git.Tree {
   // Getting the root tree of the first commit
-  rootTree, err := firstCommit.Tree()
+  tree, err := commit.Tree()
   if err != nil {
     fmt.Printf("Failed to get root tree: %v\n", err)
     os.Exit(1)
   }
 
-  // Constructing the Memo struct
-  memo := Memo{
-    Id:          uuid.New().String(),
-    Author:      GetAuthorEmail(),
-    Title:       title,
-    Description: description,
-  }
-
-  memoBytes, err := json.Marshal(memo)
-  if err != nil {
-    fmt.Printf("Failed to marshal memo: %v\n", err)
-    os.Exit(1)
-  }
-
-  var newContent string
-
-  note, err := repo.Notes.Read(memosPath, rootTree.Id())
-  if err != nil && !git.IsErrorCode(err, git.ErrNotFound) {
-    newContent = string(memoBytes)
-  } else if err == nil {
-    newContent = note.Message() + "\n" + string(memoBytes)
-  }
-
-  sig, err := repo.DefaultSignature()
-  if err != nil {
-    fmt.Printf("Couldn't find default signature: %v\n", err)
-    os.Exit(1)
-  }
-
-  // Explicitly create a note attached to the tree. Note that
-  // this usage is unconventional and might not be supported by Git interfaces.
-  _, err = repo.Notes.Create(
-    memosPath,
-    sig,
-    sig,
-    rootTree.Id(),
-    newContent,
-    true,
-  )
-  if err != nil {
-    fmt.Printf("Failed to add note to tree: %v\n", err)
-    os.Exit(1)
-  }
-
-  fmt.Println("Memo added successfully to the root tree of the first commit.")
+  return tree
 }
 
 func ListProjects() {
@@ -323,16 +262,16 @@ func ListProjects() {
   for _, uNotePtr := range uProjects {
     uNote := *uNotePtr
 
-    tasks := GetTasksForProject(uNote.Id)
+    issues := GetIssuesForProject(uNote.Id)
 
     fmt.Println("--------")
     fmt.Printf("Project %s\n", uNote.Id)
     fmt.Printf("Title: %s\n", uNote.Title)
     fmt.Printf("Description: %s\n", uNote.Description)
-    fmt.Printf("Complete: %s\n", uNote.Complete)
-    fmt.Println("Tasks:")
-    for _, task := range tasks {
-      fmt.Printf("\t- %s (complete: %s)\n", task.Title, task.Complete)
+    fmt.Printf("Closed: %s\n", uNote.Closed)
+    fmt.Println("Issues:")
+    for _, issue := range issues {
+      fmt.Printf("\t- %s (closed: %s)\n", issue.Title, issue.Closed)
     }
     fmt.Println("----------")
   }
@@ -388,18 +327,18 @@ func AddProject(title, description string) {
     os.Exit(1)
   }
 
-  // Constructing the Memo struct
-  memo := Project{
+  // Constructing the project struct
+  project := Project{
     Id:          uuid.New().String(),
     Author:      GetAuthorEmail(), // Make sure you define this
     Title:       title,
     Description: description,
-    Complete:    "false",
+    Closed:    "false",
   }
 
-  memoBytes, err := json.Marshal(memo)
+  projectBytes, err := json.Marshal(project)
   if err != nil {
-    fmt.Printf("Failed to marshal memo: %v\n", err)
+    fmt.Printf("Failed to marshal project: %v\n", err)
     os.Exit(1)
   }
 
@@ -407,9 +346,9 @@ func AddProject(title, description string) {
 
   note, err := repo.Notes.Read(projectsPath, rootTree.Id())
   if err != nil && !git.IsErrorCode(err, git.ErrNotFound) {
-    newContent = string(memoBytes)
+    newContent = string(projectBytes)
   } else if err == nil {
-    newContent = note.Message() + "\n" + string(memoBytes)
+    newContent = note.Message() + "\n" + string(projectBytes)
   }
 
   sig, err := repo.DefaultSignature()
@@ -436,39 +375,39 @@ func AddProject(title, description string) {
   fmt.Println("Project added successfully to the root tree of the first commit.")
 }
 
-func ListTasks() {
-  refPath := tasksPath
+func ListIssues() {
+  refPath := issuesPath
   notes := GetNotes(refPath)
-  uNotes := TasksFromGitNotes(notes)
+  uNotes := IssuesFromGitNotes(notes)
 
   for _, uNotePtr := range uNotes {
     uNote := *uNotePtr
     fmt.Println("--------")
     fmt.Println(uNote.Title)
     fmt.Println(uNote.Description)
-    fmt.Println(uNote.Complete)
-    fmt.Println(uNote.ProjectId)
+    fmt.Println(uNote.Closed)
+    fmt.Println(uNote.ParentId)
     fmt.Println()
   }
 }
 
-func GetTasksForProject(projectId string) []*Task {
-  refPath := tasksPath
+func GetIssuesForProject(parentId string) []*Issue {
+  refPath := issuesPath
   notes := GetNotes(refPath)
-  uNotes := TasksFromGitNotes(notes)
+  uNotes := IssuesFromGitNotes(notes)
 
-  var filteredTasks []*Task
+  var filteredIssues []*Issue
 
-  for _, task := range uNotes {
-    if task.ProjectId == projectId {
-      filteredTasks = append(filteredTasks, task)
+  for _, issue := range uNotes {
+    if issue.ParentId == parentId {
+      filteredIssues = append(filteredIssues, issue)
     }
   }
 
-  return filteredTasks
+  return filteredIssues
 }
 
-func AddTask(title, description, projectId string) {
+func AddIssue(title, description, parentId, parentType string) {
   wd := GetWd()
 
   repo, err := git.OpenRepository(wd)
@@ -513,34 +452,37 @@ func AddTask(title, description, projectId string) {
 
   // Getting the root tree of the first commit
   rootTree, err := firstCommit.Tree()
+  fmt.Printf("%+v", rootTree)
   if err != nil {
     fmt.Printf("Failed to get root tree: %v\n", err)
     os.Exit(1)
   }
 
-  // Constructing the task struct
-  task := Task{
+  // Constructing the issue struct
+  issue := Issue{
     Id:          uuid.New().String(),
     Author:      GetAuthorEmail(), // Make sure you define this
     Title:       title,
     Description: description,
-    Complete:    "false",
-    ProjectId:   projectId,
+    Closed:      "false",
+    ParentId:    parentId,
   }
 
-  taskBytes, err := json.Marshal(task)
+  issueBytes, err := json.Marshal(issue)
   if err != nil {
-    fmt.Printf("Failed to marshal task: %v\n", err)
+    fmt.Printf("Failed to marshal issue: %v\n", err)
     os.Exit(1)
   }
 
   var newContent string
 
-  note, err := repo.Notes.Read(tasksPath, rootTree.Id())
-  if err != nil && !git.IsErrorCode(err, git.ErrNotFound) {
-    newContent = string(taskBytes)
+  note, err := repo.Notes.Read(issuesPath, rootTree.Id())
+  if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
+    newContent = string(issueBytes)
   } else if err == nil {
-    newContent = note.Message() + "\n" + string(taskBytes)
+    newContent = note.Message() + "\n" + string(issueBytes)
+  } else {
+    fmt.Printf("%v\n", err)
   }
 
   sig, err := repo.DefaultSignature()
@@ -549,10 +491,11 @@ func AddTask(title, description, projectId string) {
     os.Exit(1)
   }
 
+  fmt.Printf("%s\n", newContent)
   // Explicitly create a note attached to the tree. Note that
   // this usage is unconventional and might not be supported by Git interfaces.
   _, err = repo.Notes.Create(
-    tasksPath,
+    issuesPath,
     sig,
     sig,
     rootTree.Id(),
@@ -564,7 +507,7 @@ func AddTask(title, description, projectId string) {
     os.Exit(1)
   }
 
-  fmt.Println("Task added successfully to the root tree of the first commit.")
+  fmt.Println("Issue added successfully to the root tree of the first commit.")
 }
 
 func GetAuthorEmail() string {
@@ -650,32 +593,6 @@ func GetNotes(refPath string) []*git.Note {
 	return notes
 }
 
-func MemosFromGitNotes(gitNotes []*git.Note) []*Memo {
-	var uNotes []*Memo
-	for _, notePtr := range gitNotes {
-		note := *notePtr
-		author := *note.Author()
-		lines := strings.Split(note.Message(), "\n")
-
-		for _, line := range lines {
-			if line != "" {
-				var uNote Memo
-				err := json.Unmarshal([]byte(line), &uNote)
-				if err != nil {
-					fmt.Printf("Error unmarshaling JSON: %v", err)
-					os.Exit(1)
-				}
-
-				uNote.Author = author.Email
-				// fmt.Printf("%+v\n", uNote)
-				uNotes = append(uNotes, &uNote)
-			}
-		}
-	}
-
-	return uNotes
-}
-
 func ProjectsFromGitNotes(gitNotes []*git.Note) []*Project {
 	var uProjects []*Project
 	for _, notePtr := range gitNotes {
@@ -702,8 +619,8 @@ func ProjectsFromGitNotes(gitNotes []*git.Note) []*Project {
 	return uProjects
 }
 
-func TasksFromGitNotes(gitNotes []*git.Note) []*Task {
-	var uTasks []*Task
+func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
+	var uIssues []*Issue
 	for _, notePtr := range gitNotes {
 		note := *notePtr
 		author := *note.Author()
@@ -711,19 +628,19 @@ func TasksFromGitNotes(gitNotes []*git.Note) []*Task {
 
 		for _, line := range lines {
 			if line != "" {
-				var uTask Task
-				err := json.Unmarshal([]byte(line), &uTask)
+				var uIssue Issue
+				err := json.Unmarshal([]byte(line), &uIssue)
 				if err != nil {
 					fmt.Printf("Error unmarshaling JSON: %v", err)
 					os.Exit(1)
 				}
 
-				uTask.Author = author.Email
-				// fmt.Printf("%+v\n", uTask)
-				uTasks = append(uTasks, &uTask)
+				uIssue.Author = author.Email
+				// fmt.Printf("%+v\n", uIssue)
+				uIssues = append(uIssues, &uIssue)
 			}
 		}
 	}
 
-	return uTasks
+	return uIssues
 }
