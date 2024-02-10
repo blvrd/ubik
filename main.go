@@ -345,7 +345,7 @@ func AddProject(title, description string) {
   var newContent string
 
   note, err := repo.Notes.Read(projectsPath, rootTree.Id())
-  if err != nil && !git.IsErrorCode(err, git.ErrNotFound) {
+  if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
     newContent = string(projectBytes)
   } else if err == nil {
     newContent = note.Message() + "\n" + string(projectBytes)
