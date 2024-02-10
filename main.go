@@ -183,13 +183,21 @@ func main() {
 	)
 
 	issuesAddCmd.Flags().String(
-		"project_id",
+		"parent_id",
 		"",
-		"Project ID for the issue",
+		"Parent ID for the issue",
+	)
+
+	issuesAddCmd.Flags().String(
+		"parent_type",
+		"",
+		"Parent type for the issue",
 	)
 
   issuesAddCmd.MarkFlagRequired("title")
   issuesAddCmd.MarkFlagRequired("description")
+  issuesAddCmd.MarkFlagRequired("parent_id")
+  issuesAddCmd.MarkFlagRequired("parent_type")
 
   rootCmd.AddCommand(projectsCmd, issuesCmd, termUiCmd, pushCmd, pullCmd, nukeCmd)
   projectsCmd.AddCommand(projectsAddCmd, projectsListCmd)
