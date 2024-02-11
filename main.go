@@ -124,25 +124,9 @@ func main() {
 		},
 	}
 
-	projectsAddCmd.Flags().StringP(
-		"title",
-    "t",
-		"",
-		"Title for the project",
-	)
-
-	projectsAddCmd.Flags().StringP(
-		"description",
-    "d",
-		"",
-		"Description for the project",
-	)
-
-	projectsAddCmd.Flags().Bool(
-    "termui",
-    false,
-    "Open the terminal UI",
-  )
+	projectsAddCmd.Flags().StringP("title", "t", "", "Title for the project")
+	projectsAddCmd.Flags().StringP("description", "d", "", "Description for the project")
+	projectsAddCmd.Flags().Bool("termui", false, "Open the terminal UI")
 
   projectsAddCmd.MarkFlagsRequiredTogether("title", "description")
 
@@ -170,38 +154,59 @@ func main() {
 		},
 	}
 
-	issuesAddCmd.Flags().String(
-		"title",
-		"",
-		"Title for the issue",
-	)
-
-	issuesAddCmd.Flags().String(
-		"description",
-		"",
-		"Description for the issue",
-	)
-
-	issuesAddCmd.Flags().String(
-		"parent_id",
-		"",
-		"Parent ID for the issue",
-	)
-
-	issuesAddCmd.Flags().String(
-		"parent_type",
-		"",
-		"Parent type for the issue",
-	)
+	issuesAddCmd.Flags().String("title", "", "Title for the issue")
+	issuesAddCmd.Flags().String("description", "", "Description for the issue")
+	issuesAddCmd.Flags().String("parent_id", "", "Parent ID for the issue")
+	issuesAddCmd.Flags().String("parent_type", "", "Parent type for the issue")
 
   issuesAddCmd.MarkFlagRequired("title")
   issuesAddCmd.MarkFlagRequired("description")
   issuesAddCmd.MarkFlagRequired("parent_id")
   issuesAddCmd.MarkFlagRequired("parent_type")
 
-  rootCmd.AddCommand(projectsCmd, issuesCmd, termUiCmd, pushCmd, pullCmd, nukeCmd)
+	var commentsCmd = &cobra.Command{
+		Use:   "comments",
+		Short: "comments",
+	}
+
+	var commentsListCmd = &cobra.Command{
+		Use:   "list",
+		Short: "List comments you've created",
+		Run: func(cmd *cobra.Command, args []string) { ListComments() },
+	}
+
+	var commentsAddCmd = &cobra.Command{
+		Use:   "add",
+		Short: "Add a new thing",
+		Run: func(cmd *cobra.Command, args []string) {
+			descriptionFlag, _ := cmd.Flags().GetString("description")
+      parentIdFlag, _ := cmd.Flags().GetString("parent_id")
+      parentTypeFlag, _ := cmd.Flags().GetString("parentType")
+
+      AddComment(descriptionFlag, parentIdFlag, parentTypeFlag)
+		},
+	}
+
+	commentsAddCmd.Flags().String("description", "", "Description for the comment")
+	commentsAddCmd.Flags().String("parent_id", "", "Parent ID for the comment")
+	commentsAddCmd.Flags().String("parent_type", "", "Parent type for the comment")
+
+  commentsAddCmd.MarkFlagRequired("description")
+  commentsAddCmd.MarkFlagRequired("parent_id")
+  commentsAddCmd.MarkFlagRequired("parent_type")
+
+  rootCmd.AddCommand(
+    projectsCmd,
+    issuesCmd,
+    commentsCmd,
+    termUiCmd,
+    pushCmd,
+    pullCmd,
+    nukeCmd,
+  )
   projectsCmd.AddCommand(projectsAddCmd, projectsListCmd)
   issuesCmd.AddCommand(issuesAddCmd, issuesListCmd)
+  commentsCmd.AddCommand(commentsListCmd, commentsAddCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -280,6 +285,13 @@ func ListProjects() {
     fmt.Println("Issues:")
     for _, issue := range issues {
       fmt.Printf("\t- %s (closed: %s)\n", issue.Title, issue.Closed)
+      comments := GetCommentsForEntity(issue.Id)
+
+      for _, comment := range comments {
+        fmt.Printf("\t\t%s\n", comment.Description)
+        fmt.Printf("\t\t- %s\n", comment.Author)
+      }
+
     }
     fmt.Println("----------")
   }
@@ -391,6 +403,7 @@ func ListIssues() {
   for _, uNotePtr := range uNotes {
     uNote := *uNotePtr
     fmt.Println("--------")
+    fmt.Println(uNote.Id)
     fmt.Println(uNote.Title)
     fmt.Println(uNote.Description)
     fmt.Println(uNote.Closed)
@@ -516,6 +529,138 @@ func AddIssue(title, description, parentId, parentType string) {
   }
 
   fmt.Println("Issue added successfully to the root tree of the first commit.")
+}
+
+func ListComments() {
+  refPath := commentsPath
+  notes := GetNotes(refPath)
+  uNotes := CommentsFromGitNotes(notes)
+
+  for _, uNotePtr := range uNotes {
+    uNote := *uNotePtr
+    fmt.Println("--------")
+    fmt.Println(uNote.Description)
+    fmt.Println(uNote.ParentId)
+    fmt.Println()
+  }
+}
+
+func GetCommentsForEntity(parentId string) []*Comment {
+  refPath := commentsPath
+  notes := GetNotes(refPath)
+  uNotes := CommentsFromGitNotes(notes)
+
+  var filteredComments []*Comment
+
+  for _, comment := range uNotes {
+    if comment.ParentId == parentId {
+      filteredComments = append(filteredComments, comment)
+    }
+  }
+
+  return filteredComments
+}
+
+func AddComment(description, parentId, parentType string) {
+  wd := GetWd()
+
+  repo, err := git.OpenRepository(wd)
+  if err != nil {
+    fmt.Printf("Failed to open repository: %v\n", err)
+    os.Exit(1)
+  }
+
+  revWalk, err := repo.Walk()
+  if err != nil {
+    fmt.Printf("Failed to create revision walker: %v\n", err)
+    os.Exit(1)
+  }
+  defer revWalk.Free()
+
+  // Start from the HEAD
+  err = revWalk.PushHead()
+  if err != nil {
+    fmt.Printf("Failed to start rev walk at HEAD: %v\n", err)
+    os.Exit(1)
+  }
+
+  revWalk.Sorting(git.SortTime)
+
+  // Iterating to find the first commit
+  var firstCommit *git.Commit
+  oid := new(git.Oid)
+  for revWalk.Next(oid) == nil {
+    commit, err := repo.LookupCommit(oid)
+    if err != nil {
+      fmt.Printf("Failed to lookup commit: %v\n", err)
+      os.Exit(1)
+    }
+    // Assuming the first commit we can reach is the oldest/root
+    firstCommit = commit
+  }
+
+  if firstCommit == nil {
+    fmt.Println("No commits found in repository.")
+    os.Exit(1)
+  }
+
+  // Getting the root tree of the first commit
+  rootTree, err := firstCommit.Tree()
+  fmt.Printf("%+v", rootTree)
+  if err != nil {
+    fmt.Printf("Failed to get root tree: %v\n", err)
+    os.Exit(1)
+  }
+
+  // Constructing the comment struct
+  comment := Comment{
+    Id:          uuid.New().String(),
+    Author:      GetAuthorEmail(), // Make sure you define this
+    Description: description,
+    ParentId:    parentId,
+    ParentType:  parentType,
+  }
+
+  commentBytes, err := json.Marshal(comment)
+  if err != nil {
+    fmt.Printf("Failed to marshal comment: %v\n", err)
+    os.Exit(1)
+  }
+
+  var newContent string
+
+  note, err := repo.Notes.Read(commentsPath, rootTree.Id())
+  if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
+    newContent = string(commentBytes)
+  } else if err == nil {
+    newContent = note.Message() + "\n" + string(commentBytes)
+  } else {
+    fmt.Printf("%v\n", err)
+  }
+
+  sig, err := repo.DefaultSignature()
+  if err != nil {
+    fmt.Printf("Couldn't find default signature: %v\n", err)
+    os.Exit(1)
+  }
+
+  fmt.Printf("%s\n", newContent)
+  // Explicitly create a note attached to the tree. Note that
+  // this usage is unconventional and might not be supported by Git interfaces.
+  _, err = repo.Notes.Create(
+    commentsPath,
+    sig,
+    sig,
+    rootTree.Id(),
+    newContent,
+    true,
+  )
+  if err != nil {
+    fmt.Printf("Failed to add note to tree: %v\n", err)
+    os.Exit(1)
+  }
+
+  fmt.Println("Comment added successfully to the root tree of the first commit.")
 }
 
 func GetAuthorEmail() string {
@@ -651,4 +796,30 @@ func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
 	}
 
 	return uIssues
+}
+
+func CommentsFromGitNotes(gitNotes []*git.Note) []*Comment {
+	var uComments []*Comment
+	for _, notePtr := range gitNotes {
+		note := *notePtr
+		author := *note.Author()
+		lines := strings.Split(note.Message(), "\n")
+
+		for _, line := range lines {
+			if line != "" {
+				var uComment Comment
+				err := json.Unmarshal([]byte(line), &uComment)
+				if err != nil {
+					fmt.Printf("Error unmarshaling JSON: %v", err)
+					os.Exit(1)
+				}
+
+				uComment.Author = author.Email
+				// fmt.Printf("%+v\n", uComment)
+				uComments = append(uComments, &uComment)
+			}
+		}
+	}
+
+	return uComments
 }
