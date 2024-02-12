@@ -225,6 +225,24 @@ func main() {
 
   projectsUpdateCmd.MarkFlagsRequiredTogether("id", "title", "description")
 
+  var projectsRemoveCmd = &cobra.Command{
+		Use:   "remove",
+		Short: "Remove",
+		Run: func(cmd *cobra.Command, args []string) {
+      idFlag, _ := cmd.Flags().GetString("id")
+
+      entity := Project{
+        Id: idFlag,
+      }
+
+      Remove(entity)
+    },
+	}
+
+	projectsRemoveCmd.Flags().String("id", "", "ID for the project")
+
+  projectsRemoveCmd.MarkFlagRequired("id")
+
 	var issuesCmd = &cobra.Command{
 		Use:   "issues",
 		Short: "issues",
@@ -317,7 +335,7 @@ func main() {
     pullCmd,
     nukeCmd,
   )
-  projectsCmd.AddCommand(projectsAddCmd, projectsUpdateCmd, projectsListCmd)
+  projectsCmd.AddCommand(projectsAddCmd, projectsUpdateCmd, projectsRemoveCmd, projectsListCmd)
   issuesCmd.AddCommand(issuesAddCmd, issuesListCmd)
   commentsCmd.AddCommand(commentsListCmd, commentsAddCmd)
 
@@ -444,6 +462,61 @@ func Add(entity Entity) error {
 
 func Update(entity Entity) error {
   return Add(entity)
+}
+
+func Remove(entity Entity) error {
+  wd := GetWd()
+  repo, err := git.OpenRepository(wd)
+  if err != nil {
+    return fmt.Errorf("Failed to open repository: %v", err)
+  }
+
+  firstCommit := GetFirstCommit(repo)
+  rootTree := GetTree(firstCommit)
+
+  var newContent string
+  note, err := repo.Notes.Read(entity.GetRefPath(), rootTree.Id())
+  if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
+    log.Fatalf("%v", err)
+  } else if err == nil {
+    data := make(map[string]interface{})
+    err := json.Unmarshal([]byte(note.Message()), &data)
+    if err != nil {
+      fmt.Printf("Failed to unmarshal data: %v\n", err)
+      os.Exit(1)
+    }
+    delete(data, entity.GetId())
+
+    newJSON, err := json.Marshal(data)
+
+    if err != nil {
+      fmt.Printf("Failed to marshal project: %v\n", err)
+      os.Exit(1)
+    }
+
+    newContent = string(newJSON)
+  } else {
+    return err
+  }
+
+  sig, err := repo.DefaultSignature()
+  if err != nil {
+    return fmt.Errorf("Couldn't find default signature: %v", err)
+  }
+
+  _, err = repo.Notes.Create(
+    entity.GetRefPath(),
+    sig,
+    sig,
+    rootTree.Id(),
+    newContent,
+    true,
+    )
+  if err != nil {
+    return fmt.Errorf("Failed to add note to tree: %v", err)
+  }
+
+  return nil
 }
 
 func ListProjects() {
