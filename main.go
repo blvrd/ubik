@@ -10,7 +10,7 @@ import (
 	git "github.com/libgit2/git2go/v34"
 	"github.com/spf13/cobra"
   "github.com/google/uuid"
-
+  "github.com/charmbracelet/log"
 )
 
 const (
@@ -180,6 +180,51 @@ func main() {
 
   projectsAddCmd.MarkFlagsRequiredTogether("title", "description")
 
+	var projectsUpdateCmd = &cobra.Command{
+		Use:   "update",
+		Short: "Update",
+    PreRunE: func(cmd *cobra.Command, args[]string) error {
+      titleFlag, _ := cmd.Flags().GetString("title")
+			descriptionFlag, _ := cmd.Flags().GetString("description")
+      termUiFlag, _ := cmd.Flags().GetBool("termui")
+
+      if !termUiFlag {
+        if titleFlag == "" || descriptionFlag == "" {
+          return fmt.Errorf("if --termui is not set, then --title and --description must be set.")
+        }
+      }
+
+      return nil
+    },
+		Run: func(cmd *cobra.Command, args []string) {
+      idFlag, _ := cmd.Flags().GetString("id")
+      titleFlag, _ := cmd.Flags().GetString("title")
+			descriptionFlag, _ := cmd.Flags().GetString("description")
+      termUiFlag, _ := cmd.Flags().GetBool("termui")
+
+      if termUiFlag {
+        os.Exit(0)
+      } else {
+        project := Project{
+          Id:          idFlag,
+          Author:      GetAuthorEmail(), // Make sure you define this
+          Title:       titleFlag,
+          Description: descriptionFlag,
+          Closed:      "false",
+        }
+
+        Update(project)
+      }
+		},
+	}
+
+	projectsUpdateCmd.Flags().String("id", "", "ID for the project")
+	projectsUpdateCmd.Flags().String("title", "", "Title for the project")
+	projectsUpdateCmd.Flags().String("description", "", "Description for the project")
+	projectsUpdateCmd.Flags().Bool("termui", false, "Open the terminal UI")
+
+  projectsUpdateCmd.MarkFlagsRequiredTogether("id", "title", "description")
+
 	var issuesCmd = &cobra.Command{
 		Use:   "issues",
 		Short: "issues",
@@ -272,7 +317,7 @@ func main() {
     pullCmd,
     nukeCmd,
   )
-  projectsCmd.AddCommand(projectsAddCmd, projectsListCmd)
+  projectsCmd.AddCommand(projectsAddCmd, projectsUpdateCmd, projectsListCmd)
   issuesCmd.AddCommand(issuesAddCmd, issuesListCmd)
   commentsCmd.AddCommand(commentsListCmd, commentsAddCmd)
 
@@ -289,8 +334,7 @@ func Nuke() {
 func GetFirstCommit(repo *git.Repository) *git.Commit {
   revWalk, err := repo.Walk()
   if err != nil {
-    fmt.Printf("Failed to create revision walker: %v\n", err)
-    os.Exit(1)
+    log.Fatalf("Failed to create revision walker: %v\n", err)
   }
   defer revWalk.Free()
 
@@ -396,6 +440,10 @@ func Add(entity Entity) error {
   }
 
   return nil
+}
+
+func Update(entity Entity) error {
+  return Add(entity)
 }
 
 func ListProjects() {
