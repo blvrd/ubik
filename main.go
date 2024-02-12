@@ -13,6 +13,18 @@ import (
 
 )
 
+const (
+	projectsPath = "refs/notes/ubik/projects"
+	issuesPath   = "refs/notes/ubik/issues"
+	commentsPath = "refs/notes/ubik/comments"
+)
+
+type Entity interface {
+  GetRefPath() string
+  GetId() string
+  Marshal() ([]byte, error)
+}
+
 type Project struct {
 	Id          string `json:"id"`
 	Author      string `json:"author"`
@@ -20,6 +32,18 @@ type Project struct {
 	Description string `json:"description"`
 	Closed      string `json:"closed"`
 	Progress    int    `json:"progress"`
+}
+
+func (p Project) GetRefPath() string {
+  return projectsPath
+}
+
+func (p Project) GetId() string {
+  return p.Id
+}
+
+func (p Project) Marshal() ([]byte, error) {
+  return json.Marshal(p)
 }
 
 type Issue struct {
@@ -32,6 +56,18 @@ type Issue struct {
 	ParentId    string `json:"parent_id"`
 }
 
+func (i Issue) GetRefPath() string {
+  return issuesPath
+}
+
+func (i Issue) GetId() string {
+  return i.Id
+}
+
+func (i Issue) Marshal() ([]byte, error) {
+  return json.Marshal(i)
+}
+
 type Comment struct {
 	Id          string `json:"id"`
 	Author      string `json:"author"`
@@ -40,11 +76,17 @@ type Comment struct {
 	ParentId    string `json:"parent_id"`
 }
 
-const (
-	projectsPath = "refs/notes/ubik/projects"
-	issuesPath   = "refs/notes/ubik/issues"
-	commentsPath = "refs/notes/ubik/comments"
-)
+func (c Comment) GetRefPath() string {
+  return commentsPath
+}
+
+func (c Comment) GetId() string {
+  return c.Id
+}
+
+func (c Comment) Marshal() ([]byte, error) {
+  return json.Marshal(c)
+}
 
 func main() {
 	// ========================
@@ -119,7 +161,15 @@ func main() {
       if termUiFlag {
         os.Exit(0)
       } else {
-        AddProject(titleFlag, descriptionFlag)
+        project := Project{
+          Id:          uuid.New().String(),
+          Author:      GetAuthorEmail(), // Make sure you define this
+          Title:       titleFlag,
+          Description: descriptionFlag,
+          Closed:      "false",
+        }
+
+        Add(project)
       }
 		},
 	}
@@ -267,6 +317,69 @@ func GetTree(commit *git.Commit) *git.Tree {
   return tree
 }
 
+func Add(entity Entity) error {
+  wd := GetWd()
+  repo, err := git.OpenRepository(wd)
+  if err != nil {
+    return fmt.Errorf("Failed to open repository: %v", err)
+  }
+
+  firstCommit := GetFirstCommit(repo)
+  rootTree := GetTree(firstCommit)
+
+  var newContent string
+  note, err := repo.Notes.Read(entity.GetRefPath(), rootTree.Id())
+  if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
+    data := make(map[string]interface{})
+    data[entity.GetId()] = entity
+    newJSON, err := json.Marshal(data)
+    if err != nil {
+      fmt.Printf("Failed to marshal entity: %v\n", err)
+      os.Exit(1)
+    }
+
+    newContent = string(newJSON)
+  } else if err == nil {
+    data := make(map[string]interface{})
+    err := json.Unmarshal([]byte(note.Message()), &data)
+    if err != nil {
+      fmt.Printf("Failed to unmarshal data: %v\n", err)
+      os.Exit(1)
+    }
+    data[entity.GetId()] = entity
+
+    newJSON, err := json.Marshal(data)
+
+    if err != nil {
+      fmt.Printf("Failed to marshal project: %v\n", err)
+      os.Exit(1)
+    }
+
+    newContent = string(newJSON)
+  } else {
+    return err
+  }
+
+  sig, err := repo.DefaultSignature()
+  if err != nil {
+    return fmt.Errorf("Couldn't find default signature: %v", err)
+  }
+
+  _, err = repo.Notes.Create(
+    entity.GetRefPath(),
+    sig,
+    sig,
+    rootTree.Id(),
+    newContent,
+    true,
+    )
+  if err != nil {
+    return fmt.Errorf("Failed to add note to tree: %v", err)
+  }
+
+  return nil
+}
+
 func ListProjects() {
   refPath := projectsPath
   notes := GetNotes(refPath)
@@ -353,7 +466,7 @@ func AddProject(title, description string) {
     Author:      GetAuthorEmail(), // Make sure you define this
     Title:       title,
     Description: description,
-    Closed:    "false",
+    Closed:      "false",
   }
 
   var newContent string
