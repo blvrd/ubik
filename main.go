@@ -340,8 +340,7 @@ func main() {
   commentsCmd.AddCommand(commentsListCmd, commentsAddCmd)
 
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+    log.Fatal(err)
 	}
 }
 
@@ -359,8 +358,7 @@ func GetFirstCommit(repo *git.Repository) *git.Commit {
   // Start from the HEAD
   err = revWalk.PushHead()
   if err != nil {
-    fmt.Printf("Failed to start rev walk at HEAD: %v\n", err)
-    os.Exit(1)
+    log.Fatalf("Failed to start rev walk at HEAD: %v\n", err)
   }
 
   revWalk.Sorting(git.SortTime)
@@ -371,16 +369,14 @@ func GetFirstCommit(repo *git.Repository) *git.Commit {
   for revWalk.Next(oid) == nil {
     commit, err := repo.LookupCommit(oid)
     if err != nil {
-      fmt.Printf("Failed to lookup commit: %v\n", err)
-      os.Exit(1)
+      log.Fatalf("Failed to lookup commit: %v\n", err)
     }
     // Assuming the first commit we can reach is the oldest/root
     firstCommit = commit
   }
 
   if firstCommit == nil {
-    fmt.Println("No commits found in repository.")
-    os.Exit(1)
+    log.Fatalf("No commits found in repository.")
   }
 
   return firstCommit
@@ -390,8 +386,7 @@ func GetTree(commit *git.Commit) *git.Tree {
   // Getting the root tree of the first commit
   tree, err := commit.Tree()
   if err != nil {
-    fmt.Printf("Failed to get root tree: %v\n", err)
-    os.Exit(1)
+    log.Fatalf("Failed to get root tree: %v\n", err)
   }
 
   return tree
@@ -414,8 +409,7 @@ func Add(entity Entity) error {
     data[entity.GetId()] = entity
     newJSON, err := json.Marshal(data)
     if err != nil {
-      fmt.Printf("Failed to marshal entity: %v\n", err)
-      os.Exit(1)
+      log.Fatalf("Failed to marshal entity: %v\n", err)
     }
 
     newContent = string(newJSON)
@@ -423,16 +417,14 @@ func Add(entity Entity) error {
     data := make(map[string]interface{})
     err := json.Unmarshal([]byte(note.Message()), &data)
     if err != nil {
-      fmt.Printf("Failed to unmarshal data: %v\n", err)
-      os.Exit(1)
+      log.Fatalf("Failed to unmarshal data: %v\n", err)
     }
     data[entity.GetId()] = entity
 
     newJSON, err := json.Marshal(data)
 
     if err != nil {
-      fmt.Printf("Failed to marshal project: %v\n", err)
-      os.Exit(1)
+      log.Fatalf("Failed to marshal project: %v\n", err)
     }
 
     newContent = string(newJSON)
@@ -482,16 +474,14 @@ func Remove(entity Entity) error {
     data := make(map[string]interface{})
     err := json.Unmarshal([]byte(note.Message()), &data)
     if err != nil {
-      fmt.Printf("Failed to unmarshal data: %v\n", err)
-      os.Exit(1)
+      log.Fatalf("Failed to unmarshal data: %v\n", err)
     }
     delete(data, entity.GetId())
 
     newJSON, err := json.Marshal(data)
 
     if err != nil {
-      fmt.Printf("Failed to marshal project: %v\n", err)
-      os.Exit(1)
+      log.Fatalf("Failed to marshal project: %v\n", err)
     }
 
     newContent = string(newJSON)
@@ -616,8 +606,7 @@ func GetCommentsForEntity(parentId string) []*Comment {
 func GetAuthorEmail() string {
 	configAuthor, err := exec.Command("git", "config", "user.email").Output()
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+    log.Fatal(err)
 	}
 
 	author := os.Getenv("GIT_AUTHOR_EMAIL")
@@ -633,8 +622,7 @@ func GetWd() string {
   wd, err := os.Getwd()
 
   if err != nil {
-		fmt.Printf("Failed to get current workding directory: %v", err)
-		os.Exit(1)
+		log.Fatalf("Failed to get current workding directory: %v", err)
   }
 
   return wd
@@ -643,8 +631,7 @@ func GetWd() string {
 func OpenRepo(wd string) *git.Repository {
 	repo, err := git.OpenRepository(wd)
 	if err != nil {
-		fmt.Printf("Failed to open repository: %v", err)
-		os.Exit(1)
+		log.Fatalf("Failed to open repository: %v", err)
 	}
 
   return repo
@@ -653,8 +640,7 @@ func OpenRepo(wd string) *git.Repository {
 func GetRefsByPath(repo *git.Repository, refPath string) *git.Reference {
 	notesRefObj, err := repo.References.Lookup(refPath)
 	if err != nil {
-		fmt.Printf("Failed to look up notes ref: %v", err)
-		os.Exit(1)
+		log.Fatalf("Failed to look up notes ref: %v", err)
 	}
 
   return notesRefObj
@@ -680,14 +666,12 @@ func GetNotes(refPath string) []*git.Note {
 			if git.IsErrorCode(err, git.ErrIterOver) {
 				break // End of the iterator
 			}
-			fmt.Printf("Error iterating notes: %v", err)
-			os.Exit(1)
+			log.Fatalf("Error iterating notes: %v", err)
 		}
 
 		note, err := repo.Notes.Read(refPath, annotatedId)
 		if err != nil {
-			fmt.Printf("Error reading note: %v", err)
-			os.Exit(1)
+			log.Fatalf("Error reading note: %v", err)
 		}
 
 		notes = append(notes, note)
@@ -708,8 +692,7 @@ func ProjectsFromGitNotes(gitNotes []*git.Note) []*Project {
 				var uProject Project
 				err := json.Unmarshal([]byte(line), &uProject)
 				if err != nil {
-					fmt.Printf("Error unmarshaling JSON: %v", err)
-					os.Exit(1)
+					log.Fatalf("Error unmarshaling JSON: %v", err)
 				}
 
 				uProject.Author = author.Email
@@ -734,8 +717,7 @@ func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
 				var uIssue Issue
 				err := json.Unmarshal([]byte(line), &uIssue)
 				if err != nil {
-					fmt.Printf("Error unmarshaling JSON: %v", err)
-					os.Exit(1)
+					log.Fatalf("Error unmarshaling JSON: %v", err)
 				}
 
 				uIssue.Author = author.Email
@@ -760,8 +742,7 @@ func CommentsFromGitNotes(gitNotes []*git.Note) []*Comment {
 				var uComment Comment
 				err := json.Unmarshal([]byte(line), &uComment)
 				if err != nil {
-					fmt.Printf("Error unmarshaling JSON: %v", err)
-					os.Exit(1)
+					log.Fatalf("Error unmarshaling JSON: %v", err)
 				}
 
 				uComment.Author = author.Email
