@@ -356,12 +356,6 @@ func AddProject(title, description string) {
     Closed:    "false",
   }
 
-  projectBytes, err := json.Marshal(project)
-  if err != nil {
-    fmt.Printf("Failed to marshal project: %v\n", err)
-    os.Exit(1)
-  }
-
   var newContent string
 
   note, err := repo.Notes.Read(projectsPath, rootTree.Id())
@@ -377,7 +371,28 @@ func AddProject(title, description string) {
 
     newContent = string(newJSON)
   } else if err == nil {
-    newContent = note.Message() + "\n" + string(projectBytes)
+    // parse note message
+
+    data := make(map[string]interface{})
+
+    err := json.Unmarshal([]byte(note.Message()), &data)
+
+    if err != nil {
+      fmt.Printf("Failed to unmarshal data: %v\n", err)
+      os.Exit(1)
+    }
+
+    fmt.Printf("%+v", data)
+
+    data[project.Id] = project
+
+    newJSON, err := json.Marshal(data)
+    if err != nil {
+      fmt.Printf("Failed to marshal project: %v\n", err)
+      os.Exit(1)
+    }
+
+    newContent = string(newJSON)
   }
 
   sig, err := repo.DefaultSignature()
