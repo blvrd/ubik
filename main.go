@@ -366,7 +366,16 @@ func AddProject(title, description string) {
 
   note, err := repo.Notes.Read(projectsPath, rootTree.Id())
   if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
-    newContent = string(projectBytes)
+    data := make(map[string]interface{})
+    data[project.Id] = project
+
+    newJSON, err := json.Marshal(data)
+    if err != nil {
+      fmt.Printf("Failed to marshal project: %v\n", err)
+      os.Exit(1)
+    }
+
+    newContent = string(newJSON)
   } else if err == nil {
     newContent = note.Message() + "\n" + string(projectBytes)
   }
