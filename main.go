@@ -700,7 +700,7 @@ func GetAuthorEmail() string {
 		author = string(configAuthor)
 	}
 
-  return author
+  return strings.TrimSpace(author)
 }
 
 func GetWd() string {
