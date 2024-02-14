@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
   "github.com/google/uuid"
   "github.com/charmbracelet/log"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 const (
@@ -18,6 +19,10 @@ const (
 	issuesPath   = "refs/notes/ubik/issues"
 	commentsPath = "refs/notes/ubik/comments"
 )
+
+// TODO Finish full CRUD
+// Refactor
+// Start implementing CRUD in bubbletea
 
 type Entity interface {
   GetRefPath() string
@@ -31,6 +36,7 @@ type Project struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Closed      string `json:"closed"`
+  RefPath     string `json:"refpath"`
 	Progress    int    `json:"progress"`
 }
 
@@ -51,9 +57,10 @@ type Issue struct {
 	Author      string `json:"author"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
-	Closed    string `json:"closed"`
+	Closed      string `json:"closed"`
 	ParentType  string `json:"parent_type"`
 	ParentId    string `json:"parent_id"`
+  RefPath     string `json:"refpath"`
 }
 
 func (i Issue) GetRefPath() string {
@@ -74,6 +81,7 @@ type Comment struct {
 	Description string `json:"content"`
 	ParentType  string `json:"parent_type"`
 	ParentId    string `json:"parent_id"`
+  RefPath     string `json:"refpath"`
 }
 
 func (c Comment) GetRefPath() string {
@@ -103,7 +111,13 @@ func main() {
   var termUiCmd = &cobra.Command{
     Use: "termui",
     Short: "Use Ubik from the handy Terminal UI",
-    Run: func(cmd *cobra.Command, args []string) { fmt.Println("heyyyy from the TUI") },
+    Run: func(cmd *cobra.Command, args []string) {
+      p := tea.NewProgram(initialModel())
+
+      if _, err := p.Run(); err != nil {
+        log.Fatal(err)
+      }
+    },
   }
 
   var pushCmd = &cobra.Command{
@@ -167,6 +181,7 @@ func main() {
           Title:       titleFlag,
           Description: descriptionFlag,
           Closed:      "false",
+          RefPath:     projectsPath,
         }
 
         Add(project)
@@ -211,6 +226,7 @@ func main() {
           Title:       titleFlag,
           Description: descriptionFlag,
           Closed:      "false",
+          RefPath:     projectsPath,
         }
 
         Update(project)
@@ -271,6 +287,7 @@ func main() {
         Closed:      "false",
         ParentId:    parentIdFlag,
         ParentType:  parentTypeFlag,
+        RefPath:     issuesPath,
       }
 
       Add(issue)
@@ -282,10 +299,78 @@ func main() {
 	issuesAddCmd.Flags().String("parent_id", "", "Parent ID for the issue")
 	issuesAddCmd.Flags().String("parent_type", "", "Parent type for the issue")
 
-  issuesAddCmd.MarkFlagRequired("title")
-  issuesAddCmd.MarkFlagRequired("description")
-  issuesAddCmd.MarkFlagRequired("parent_id")
-  issuesAddCmd.MarkFlagRequired("parent_type")
+  issuesAddCmd.MarkFlagsRequiredTogether("title", "description")
+  issuesAddCmd.MarkFlagsRequiredTogether("parent_id", "parent_type")
+
+	var issuesUpdateCmd = &cobra.Command{
+		Use:   "update",
+		Short: "Update",
+    PreRunE: func(cmd *cobra.Command, args[]string) error {
+      titleFlag, _ := cmd.Flags().GetString("title")
+			descriptionFlag, _ := cmd.Flags().GetString("description")
+      termUiFlag, _ := cmd.Flags().GetBool("termui")
+
+      if !termUiFlag {
+        if titleFlag == "" || descriptionFlag == "" {
+          return fmt.Errorf("if --termui is not set, then --title and --description must be set.")
+        }
+      }
+
+      return nil
+    },
+		Run: func(cmd *cobra.Command, args []string) {
+      idFlag, _ := cmd.Flags().GetString("id")
+      titleFlag, _ := cmd.Flags().GetString("title")
+			descriptionFlag, _ := cmd.Flags().GetString("description")
+      parentIdFlag, _ := cmd.Flags().GetString("parent_id")
+      parentTypeFlag, _ := cmd.Flags().GetString("parent_type")
+      termUiFlag, _ := cmd.Flags().GetBool("termui")
+
+      if termUiFlag {
+        os.Exit(0)
+      } else {
+        issue := Issue{
+          Id:          idFlag,
+          Author:      GetAuthorEmail(), // Make sure you define this
+          Title:       titleFlag,
+          Description: descriptionFlag,
+          Closed:      "false",
+          ParentId:    parentIdFlag,
+          ParentType:  parentTypeFlag,
+          RefPath:     issuesPath,
+        }
+
+        Update(issue)
+      }
+		},
+	}
+
+	issuesUpdateCmd.Flags().String("id", "", "ID for the issue")
+	issuesUpdateCmd.Flags().String("title", "", "Title for the issue")
+	issuesUpdateCmd.Flags().String("description", "", "Description for the issue")
+	issuesUpdateCmd.Flags().String("parent_id", "", "Parent ID for the issue")
+	issuesUpdateCmd.Flags().String("parent_type", "", "Parent type for the issue")
+
+  issuesUpdateCmd.MarkFlagsRequiredTogether("id", "title", "description")
+  issuesUpdateCmd.MarkFlagsRequiredTogether("parent_id", "parent_type")
+
+  var issuesRemoveCmd = &cobra.Command{
+		Use:   "remove",
+		Short: "Remove",
+		Run: func(cmd *cobra.Command, args []string) {
+      idFlag, _ := cmd.Flags().GetString("id")
+
+      entity := Issue{
+        Id: idFlag,
+      }
+
+      Remove(entity)
+    },
+	}
+
+	issuesRemoveCmd.Flags().String("id", "", "ID for the issue")
+
+  issuesRemoveCmd.MarkFlagRequired("id")
 
 	var commentsCmd = &cobra.Command{
 		Use:   "comments",
@@ -312,6 +397,7 @@ func main() {
         Description: descriptionFlag,
         ParentId:    parentIdFlag,
         ParentType:  parentTypeFlag,
+        RefPath:     commentsPath,
       }
 
       Add(comment)
@@ -326,6 +412,74 @@ func main() {
   commentsAddCmd.MarkFlagRequired("parent_id")
   commentsAddCmd.MarkFlagRequired("parent_type")
 
+	var commentsUpdateCmd = &cobra.Command{
+		Use:   "update",
+		Short: "Update",
+    PreRunE: func(cmd *cobra.Command, args[]string) error {
+      titleFlag, _ := cmd.Flags().GetString("title")
+			descriptionFlag, _ := cmd.Flags().GetString("description")
+      termUiFlag, _ := cmd.Flags().GetBool("termui")
+
+      if !termUiFlag {
+        if titleFlag == "" || descriptionFlag == "" {
+          return fmt.Errorf("if --termui is not set, then --title and --description must be set.")
+        }
+      }
+
+      return nil
+    },
+		Run: func(cmd *cobra.Command, args []string) {
+      idFlag, _ := cmd.Flags().GetString("id")
+			descriptionFlag, _ := cmd.Flags().GetString("description")
+      parentIdFlag, _ := cmd.Flags().GetString("parent_id")
+      parentTypeFlag, _ := cmd.Flags().GetString("parent_type")
+      termUiFlag, _ := cmd.Flags().GetBool("termui")
+
+      if termUiFlag {
+        os.Exit(0)
+      } else {
+        comment := Comment{
+          Id:          idFlag,
+          Author:      GetAuthorEmail(), // Make sure you define this
+          Description: descriptionFlag,
+          ParentId:    parentIdFlag,
+          ParentType:  parentTypeFlag,
+          RefPath:     commentsPath,
+        }
+
+        Update(comment)
+      }
+		},
+	}
+
+	commentsUpdateCmd.Flags().String("id", "", "ID for the comment")
+	commentsUpdateCmd.Flags().String("description", "", "Description for the comment")
+	commentsUpdateCmd.Flags().String("parent_id", "", "Parent ID for the comment")
+	commentsUpdateCmd.Flags().String("parent_type", "", "Parent type for the comment")
+
+  commentsAddCmd.MarkFlagRequired("id")
+  commentsAddCmd.MarkFlagRequired("description")
+  commentsAddCmd.MarkFlagRequired("parent_id")
+  commentsAddCmd.MarkFlagRequired("parent_type")
+
+  var commentsRemoveCmd = &cobra.Command{
+		Use:   "remove",
+		Short: "Remove",
+		Run: func(cmd *cobra.Command, args []string) {
+      idFlag, _ := cmd.Flags().GetString("id")
+
+      entity := Comment{
+        Id: idFlag,
+      }
+
+      Remove(entity)
+    },
+	}
+
+	commentsRemoveCmd.Flags().String("id", "", "ID for the comment")
+
+  commentsRemoveCmd.MarkFlagRequired("id")
+
   rootCmd.AddCommand(
     projectsCmd,
     issuesCmd,
@@ -335,9 +489,10 @@ func main() {
     pullCmd,
     nukeCmd,
   )
+
   projectsCmd.AddCommand(projectsAddCmd, projectsUpdateCmd, projectsRemoveCmd, projectsListCmd)
-  issuesCmd.AddCommand(issuesAddCmd, issuesListCmd)
-  commentsCmd.AddCommand(commentsListCmd, commentsAddCmd)
+  issuesCmd.AddCommand(issuesAddCmd, issuesUpdateCmd, issuesRemoveCmd, issuesListCmd)
+  commentsCmd.AddCommand(commentsAddCmd, commentsUpdateCmd, commentsRemoveCmd, commentsListCmd)
 
 	if err := rootCmd.Execute(); err != nil {
     log.Fatal(err)
@@ -382,16 +537,6 @@ func GetFirstCommit(repo *git.Repository) *git.Commit {
   return firstCommit
 }
 
-func GetTree(commit *git.Commit) *git.Tree {
-  // Getting the root tree of the first commit
-  tree, err := commit.Tree()
-  if err != nil {
-    log.Fatalf("Failed to get root tree: %v\n", err)
-  }
-
-  return tree
-}
-
 func Add(entity Entity) error {
   wd := GetWd()
   repo, err := git.OpenRepository(wd)
@@ -400,10 +545,9 @@ func Add(entity Entity) error {
   }
 
   firstCommit := GetFirstCommit(repo)
-  rootTree := GetTree(firstCommit)
 
   var newContent string
-  note, err := repo.Notes.Read(entity.GetRefPath(), rootTree.Id())
+  note, err := repo.Notes.Read(entity.GetRefPath(), firstCommit.Id())
   if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
     data := make(map[string]interface{})
     data[entity.GetId()] = entity
@@ -441,7 +585,7 @@ func Add(entity Entity) error {
     entity.GetRefPath(),
     sig,
     sig,
-    rootTree.Id(),
+    firstCommit.Id(),
     newContent,
     true,
     )
@@ -464,10 +608,9 @@ func Remove(entity Entity) error {
   }
 
   firstCommit := GetFirstCommit(repo)
-  rootTree := GetTree(firstCommit)
 
   var newContent string
-  note, err := repo.Notes.Read(entity.GetRefPath(), rootTree.Id())
+  note, err := repo.Notes.Read(entity.GetRefPath(), firstCommit.Id())
   if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
     log.Fatalf("%v", err)
   } else if err == nil {
@@ -498,7 +641,7 @@ func Remove(entity Entity) error {
     entity.GetRefPath(),
     sig,
     sig,
-    rootTree.Id(),
+    firstCommit.Id(),
     newContent,
     true,
     )
@@ -601,7 +744,6 @@ func GetCommentsForEntity(parentId string) []*Comment {
 
   return filteredComments
 }
-
 
 func GetAuthorEmail() string {
 	configAuthor, err := exec.Command("git", "config", "user.email").Output()
