@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"fmt"
+	// "fmt"
 	// "strings"
 	//  "time"
 
@@ -58,7 +58,9 @@ func NewModel() tea.Model {
 		Bold(false)
 	t.SetStyles(s)
 
-  return model{table: t}
+  d := detail.New(entity.Issue{})
+
+  return model{table: t, detailView: d}
 }
 
 type issuesLoadedMsg []*entity.Issue
@@ -122,7 +124,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
     if len(m.issues) > 0 {
       m.currentIssue = m.issues[m.table.Cursor()]
-      // m.currentIssue = m.issues[0]
+      d := detail.New(m.currentIssue)
+      m.detailView = d
     }
 
     return m, cmd
@@ -131,9 +134,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.table, cmd = m.table.Update(msg)
   if len(m.issues) > 0 {
     m.currentIssue = m.issues[m.table.Cursor()]
-    // m.currentIssue = m.issues[0]
+    d := detail.New(m.currentIssue)
+    m.detailView = d
   }
-  return m, nil
+  return m, cmd
 }
 
 func (m model) View() string {
@@ -144,14 +148,12 @@ func (m model) View() string {
     currentIssue = &entity.Issue{Id: "none"}
   }
 
-  view := lipgloss.JoinHorizontal(lipgloss.Top, table, fmt.Sprintf("%s", currentIssue.Id))
-  // view := lipgloss.JoinHorizontal(lipgloss.Top, table, "hi")
+  view := lipgloss.JoinHorizontal(lipgloss.Top, table, m.detailView.View())
   return view
 }
 
 func Run() error {
   p := tea.NewProgram(NewModel(), tea.WithAltScreen())
-  // p := tea.NewProgram(NewModel())
 
   if _, err := p.Run(); err != nil {
     log.Error(err)
