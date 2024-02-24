@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
   "time"
+  "encoding/json"
 
 	"github.com/spf13/cobra"
   "github.com/google/uuid"
@@ -73,6 +74,45 @@ func main() {
 		Short: "Nuke data - use for debugging purposes",
 		Run: func(cmd *cobra.Command, args []string) {
       Nuke()
+    },
+  }
+
+  var loadTestDataCmd = &cobra.Command{
+		Use:   "loadtestdata",
+		Short: "Load test data",
+		Run: func(cmd *cobra.Command, args []string) {
+      byteValue, err := os.ReadFile("testdata/issues.json")
+      if err != nil {
+        fmt.Println(err)
+        return
+      }
+
+      var data map[string]interface{}
+
+      err = json.Unmarshal(byteValue, &data)
+      if err != nil {
+        fmt.Println(err)
+        return
+      }
+
+      for _, v := range data {
+        var issue entity.Issue
+        v := v.(map[string]interface{})
+        createdAt, _ := time.Parse(time.RFC3339, v["created_at"].(string))
+        updatedAt, _ := time.Parse(time.RFC3339, v["updated_at"].(string))
+        issue = entity.Issue{
+          Id: v["id"].(string),
+          Author: v["author"].(string),
+          Title: v["title"].(string),
+          Description: v["description"].(string),
+          ParentType: v["parent_type"].(string),
+          ParentId: v["parent_id"].(string),
+          RefPath: v["refpath"].(string),
+          CreatedAt: createdAt,
+          UpdatedAt: updatedAt,
+        }
+        entity.Add(&issue)
+      }
     },
   }
 
@@ -425,6 +465,7 @@ func main() {
     pushCmd,
     pullCmd,
     nukeCmd,
+    loadTestDataCmd,
   )
 
   projectsCmd.AddCommand(projectsAddCmd, projectsUpdateCmd, projectsRemoveCmd, projectsListCmd)
