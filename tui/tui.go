@@ -1,7 +1,7 @@
 package tui
 
 import (
-	// "fmt"
+	"fmt"
 	// "strings"
 	//  "time"
 
@@ -11,6 +11,7 @@ import (
 //   "github.com/google/uuid"
   "github.com/charmbracelet/log"
   "github.com/blvrd/ubik/entity"
+  "github.com/blvrd/ubik/detail"
 )
 
 var baseStyle = lipgloss.NewStyle().
@@ -18,9 +19,11 @@ var baseStyle = lipgloss.NewStyle().
 	BorderForeground(lipgloss.Color("105"))
 
 type model struct {
-  table table.Model
-  issues []*entity.Issue
-  loading bool
+  table        table.Model
+  issues       []*entity.Issue
+  currentIssue *entity.Issue
+  detailView   detail.Model
+  loading      bool
 }
 
 func NewModel() tea.Model {
@@ -91,6 +94,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     m.table.SetHeight(msg.Height - 5)
   case issuesLoadedMsg:
     var rows []table.Row
+    m.issues = msg
 
     for _, issue := range msg {
       row := []string{
@@ -101,7 +105,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         issue.UpdatedAt.String(),
       }
 
-      log.Infof("issue: %+v\n", issue)
       rows = append(rows, row)
     }
 
@@ -117,16 +120,32 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     tea.Printf("%+v\n", m.table.Rows())
     m.table, cmd = m.table.Update(msg)
 
+    if len(m.issues) > 0 {
+      m.currentIssue = m.issues[m.table.Cursor()]
+      // m.currentIssue = m.issues[0]
+    }
+
     return m, cmd
   }
 
 	m.table, cmd = m.table.Update(msg)
+  if len(m.issues) > 0 {
+    m.currentIssue = m.issues[m.table.Cursor()]
+    // m.currentIssue = m.issues[0]
+  }
   return m, nil
 }
 
 func (m model) View() string {
   table := baseStyle.Render(m.table.View())
-  view := lipgloss.JoinHorizontal(lipgloss.Top, table, "Hi, I'm the detail view")
+  currentIssue := m.currentIssue
+
+  if currentIssue == nil {
+    currentIssue = &entity.Issue{Id: "none"}
+  }
+
+  view := lipgloss.JoinHorizontal(lipgloss.Top, table, fmt.Sprintf("%s", currentIssue.Id))
+  // view := lipgloss.JoinHorizontal(lipgloss.Top, table, "hi")
   return view
 }
 
