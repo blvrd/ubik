@@ -33,6 +33,7 @@
             pkg-config
             gotools # Go tools like goimports, godoc, and others
             gum
+            cloc
           ];
         };
       });
