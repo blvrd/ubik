@@ -13,6 +13,10 @@ import (
   "github.com/blvrd/ubik/entity"
 )
 
+var baseStyle = lipgloss.NewStyle().
+	BorderStyle(lipgloss.ThickBorder()).
+	BorderForeground(lipgloss.Color("105"))
+
 type model struct {
   table table.Model
   issues []*entity.Issue
@@ -22,10 +26,10 @@ type model struct {
 func NewModel() tea.Model {
 	columns := []table.Column{
 		{Title: "Title", Width: 20},
-		{Title: "Author", Width: 15},
+		{Title: "Author", Width: 20},
 		{Title: "Closed", Width: 10},
-		{Title: "Created", Width: 10},
-		{Title: "Updated", Width: 10},
+		{Title: "Created", Width: 20},
+		{Title: "Updated", Width: 20},
 	}
 
   rows := []table.Row{
@@ -69,15 +73,24 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+  var cmd tea.Cmd
+
   switch msg := msg.(type) {
   case tea.KeyMsg:
     switch msg.String() {
-    case "ctrl+c", "q", "esc":
-      return m, tea.Quit
+		case "esc":
+			if m.table.Focused() {
+				m.table.Blur()
+			} else {
+				m.table.Focus()
+			}
+		case "q", "ctrl+c":
+			return m, tea.Quit
     }
+  case tea.WindowSizeMsg:
+    m.table.SetHeight(msg.Height - 5)
   case issuesLoadedMsg:
     var rows []table.Row
-    var cmd tea.Cmd
 
     for _, issue := range msg {
       row := []string{
@@ -94,29 +107,32 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
     if len(rows) == 0 {
       rows = []table.Row{
-        []string{"Loading..."},
+        []string{"No issues found"},
       }
     }
 
     m.table.SetRows(rows)
     m.loading = false
 
-    tea.Println("hiiiiiiiiiiiiiiiiiiiiiii")
     tea.Printf("%+v\n", m.table.Rows())
     m.table, cmd = m.table.Update(msg)
 
     return m, cmd
   }
+
+	m.table, cmd = m.table.Update(msg)
   return m, nil
 }
 
 func (m model) View() string {
-  return m.table.View()
+  table := baseStyle.Render(m.table.View())
+  view := lipgloss.JoinHorizontal(lipgloss.Top, table, "Hi, I'm the detail view")
+  return view
 }
 
 func Run() error {
-  // p := tea.NewProgram(NewModel(), tea.WithAltScreen())
-  p := tea.NewProgram(NewModel())
+  p := tea.NewProgram(NewModel(), tea.WithAltScreen())
+  // p := tea.NewProgram(NewModel())
 
   if _, err := p.Run(); err != nil {
     log.Error(err)
