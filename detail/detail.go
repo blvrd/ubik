@@ -1,9 +1,11 @@
 package detail
 
 import (
-  "fmt"
-  tea "github.com/charmbracelet/bubbletea"
-  "github.com/blvrd/ubik/entity"
+	"fmt"
+	"strings"
+
+	"github.com/blvrd/ubik/entity"
+	tea "github.com/charmbracelet/bubbletea"
 )
 
 type Model struct {
@@ -21,5 +23,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) View() string {
-  return fmt.Sprintf("%+v", m.ent)
+  var s strings.Builder
+
+  json, err := m.ent.Marshal()
+
+  if err != nil {
+    return "error"
+  }
+
+  s.WriteString(fmt.Sprintf("ID: %s\n\n", m.ent.GetId()))
+  s.WriteString(fmt.Sprintf("data: %s\n", string(json)))
+
+  return s.String()
 }
