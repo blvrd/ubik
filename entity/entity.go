@@ -23,6 +23,8 @@ type Entity interface {
   GetRefPath() string
   GetId() string
   Marshal() ([]byte, error)
+  // UnMarshal([]byte) (Entity, error)
+  // Fields for generating forms
 }
 
 type Project struct {
