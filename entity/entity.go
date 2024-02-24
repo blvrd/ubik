@@ -23,8 +23,9 @@ type Entity interface {
   GetRefPath() string
   GetId() string
   Marshal() ([]byte, error)
-  // UnMarshal([]byte) (Entity, error)
-  // Fields for generating forms
+  Unmarshal([]byte) error
+  // Fields() for generating forms
+  ToMap() map[string]interface{}
 }
 
 type Project struct {
@@ -49,6 +50,23 @@ func (p Project) GetId() string {
 
 func (p Project) Marshal() ([]byte, error) {
   return json.Marshal(p)
+}
+
+func (p *Project) Unmarshal(data []byte) error {
+  return json.Unmarshal(data, p)
+}
+
+func (p Project) ToMap() map[string]interface{} {
+  return map[string]interface{}{
+    "id": p.Id,
+    "author": p.Author,
+    "title": p.Title,
+    "description": p.Description,
+    "closed": p.Closed,
+    "refpath": p.RefPath,
+    "created_at": p.CreatedAt,
+    "updated_at": p.UpdatedAt,
+  }
 }
 
 type Issue struct {
@@ -76,6 +94,25 @@ func (i Issue) Marshal() ([]byte, error) {
   return json.Marshal(i)
 }
 
+func (i *Issue) Unmarshal(data []byte) error {
+  return json.Unmarshal(data, i)
+}
+
+func (i Issue) ToMap() map[string]interface{} {
+  return map[string]interface{}{
+    "id": i.Id,
+    "author": i.Author,
+    "title": i.Title,
+    "description": i.Description,
+    "closed": i.Closed,
+    "parent_type": i.ParentType,
+    "parent_id": i.ParentId,
+    "refpath": i.RefPath,
+    "created_at": i.CreatedAt,
+    "updated_at": i.UpdatedAt,
+  }
+}
+
 type Comment struct {
 	Id          string `json:"id"`
 	Author      string `json:"author"`
@@ -97,6 +134,23 @@ func (c Comment) GetId() string {
 
 func (c Comment) Marshal() ([]byte, error) {
   return json.Marshal(c)
+}
+
+func (c *Comment) Unmarshal(data []byte) error {
+  return json.Unmarshal(data, c)
+}
+
+func (c Comment) ToMap() map[string]interface{} {
+  return map[string]interface{}{
+    "id": c.Id,
+    "author": c.Author,
+    "description": c.Description,
+    "parent_type": c.ParentType,
+    "parent_id": c.ParentId,
+    "refpath": c.RefPath,
+    "created_at": c.CreatedAt,
+    "updated_at": c.UpdatedAt,
+  }
 }
 
 func GetWd() string {

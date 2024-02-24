@@ -111,7 +111,7 @@ func main() {
           UpdatedAt:   time.Now().UTC(),
         }
 
-        entity.Add(project)
+        entity.Add(&project)
       }
 		},
 	}
@@ -158,7 +158,7 @@ func main() {
           UpdatedAt:   time.Now().UTC(),
         }
 
-        entity.Update(project)
+        entity.Update(&project)
       }
 		},
 	}
@@ -180,7 +180,7 @@ func main() {
         Id: idFlag,
       }
 
-      entity.Remove(e)
+      entity.Remove(&e)
     },
 	}
 
@@ -221,7 +221,7 @@ func main() {
         UpdatedAt:   time.Now().UTC(),
       }
 
-      entity.Add(issue)
+      entity.Add(&issue)
 		},
 	}
 
@@ -273,7 +273,7 @@ func main() {
           UpdatedAt:   time.Now().UTC(),
         }
 
-        entity.Update(issue)
+        entity.Update(&issue)
       }
 		},
 	}
@@ -297,7 +297,7 @@ func main() {
         Id: idFlag,
       }
 
-      entity.Remove(e)
+      entity.Remove(&e)
     },
 	}
 
@@ -335,7 +335,7 @@ func main() {
         UpdatedAt:   time.Now().UTC(),
       }
 
-      entity.Add(comment)
+      entity.Add(&comment)
 		},
 	}
 
@@ -384,7 +384,7 @@ func main() {
           UpdatedAt:   time.Now().UTC(),
         }
 
-        entity.Update(comment)
+        entity.Update(&comment)
       }
 		},
 	}
@@ -409,7 +409,7 @@ func main() {
         Id: idFlag,
       }
 
-      entity.Remove(e)
+      entity.Remove(&e)
     },
 	}
 

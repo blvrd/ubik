@@ -24,15 +24,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) View() string {
   var s strings.Builder
+  entMap := m.ent.ToMap()
 
-  json, err := m.ent.Marshal()
+  var closed string
 
-  if err != nil {
-    return "error"
+  if entMap["closed"] == "false" {
+    closed = "no"
+  } else {
+    closed = "yes"
   }
 
-  s.WriteString(fmt.Sprintf("ID: %s\n\n", m.ent.GetId()))
-  s.WriteString(fmt.Sprintf("data: %s\n", string(json)))
+  s.WriteString(fmt.Sprintf("ID: %s\n", entMap["id"]))
+  s.WriteString(fmt.Sprintf("Title: %s\n", entMap["title"]))
+  s.WriteString(fmt.Sprintf("Author: %s\n\n", entMap["author"]))
+  s.WriteString(fmt.Sprintf("Closed: %s\n\n", closed))
+  s.WriteString(fmt.Sprintf("Description: %s\n\n", entMap["description"]))
+  s.WriteString(fmt.Sprintf("Created: %s\n\n", entMap["created_at"]))
+  s.WriteString(fmt.Sprintf("Updated: %s\n\n", entMap["updated_at"]))
 
   return s.String()
 }

@@ -15,7 +15,7 @@ import (
 )
 
 var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.ThickBorder()).
+	BorderStyle(lipgloss.RoundedBorder()).
 	BorderForeground(lipgloss.Color("105"))
 
 type model struct {
@@ -58,7 +58,7 @@ func NewModel() tea.Model {
 		Bold(false)
 	t.SetStyles(s)
 
-  d := detail.New(entity.Issue{})
+  d := detail.New(&entity.Issue{})
 
   return model{table: t, detailView: d}
 }
