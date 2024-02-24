@@ -1,14 +1,15 @@
 package entity
 
 import (
-  "fmt"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
-  "time"
+	"time"
 
-  "github.com/charmbracelet/log"
+	// tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/log"
 	git "github.com/libgit2/git2go/v34"
 )
 
@@ -17,6 +18,12 @@ const (
 	IssuesPath   = "refs/notes/ubik/issues"
 	CommentsPath = "refs/notes/ubik/comments"
 )
+
+type Entity interface {
+  GetRefPath() string
+  GetId() string
+  Marshal() ([]byte, error)
+}
 
 type Project struct {
 	Id          string `json:"id"`
@@ -242,12 +249,6 @@ func GetAuthorEmail() string {
   return strings.TrimSpace(author)
 }
 
-type Entity interface {
-  GetRefPath() string
-  GetId() string
-  Marshal() ([]byte, error)
-}
-
 func Add(entity Entity) error {
   wd := GetWd()
   repo, err := git.OpenRepository(wd)
@@ -444,22 +445,32 @@ func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
 	var uIssues []*Issue
 	for _, notePtr := range gitNotes {
 		note := *notePtr
-		author := *note.Author()
-		lines := strings.Split(note.Message(), "\n")
 
-		for _, line := range lines {
-			if line != "" {
-				var uIssue Issue
-				err := json.Unmarshal([]byte(line), &uIssue)
-				if err != nil {
-					log.Fatalf("Error unmarshaling JSON: %v", err)
-				}
+    data := make(map[string]interface{})
+    err := json.Unmarshal([]byte(note.Message()), &data)
+    if err != nil {
+      log.Fatalf("Failed to unmarshal data: %v\n", err)
+    }
 
-				uIssue.Author = author.Email
-				// fmt.Printf("%+v\n", uIssue)
-				uIssues = append(uIssues, &uIssue)
-			}
-		}
+    for _, obj := range data {
+      // TODO Need to implement entity.Unmarshal()
+      obj := obj.(map[string]interface{})
+      createdAt, _ := time.Parse(time.RFC3339, obj["created_at"].(string))
+      updatedAt, _ := time.Parse(time.RFC3339, obj["updated_at"].(string))
+      issue := Issue{
+        Id: obj["id"].(string),
+        Author: obj["author"].(string),
+        Title: obj["title"].(string),
+        Description: obj["description"].(string),
+        ParentType: obj["parent_type"].(string),
+        ParentId: obj["parent_id"].(string),
+        RefPath: obj["refpath"].(string),
+        CreatedAt: createdAt,
+        UpdatedAt: updatedAt,
+      }
+
+      uIssues = append(uIssues, &issue)
+    }
 	}
 
 	return uIssues
