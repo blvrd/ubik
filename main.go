@@ -480,4 +480,3 @@ func main() {
 func Nuke() {
   exec.Command("./ubik_clear_all").Run()
 }
-
