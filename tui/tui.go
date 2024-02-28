@@ -99,10 +99,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     m.issues = msg
 
     for _, issue := range msg {
+      var closed string
+
+      if issue.Closed == "false" {
+        closed = "[ ]"
+      } else {
+        closed = "[x]"
+      }
+
       row := []string{
         issue.Title,
         issue.Author,
-        issue.Closed,
+        closed,
         issue.CreatedAt.String(),
         issue.UpdatedAt.String(),
       }

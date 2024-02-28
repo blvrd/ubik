@@ -518,6 +518,7 @@ func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
         Author: obj["author"].(string),
         Title: obj["title"].(string),
         Description: obj["description"].(string),
+        Closed: obj["closed"].(string),
         ParentType: obj["parent_type"].(string),
         ParentId: obj["parent_id"].(string),
         RefPath: obj["refpath"].(string),

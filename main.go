@@ -105,6 +105,7 @@ func main() {
           Author: v["author"].(string),
           Title: v["title"].(string),
           Description: v["description"].(string),
+          Closed: v["closed"].(string),
           ParentType: v["parent_type"].(string),
           ParentId: v["parent_id"].(string),
           RefPath: v["refpath"].(string),
