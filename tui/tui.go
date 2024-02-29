@@ -1,10 +1,6 @@
 package tui
 
 import (
-	// "fmt"
-	// "strings"
-	//  "time"
-
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
@@ -18,13 +14,20 @@ var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.RoundedBorder()).
 	BorderForeground(lipgloss.Color("105"))
 
+type sessionState int
+
+const (
+  detailView sessionState = 1
+  formView   sessionState = 2
+)
+
 type model struct {
+  state        sessionState
   table        table.Model
   issues       []*entity.Issue
   currentIssue *entity.Issue
-  detailView   detail.Model
-  formView     form.Model
-  sidebarView  string
+  detail       detail.Model
+  form         form.Model
   loading      bool
 }
 
@@ -65,9 +68,9 @@ func NewModel() tea.Model {
 
   return model{
     table: t,
-    detailView: d,
-    formView: f,
-    sidebarView: "detail",
+    detail: d,
+    form: f,
+    state: detailView,
   }
 }
 
@@ -94,13 +97,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     switch msg.String() {
     case "n":
       m.table.Blur()
-      m.sidebarView = "form"
-      m.formView.Init()
+      m.state = formView
+      m.form.Init()
 		case "esc":
 			if m.table.Focused() {
 				m.table.Blur()
 			} else {
-        m.sidebarView = "detail"
+        m.state = detailView
 				m.table.Focus()
 			}
 		case "q", "ctrl+c":
@@ -116,9 +119,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
       var closed string
 
       if issue.Closed == "false" {
-        closed = "[ ]"
+        closed = "✕"
       } else {
-        closed = "[x]"
+        closed = "✓"
       }
 
       row := []string{
@@ -147,12 +150,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     if len(m.issues) > 0 {
       m.currentIssue = m.issues[m.table.Cursor()]
       d := detail.New(m.currentIssue)
-      m.detailView = d
+      m.detail = d
     }
 
     return m, cmd
   case form.FormCompletedMsg:
-    m.sidebarView = "detail"
+    m.state = detailView
     m.table.Focus()
     return m, GetIssues
   }
@@ -160,15 +163,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.table, cmd = m.table.Update(msg)
   cmds = append(cmds, cmd)
 
-  if m.sidebarView == "form" {
-    m.formView, cmd = m.formView.Update(msg)
+  if m.state == formView {
+    m.form, cmd = m.form.Update(msg)
     cmds = append(cmds, cmd)
   }
 
   if len(m.issues) > 0 {
     m.currentIssue = m.issues[m.table.Cursor()]
     d := detail.New(m.currentIssue)
-    m.detailView = d
+    m.detail = d
   }
   return m, tea.Batch(cmds...)
 }
@@ -183,10 +186,10 @@ func (m model) View() string {
 
   var sidebarView string
 
-  if m.sidebarView == "detail" {
-    sidebarView = m.detailView.View()
+  if m.state == detailView {
+    sidebarView = m.detail.View()
   } else {
-    sidebarView = m.formView.View()
+    sidebarView = m.form.View()
   }
 
   view := lipgloss.JoinHorizontal(lipgloss.Top, table, sidebarView)

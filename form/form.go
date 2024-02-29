@@ -9,7 +9,6 @@ import (
   "github.com/charmbracelet/huh"
 	tea "github.com/charmbracelet/bubbletea"
   "github.com/google/uuid"
-	"github.com/charmbracelet/log"
 )
 
 type Model struct {
@@ -70,7 +69,6 @@ func CompleteForm(m Model) tea.Cmd {
       UpdatedAt:   time.Now().UTC(),
     }
     entity.Add(&issue)
-    log.Info("hey")
 
     return FormCompletedMsg("Form is complete")
   }
