@@ -29,9 +29,9 @@ func (m Model) View() string {
   var closed string
 
   if entMap["closed"] == "false" {
-    closed = "no"
+    closed = "[ ]"
   } else {
-    closed = "yes"
+    closed = "[x]"
   }
 
   s.WriteString(fmt.Sprintf("ID: %s\n", entMap["id"]))

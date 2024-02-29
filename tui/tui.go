@@ -12,6 +12,7 @@ import (
   "github.com/charmbracelet/log"
   "github.com/blvrd/ubik/entity"
   "github.com/blvrd/ubik/detail"
+  "github.com/blvrd/ubik/form"
 )
 
 var baseStyle = lipgloss.NewStyle().
@@ -23,6 +24,8 @@ type model struct {
   issues       []*entity.Issue
   currentIssue *entity.Issue
   detailView   detail.Model
+  formView     form.Model
+  sidebarView  string
   loading      bool
 }
 
@@ -59,8 +62,14 @@ func NewModel() tea.Model {
 	t.SetStyles(s)
 
   d := detail.New(&entity.Issue{})
+  f := form.New(&entity.Issue{})
 
-  return model{table: t, detailView: d}
+  return model{
+    table: t,
+    detailView: d,
+    formView: f,
+    sidebarView: "detail",
+  }
 }
 
 type issuesLoadedMsg []*entity.Issue
@@ -79,14 +88,19 @@ func (m model) Init() tea.Cmd {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
   var cmd tea.Cmd
+  var cmds []tea.Cmd
 
   switch msg := msg.(type) {
   case tea.KeyMsg:
     switch msg.String() {
+    case "n":
+      m.table.Blur()
+      m.sidebarView = "form"
 		case "esc":
 			if m.table.Focused() {
 				m.table.Blur()
 			} else {
+        m.sidebarView = "detail"
 				m.table.Focus()
 			}
 		case "q", "ctrl+c":
@@ -140,12 +154,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
   }
 
 	m.table, cmd = m.table.Update(msg)
+  cmds = append(cmds, cmd)
+
+  m.formView, cmd = m.formView.Update(msg)
+  // if f, ok := formm.(form.Model); ok {
+  //   m.formView = f
+  //   cmds = append(cmds, cmd)
+  // }
+
   if len(m.issues) > 0 {
     m.currentIssue = m.issues[m.table.Cursor()]
     d := detail.New(m.currentIssue)
     m.detailView = d
   }
-  return m, cmd
+  return m, tea.Batch(cmds...)
 }
 
 func (m model) View() string {
@@ -156,7 +178,16 @@ func (m model) View() string {
     currentIssue = &entity.Issue{Id: "none"}
   }
 
-  view := lipgloss.JoinHorizontal(lipgloss.Top, table, m.detailView.View())
+  var sidebarView string
+
+  if m.sidebarView == "detail" {
+    sidebarView = m.detailView.View()
+  } else {
+    sidebarView = m.formView.View()
+  }
+
+  view := lipgloss.JoinHorizontal(lipgloss.Top, table, sidebarView)
+
   return view
 }
 
