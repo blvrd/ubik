@@ -8,7 +8,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
-//   "github.com/google/uuid"
   "github.com/charmbracelet/log"
   "github.com/blvrd/ubik/entity"
   "github.com/blvrd/ubik/detail"
@@ -96,6 +95,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     case "n":
       m.table.Blur()
       m.sidebarView = "form"
+      m.formView.Init()
 		case "esc":
 			if m.table.Focused() {
 				m.table.Blur()
@@ -151,16 +151,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     }
 
     return m, cmd
+  case form.FormCompletedMsg:
+    m.sidebarView = "detail"
+    m.table.Focus()
+    return m, GetIssues
   }
 
 	m.table, cmd = m.table.Update(msg)
   cmds = append(cmds, cmd)
 
-  m.formView, cmd = m.formView.Update(msg)
-  // if f, ok := formm.(form.Model); ok {
-  //   m.formView = f
-  //   cmds = append(cmds, cmd)
-  // }
+  if m.sidebarView == "form" {
+    m.formView, cmd = m.formView.Update(msg)
+    cmds = append(cmds, cmd)
+  }
 
   if len(m.issues) > 0 {
     m.currentIssue = m.issues[m.table.Cursor()]
