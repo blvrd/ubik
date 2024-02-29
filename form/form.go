@@ -22,7 +22,6 @@ func New(ent entity.Entity) Model {
       huh.NewInput().
         Key("title").
         Title("Title").
-        Description("Name your issue").
         CharLimit(50),
       huh.NewText().
         Key("description").
