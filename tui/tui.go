@@ -96,9 +96,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
   case tea.KeyMsg:
     switch msg.String() {
     case "n":
-      m.table.Blur()
-      m.state = formView
-      m.form.Init()
+      if m.state != formView {
+        m.table.Blur()
+        m.state = formView
+        m.form = form.New(&entity.Issue{})
+        m.form.Init()
+      }
 		case "esc":
 			if m.table.Focused() {
 				m.table.Blur()
