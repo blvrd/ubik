@@ -49,7 +49,13 @@ func main() {
 	var pushCmd = &cobra.Command{
 		Use:   "push",
 		Short: "push",
-		Run:   func(cmd *cobra.Command, args []string) { fmt.Println("pushing ubik refs to remote:") },
+		Run:   func(cmd *cobra.Command, args []string) {
+      repo := entity.NewGitRepository()
+      err := repo.PushRefs("origin")
+      if err != nil {
+        log.Fatalf("error pushing refs: %v", err)
+      }
+    },
 	}
 
 	var pullCmd = &cobra.Command{
