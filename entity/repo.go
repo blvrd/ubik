@@ -28,7 +28,7 @@ func (*GitRepository) PushRefs(remote string) error {
   return cmd.Run()
 }
 
-func (*GitRepository) PullRef(remote string) error {
+func (*GitRepository) PullRefs(remote string) error {
   cmd := exec.Command("git", "fetch", remote, fmt.Sprintf("%s:%s", IssuesPath, IssuesPath))
 
   log.Infof("running cmd: %s", cmd.String())

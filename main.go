@@ -61,8 +61,14 @@ func main() {
 	var pullCmd = &cobra.Command{
 		Use:   "pull",
 		Short: "pull",
-		Run:   func(cmd *cobra.Command, args []string) { fmt.Println("pulling ubik refs from remote:") },
-	}
+		Run:   func(cmd *cobra.Command, args []string) {
+      repo := entity.NewGitRepository()
+      err := repo.PullRefs("origin")
+      if err != nil {
+        log.Fatalf("error pulling refs: %v", err)
+      }
+    },
+  }
 
 	var projectsCmd = &cobra.Command{
 		Use:   "projects",
