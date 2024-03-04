@@ -24,6 +24,7 @@ func main() {
 
 	// Set the global logger output to the file
 	log.SetOutput(logFile)
+  log.SetReportCaller(true)
 
 	// ========================
 	// CLI Commands
