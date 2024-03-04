@@ -50,26 +50,26 @@ func main() {
 	var pushCmd = &cobra.Command{
 		Use:   "push",
 		Short: "push",
-		Run:   func(cmd *cobra.Command, args []string) {
-      repo := entity.NewGitRepository()
-      err := repo.PushRefs("origin")
-      if err != nil {
-        log.Fatalf("error pushing refs: %v", err)
-      }
-    },
+		Run: func(cmd *cobra.Command, args []string) {
+			repo := entity.NewGitRepository()
+			err := repo.PushRefs("origin")
+			if err != nil {
+				log.Fatalf("error pushing refs: %v", err)
+			}
+		},
 	}
 
 	var pullCmd = &cobra.Command{
 		Use:   "pull",
 		Short: "pull",
-		Run:   func(cmd *cobra.Command, args []string) {
-      repo := entity.NewGitRepository()
-      err := repo.PullRefs("origin")
-      if err != nil {
-        log.Fatalf("error pulling refs: %v", err)
-      }
-    },
-  }
+		Run: func(cmd *cobra.Command, args []string) {
+			repo := entity.NewGitRepository()
+			err := repo.PullRefs("origin")
+			if err != nil {
+				log.Fatalf("error pulling refs: %v", err)
+			}
+		},
+	}
 
 	var projectsCmd = &cobra.Command{
 		Use:   "projects",
@@ -493,4 +493,20 @@ func main() {
 
 func Nuke() {
 	exec.Command("./ubik_clear_all").Run()
+	repo := entity.NewGitRepository()
+
+	remoteName := "origin"
+	namespace := "refs/notes/ubik"
+
+	if err := repo.DeleteLocalRefs(namespace); err != nil {
+		fmt.Println("Error deleting local refs:", err)
+	} else {
+		fmt.Println("Local refs deleted successfully.")
+	}
+
+	if err := repo.DeleteRemoteRefs(remoteName, namespace); err != nil {
+		fmt.Println("Error deleting remote refs:", err)
+	} else {
+		fmt.Println("Remote refs deleted successfully.")
+	}
 }

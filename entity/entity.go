@@ -20,280 +20,280 @@ const (
 )
 
 type Entity interface {
-  GetRefPath() string
-  GetId() string
-  Marshal() ([]byte, error)
-  Unmarshal([]byte) error
-  // Fields() for generating forms
-  ToMap() map[string]interface{}
+	GetRefPath() string
+	GetId() string
+	Marshal() ([]byte, error)
+	Unmarshal([]byte) error
+	// Fields() for generating forms
+	ToMap() map[string]interface{}
 }
 
 type Project struct {
-	Id          string `json:"id"`
-	Author      string `json:"author"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Closed      string `json:"closed"`
-  RefPath     string `json:"refpath"`
-	Progress    int    `json:"progress"`
-  CreatedAt   time.Time `json:"created_at"`
-  UpdatedAt   time.Time `json:"updated_at"`
+	Id          string    `json:"id"`
+	Author      string    `json:"author"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Closed      string    `json:"closed"`
+	RefPath     string    `json:"refpath"`
+	Progress    int       `json:"progress"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 func (p Project) GetRefPath() string {
-  return ProjectsPath
+	return ProjectsPath
 }
 
 func (p Project) GetId() string {
-  return p.Id
+	return p.Id
 }
 
 func (p Project) Marshal() ([]byte, error) {
-  return json.Marshal(p)
+	return json.Marshal(p)
 }
 
 func (p *Project) Unmarshal(data []byte) error {
-  return json.Unmarshal(data, p)
+	return json.Unmarshal(data, p)
 }
 
 func (p Project) ToMap() map[string]interface{} {
-  return map[string]interface{}{
-    "id": p.Id,
-    "author": p.Author,
-    "title": p.Title,
-    "description": p.Description,
-    "closed": p.Closed,
-    "refpath": p.RefPath,
-    "created_at": p.CreatedAt,
-    "updated_at": p.UpdatedAt,
-  }
+	return map[string]interface{}{
+		"id":          p.Id,
+		"author":      p.Author,
+		"title":       p.Title,
+		"description": p.Description,
+		"closed":      p.Closed,
+		"refpath":     p.RefPath,
+		"created_at":  p.CreatedAt,
+		"updated_at":  p.UpdatedAt,
+	}
 }
 
 type Issue struct {
-	Id          string `json:"id"`
-	Author      string `json:"author"`
-	Title       string `json:"title"`
-	Description string `json:"description"`
-	Closed      string `json:"closed"`
-	ParentType  string `json:"parent_type"`
-	ParentId    string `json:"parent_id"`
-  RefPath     string `json:"refpath"`
-  CreatedAt   time.Time `json:"created_at"`
-  UpdatedAt   time.Time `json:"updated_at"`
+	Id          string    `json:"id"`
+	Author      string    `json:"author"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Closed      string    `json:"closed"`
+	ParentType  string    `json:"parent_type"`
+	ParentId    string    `json:"parent_id"`
+	RefPath     string    `json:"refpath"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 func (i Issue) GetRefPath() string {
-  return IssuesPath
+	return IssuesPath
 }
 
 func (i Issue) GetId() string {
-  return i.Id
+	return i.Id
 }
 
 func (i Issue) Marshal() ([]byte, error) {
-  return json.Marshal(i)
+	return json.Marshal(i)
 }
 
 func (i *Issue) Unmarshal(data []byte) error {
-  return json.Unmarshal(data, i)
+	return json.Unmarshal(data, i)
 }
 
 func (i Issue) ToMap() map[string]interface{} {
-  return map[string]interface{}{
-    "id": i.Id,
-    "author": i.Author,
-    "title": i.Title,
-    "description": i.Description,
-    "closed": i.Closed,
-    "parent_type": i.ParentType,
-    "parent_id": i.ParentId,
-    "refpath": i.RefPath,
-    "created_at": i.CreatedAt,
-    "updated_at": i.UpdatedAt,
-  }
+	return map[string]interface{}{
+		"id":          i.Id,
+		"author":      i.Author,
+		"title":       i.Title,
+		"description": i.Description,
+		"closed":      i.Closed,
+		"parent_type": i.ParentType,
+		"parent_id":   i.ParentId,
+		"refpath":     i.RefPath,
+		"created_at":  i.CreatedAt,
+		"updated_at":  i.UpdatedAt,
+	}
 }
 
 type Comment struct {
-	Id          string `json:"id"`
-	Author      string `json:"author"`
-	Description string `json:"content"`
-	ParentType  string `json:"parent_type"`
-	ParentId    string `json:"parent_id"`
-  RefPath     string `json:"refpath"`
-  CreatedAt   time.Time `json:"created_at"`
-  UpdatedAt   time.Time `json:"updated_at"`
+	Id          string    `json:"id"`
+	Author      string    `json:"author"`
+	Description string    `json:"content"`
+	ParentType  string    `json:"parent_type"`
+	ParentId    string    `json:"parent_id"`
+	RefPath     string    `json:"refpath"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 func (c Comment) GetRefPath() string {
-  return CommentsPath
+	return CommentsPath
 }
 
 func (c Comment) GetId() string {
-  return c.Id
+	return c.Id
 }
 
 func (c Comment) Marshal() ([]byte, error) {
-  return json.Marshal(c)
+	return json.Marshal(c)
 }
 
 func (c *Comment) Unmarshal(data []byte) error {
-  return json.Unmarshal(data, c)
+	return json.Unmarshal(data, c)
 }
 
 func (c Comment) ToMap() map[string]interface{} {
-  return map[string]interface{}{
-    "id": c.Id,
-    "author": c.Author,
-    "description": c.Description,
-    "parent_type": c.ParentType,
-    "parent_id": c.ParentId,
-    "refpath": c.RefPath,
-    "created_at": c.CreatedAt,
-    "updated_at": c.UpdatedAt,
-  }
+	return map[string]interface{}{
+		"id":          c.Id,
+		"author":      c.Author,
+		"description": c.Description,
+		"parent_type": c.ParentType,
+		"parent_id":   c.ParentId,
+		"refpath":     c.RefPath,
+		"created_at":  c.CreatedAt,
+		"updated_at":  c.UpdatedAt,
+	}
 }
 
 func GetWd() string {
-  wd, err := os.Getwd()
+	wd, err := os.Getwd()
 
-  if err != nil {
+	if err != nil {
 		log.Fatalf("Failed to get current workding directory: %v", err)
-  }
+	}
 
-  return wd
+	return wd
 }
 
 func GetFirstCommit(repo *git.Repository) *git.Commit {
-  revWalk, err := repo.Walk()
-  if err != nil {
-    log.Fatalf("Failed to create revision walker: %v\n", err)
-  }
-  defer revWalk.Free()
+	revWalk, err := repo.Walk()
+	if err != nil {
+		log.Fatalf("Failed to create revision walker: %v\n", err)
+	}
+	defer revWalk.Free()
 
-  // Start from the HEAD
-  err = revWalk.PushHead()
-  if err != nil {
-    log.Fatalf("Failed to start rev walk at HEAD: %v\n", err)
-  }
+	// Start from the HEAD
+	err = revWalk.PushHead()
+	if err != nil {
+		log.Fatalf("Failed to start rev walk at HEAD: %v\n", err)
+	}
 
-  revWalk.Sorting(git.SortTime)
+	revWalk.Sorting(git.SortTime)
 
-  // Iterating to find the first commit
-  var firstCommit *git.Commit
-  oid := new(git.Oid)
-  for revWalk.Next(oid) == nil {
-    commit, err := repo.LookupCommit(oid)
-    if err != nil {
-      log.Fatalf("Failed to lookup commit: %v\n", err)
-    }
-    // Assuming the first commit we can reach is the oldest/root
-    firstCommit = commit
-  }
+	// Iterating to find the first commit
+	var firstCommit *git.Commit
+	oid := new(git.Oid)
+	for revWalk.Next(oid) == nil {
+		commit, err := repo.LookupCommit(oid)
+		if err != nil {
+			log.Fatalf("Failed to lookup commit: %v\n", err)
+		}
+		// Assuming the first commit we can reach is the oldest/root
+		firstCommit = commit
+	}
 
-  if firstCommit == nil {
-    log.Fatalf("No commits found in repository.")
-  }
+	if firstCommit == nil {
+		log.Fatalf("No commits found in repository.")
+	}
 
-  return firstCommit
+	return firstCommit
 }
 
 func ListProjects() {
-  refPath := ProjectsPath
-  notes := GetNotes(refPath)
-  uProjects := ProjectsFromGitNotes(notes)
+	refPath := ProjectsPath
+	notes := GetNotes(refPath)
+	uProjects := ProjectsFromGitNotes(notes)
 
-  for _, uNotePtr := range uProjects {
-    uNote := *uNotePtr
+	for _, uNotePtr := range uProjects {
+		uNote := *uNotePtr
 
-    issues := GetIssuesForProject(uNote.Id)
+		issues := GetIssuesForProject(uNote.Id)
 
-    fmt.Println("--------")
-    fmt.Printf("Project %s\n", uNote.Id)
-    fmt.Printf("Title: %s\n", uNote.Title)
-    fmt.Printf("Description: %s\n", uNote.Description)
-    fmt.Printf("Closed: %s\n", uNote.Closed)
-    fmt.Println("Issues:")
-    for _, issue := range issues {
-      fmt.Printf("\t- %s (closed: %s)\n", issue.Title, issue.Closed)
-      comments := GetCommentsForEntity(issue.Id)
+		fmt.Println("--------")
+		fmt.Printf("Project %s\n", uNote.Id)
+		fmt.Printf("Title: %s\n", uNote.Title)
+		fmt.Printf("Description: %s\n", uNote.Description)
+		fmt.Printf("Closed: %s\n", uNote.Closed)
+		fmt.Println("Issues:")
+		for _, issue := range issues {
+			fmt.Printf("\t- %s (closed: %s)\n", issue.Title, issue.Closed)
+			comments := GetCommentsForEntity(issue.Id)
 
-      for _, comment := range comments {
-        fmt.Printf("\t\t%s\n", comment.Description)
-        fmt.Printf("\t\t- %s\n", comment.Author)
-      }
+			for _, comment := range comments {
+				fmt.Printf("\t\t%s\n", comment.Description)
+				fmt.Printf("\t\t- %s\n", comment.Author)
+			}
 
-    }
-    fmt.Println("----------")
-  }
+		}
+		fmt.Println("----------")
+	}
 }
 
 func ListIssues() {
-  refPath := IssuesPath
-  notes := GetNotes(refPath)
-  uNotes := IssuesFromGitNotes(notes)
+	refPath := IssuesPath
+	notes := GetNotes(refPath)
+	uNotes := IssuesFromGitNotes(notes)
 
-  for _, uNotePtr := range uNotes {
-    uNote := *uNotePtr
-    fmt.Println("--------")
-    fmt.Println(uNote.Id)
-    fmt.Println(uNote.Title)
-    fmt.Println(uNote.Description)
-    fmt.Println(uNote.Closed)
-    fmt.Println(uNote.ParentId)
-    fmt.Println()
-  }
+	for _, uNotePtr := range uNotes {
+		uNote := *uNotePtr
+		fmt.Println("--------")
+		fmt.Println(uNote.Id)
+		fmt.Println(uNote.Title)
+		fmt.Println(uNote.Description)
+		fmt.Println(uNote.Closed)
+		fmt.Println(uNote.ParentId)
+		fmt.Println()
+	}
 }
 
 func GetIssuesForProject(parentId string) []*Issue {
-  refPath := IssuesPath
-  notes := GetNotes(refPath)
-  uNotes := IssuesFromGitNotes(notes)
+	refPath := IssuesPath
+	notes := GetNotes(refPath)
+	uNotes := IssuesFromGitNotes(notes)
 
-  var filteredIssues []*Issue
+	var filteredIssues []*Issue
 
-  for _, issue := range uNotes {
-    if issue.ParentId == parentId {
-      filteredIssues = append(filteredIssues, issue)
-    }
-  }
+	for _, issue := range uNotes {
+		if issue.ParentId == parentId {
+			filteredIssues = append(filteredIssues, issue)
+		}
+	}
 
-  return filteredIssues
+	return filteredIssues
 }
 
 func ListComments() {
-  refPath := CommentsPath
-  notes := GetNotes(refPath)
-  uNotes := CommentsFromGitNotes(notes)
+	refPath := CommentsPath
+	notes := GetNotes(refPath)
+	uNotes := CommentsFromGitNotes(notes)
 
-  for _, uNotePtr := range uNotes {
-    uNote := *uNotePtr
-    fmt.Println("--------")
-    fmt.Println(uNote.Description)
-    fmt.Println(uNote.ParentId)
-    fmt.Println()
-  }
+	for _, uNotePtr := range uNotes {
+		uNote := *uNotePtr
+		fmt.Println("--------")
+		fmt.Println(uNote.Description)
+		fmt.Println(uNote.ParentId)
+		fmt.Println()
+	}
 }
 
 func GetCommentsForEntity(parentId string) []*Comment {
-  refPath := CommentsPath
-  notes := GetNotes(refPath)
-  uNotes := CommentsFromGitNotes(notes)
+	refPath := CommentsPath
+	notes := GetNotes(refPath)
+	uNotes := CommentsFromGitNotes(notes)
 
-  var filteredComments []*Comment
+	var filteredComments []*Comment
 
-  for _, comment := range uNotes {
-    if comment.ParentId == parentId {
-      filteredComments = append(filteredComments, comment)
-    }
-  }
+	for _, comment := range uNotes {
+		if comment.ParentId == parentId {
+			filteredComments = append(filteredComments, comment)
+		}
+	}
 
-  return filteredComments
+	return filteredComments
 }
 
 func GetAuthorEmail() string {
 	configAuthor, err := exec.Command("git", "config", "user.email").Output()
 	if err != nil {
-    log.Fatal(err)
+		log.Fatal(err)
 	}
 
 	author := os.Getenv("GIT_AUTHOR_EMAIL")
@@ -302,122 +302,122 @@ func GetAuthorEmail() string {
 		author = string(configAuthor)
 	}
 
-  return strings.TrimSpace(author)
+	return strings.TrimSpace(author)
 }
 
 func Add(entity Entity) error {
-  wd := GetWd()
-  repo, err := git.OpenRepository(wd)
-  if err != nil {
-    return fmt.Errorf("Failed to open repository: %v", err)
-  }
+	wd := GetWd()
+	repo, err := git.OpenRepository(wd)
+	if err != nil {
+		return fmt.Errorf("Failed to open repository: %v", err)
+	}
 
-  firstCommit := GetFirstCommit(repo)
+	firstCommit := GetFirstCommit(repo)
 
-  var newContent string
-  note, err := repo.Notes.Read(entity.GetRefPath(), firstCommit.Id())
-  if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
-    data := make(map[string]interface{})
-    data[entity.GetId()] = entity
-    newJSON, err := json.Marshal(data)
-    if err != nil {
-      log.Fatalf("Failed to marshal entity: %v\n", err)
-    }
+	var newContent string
+	note, err := repo.Notes.Read(entity.GetRefPath(), firstCommit.Id())
+	if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
+		data := make(map[string]interface{})
+		data[entity.GetId()] = entity
+		newJSON, err := json.Marshal(data)
+		if err != nil {
+			log.Fatalf("Failed to marshal entity: %v\n", err)
+		}
 
-    newContent = string(newJSON)
-  } else if err == nil {
-    data := make(map[string]interface{})
-    err := json.Unmarshal([]byte(note.Message()), &data)
-    if err != nil {
-      log.Fatalf("Failed to unmarshal data: %v\n", err)
-    }
-    data[entity.GetId()] = entity
+		newContent = string(newJSON)
+	} else if err == nil {
+		data := make(map[string]interface{})
+		err := json.Unmarshal([]byte(note.Message()), &data)
+		if err != nil {
+			log.Fatalf("Failed to unmarshal data: %v\n", err)
+		}
+		data[entity.GetId()] = entity
 
-    newJSON, err := json.Marshal(data)
+		newJSON, err := json.Marshal(data)
 
-    if err != nil {
-      log.Fatalf("Failed to marshal project: %v\n", err)
-    }
+		if err != nil {
+			log.Fatalf("Failed to marshal project: %v\n", err)
+		}
 
-    newContent = string(newJSON)
-  } else {
-    return err
-  }
+		newContent = string(newJSON)
+	} else {
+		return err
+	}
 
-  sig, err := repo.DefaultSignature()
-  if err != nil {
-    return fmt.Errorf("Couldn't find default signature: %v", err)
-  }
+	sig, err := repo.DefaultSignature()
+	if err != nil {
+		return fmt.Errorf("Couldn't find default signature: %v", err)
+	}
 
-  _, err = repo.Notes.Create(
-    entity.GetRefPath(),
-    sig,
-    sig,
-    firstCommit.Id(),
-    newContent,
-    true,
-    )
-  if err != nil {
-    return fmt.Errorf("Failed to add note to tree: %v", err)
-  }
+	_, err = repo.Notes.Create(
+		entity.GetRefPath(),
+		sig,
+		sig,
+		firstCommit.Id(),
+		newContent,
+		true,
+	)
+	if err != nil {
+		return fmt.Errorf("Failed to add note to tree: %v", err)
+	}
 
-  return nil
+	return nil
 }
 
 func Update(entity Entity) error {
-  return Add(entity)
+	return Add(entity)
 }
 
 func Remove(entity Entity) error {
-  wd := GetWd()
-  repo, err := git.OpenRepository(wd)
-  if err != nil {
-    return fmt.Errorf("Failed to open repository: %v", err)
-  }
+	wd := GetWd()
+	repo, err := git.OpenRepository(wd)
+	if err != nil {
+		return fmt.Errorf("Failed to open repository: %v", err)
+	}
 
-  firstCommit := GetFirstCommit(repo)
+	firstCommit := GetFirstCommit(repo)
 
-  var newContent string
-  note, err := repo.Notes.Read(entity.GetRefPath(), firstCommit.Id())
-  if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
-    log.Fatalf("%v", err)
-  } else if err == nil {
-    data := make(map[string]interface{})
-    err := json.Unmarshal([]byte(note.Message()), &data)
-    if err != nil {
-      log.Fatalf("Failed to unmarshal data: %v\n", err)
-    }
-    delete(data, entity.GetId())
+	var newContent string
+	note, err := repo.Notes.Read(entity.GetRefPath(), firstCommit.Id())
+	if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
+		log.Fatalf("%v", err)
+	} else if err == nil {
+		data := make(map[string]interface{})
+		err := json.Unmarshal([]byte(note.Message()), &data)
+		if err != nil {
+			log.Fatalf("Failed to unmarshal data: %v\n", err)
+		}
+		delete(data, entity.GetId())
 
-    newJSON, err := json.Marshal(data)
+		newJSON, err := json.Marshal(data)
 
-    if err != nil {
-      log.Fatalf("Failed to marshal project: %v\n", err)
-    }
+		if err != nil {
+			log.Fatalf("Failed to marshal project: %v\n", err)
+		}
 
-    newContent = string(newJSON)
-  } else {
-    return err
-  }
+		newContent = string(newJSON)
+	} else {
+		return err
+	}
 
-  sig, err := repo.DefaultSignature()
-  if err != nil {
-    return fmt.Errorf("Couldn't find default signature: %v", err)
-  }
+	sig, err := repo.DefaultSignature()
+	if err != nil {
+		return fmt.Errorf("Couldn't find default signature: %v", err)
+	}
 
-  _, err = repo.Notes.Create(
-    entity.GetRefPath(),
-    sig,
-    sig,
-    firstCommit.Id(),
-    newContent,
-    true,
-    )
-  if err != nil {
-    return fmt.Errorf("Failed to add note to tree: %v", err)
-  }
+	_, err = repo.Notes.Create(
+		entity.GetRefPath(),
+		sig,
+		sig,
+		firstCommit.Id(),
+		newContent,
+		true,
+	)
+	if err != nil {
+		return fmt.Errorf("Failed to add note to tree: %v", err)
+	}
 
-  return nil
+	return nil
 }
 
 func OpenRepo(wd string) *git.Repository {
@@ -426,22 +426,40 @@ func OpenRepo(wd string) *git.Repository {
 		log.Fatalf("Failed to open repository: %v", err)
 	}
 
-  return repo
+	return repo
 }
 
 func GetRefsByPath(repo *git.Repository, refPath string) *git.Reference {
 	notesRefObj, err := repo.References.Lookup(refPath)
 	if err != nil {
-		log.Fatalf("Failed to look up notes ref: %v", err)
+		log.Errorf("Failed to look up notes ref: %v", err)
+		log.Infof("Creating ref: %v", err)
+
+		firstCommit := GetFirstCommit(repo)
+		sig, err := repo.DefaultSignature()
+		if err != nil {
+			log.Errorf("Couldn't find default signature: %v", err)
+		}
+
+		_, err = repo.Notes.Create(
+		  IssuesPath,
+			sig,
+			sig,
+			firstCommit.Id(),
+			"{}",
+			true,
+		)
+	  notesRefObj, err := repo.References.Lookup(refPath)
+    return notesRefObj
 	}
 
-  return notesRefObj
+	return notesRefObj
 }
 
 func GetNotes(refPath string) []*git.Note {
-  wd := GetWd()
-  repo := OpenRepo(wd)
-  notesRefObj := GetRefsByPath(repo, refPath)
+	wd := GetWd()
+	repo := OpenRepo(wd)
+	notesRefObj := GetRefsByPath(repo, refPath)
 
 	iter, err := repo.NewNoteIterator(notesRefObj.Name())
 	if err != nil {
@@ -502,32 +520,32 @@ func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
 	for _, notePtr := range gitNotes {
 		note := *notePtr
 
-    data := make(map[string]interface{})
-    err := json.Unmarshal([]byte(note.Message()), &data)
-    if err != nil {
-      log.Fatalf("Failed to unmarshal data: %v\n", err)
-    }
+		data := make(map[string]interface{})
+		err := json.Unmarshal([]byte(note.Message()), &data)
+		if err != nil {
+			log.Fatalf("Failed to unmarshal data: %v\n", err)
+		}
 
-    for _, obj := range data {
-      // TODO Need to implement entity.Unmarshal()
-      obj := obj.(map[string]interface{})
-      createdAt, _ := time.Parse(time.RFC3339, obj["created_at"].(string))
-      updatedAt, _ := time.Parse(time.RFC3339, obj["updated_at"].(string))
-      issue := Issue{
-        Id: obj["id"].(string),
-        Author: obj["author"].(string),
-        Title: obj["title"].(string),
-        Description: obj["description"].(string),
-        Closed: obj["closed"].(string),
-        ParentType: obj["parent_type"].(string),
-        ParentId: obj["parent_id"].(string),
-        RefPath: obj["refpath"].(string),
-        CreatedAt: createdAt,
-        UpdatedAt: updatedAt,
-      }
+		for _, obj := range data {
+			// TODO Need to implement entity.Unmarshal()
+			obj := obj.(map[string]interface{})
+			createdAt, _ := time.Parse(time.RFC3339, obj["created_at"].(string))
+			updatedAt, _ := time.Parse(time.RFC3339, obj["updated_at"].(string))
+			issue := Issue{
+				Id:          obj["id"].(string),
+				Author:      obj["author"].(string),
+				Title:       obj["title"].(string),
+				Description: obj["description"].(string),
+				Closed:      obj["closed"].(string),
+				ParentType:  obj["parent_type"].(string),
+				ParentId:    obj["parent_id"].(string),
+				RefPath:     obj["refpath"].(string),
+				CreatedAt:   createdAt,
+				UpdatedAt:   updatedAt,
+			}
 
-      uIssues = append(uIssues, &issue)
-    }
+			uIssues = append(uIssues, &issue)
+		}
 	}
 
 	return uIssues
