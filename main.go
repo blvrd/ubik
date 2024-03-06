@@ -68,6 +68,11 @@ func main() {
 			if err != nil {
 				log.Fatalf("error pulling refs: %v", err)
 			}
+
+      err = repo.MergeRefs()
+			if err != nil {
+				log.Fatalf("error merging refs: %v", err)
+			}
 		},
 	}
 
