@@ -26,6 +26,7 @@ type Entity interface {
 	Unmarshal([]byte) error
 	// Fields() for generating forms
 	ToMap() map[string]interface{}
+  Touch()
 }
 
 type Project struct {
@@ -69,6 +70,10 @@ func (p Project) ToMap() map[string]interface{} {
 	}
 }
 
+func (p *Project) Touch() {
+  p.UpdatedAt = time.Now().UTC()
+}
+
 type Issue struct {
 	Id          string    `json:"id"`
 	Author      string    `json:"author"`
@@ -96,6 +101,10 @@ func (i Issue) Marshal() ([]byte, error) {
 
 func (i *Issue) Unmarshal(data []byte) error {
 	return json.Unmarshal(data, i)
+}
+
+func (i *Issue) Touch() {
+  i.UpdatedAt = time.Now().UTC()
 }
 
 func (i Issue) ToMap() map[string]interface{} {
@@ -138,6 +147,10 @@ func (c Comment) Marshal() ([]byte, error) {
 
 func (c *Comment) Unmarshal(data []byte) error {
 	return json.Unmarshal(data, c)
+}
+
+func (c *Comment) Touch() {
+  c.UpdatedAt = time.Now().UTC()
 }
 
 func (c Comment) ToMap() map[string]interface{} {
@@ -365,7 +378,63 @@ func Add(entity Entity) error {
 }
 
 func Update(entity Entity) error {
-	return Add(entity)
+	wd := GetWd()
+	repo, err := git.OpenRepository(wd)
+	if err != nil {
+		return fmt.Errorf("Failed to open repository: %v", err)
+	}
+
+	firstCommit := GetFirstCommit(repo)
+
+	var newContent string
+	note, err := repo.Notes.Read(entity.GetRefPath(), firstCommit.Id())
+	if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
+		data := make(map[string]interface{})
+		data[entity.GetId()] = entity
+		newJSON, err := json.Marshal(data)
+		if err != nil {
+			log.Fatalf("Failed to marshal entity: %v\n", err)
+		}
+
+		newContent = string(newJSON)
+	} else if err == nil {
+		data := make(map[string]interface{})
+		err := json.Unmarshal([]byte(note.Message()), &data)
+		if err != nil {
+			log.Fatalf("Failed to unmarshal data: %v\n", err)
+		}
+    entity.Touch()
+		data[entity.GetId()] = entity
+
+		newJSON, err := json.Marshal(data)
+
+		if err != nil {
+			log.Fatalf("Failed to marshal project: %v\n", err)
+		}
+
+		newContent = string(newJSON)
+	} else {
+		return err
+	}
+
+	sig, err := repo.DefaultSignature()
+	if err != nil {
+		return fmt.Errorf("Couldn't find default signature: %v", err)
+	}
+
+	_, err = repo.Notes.Create(
+		entity.GetRefPath(),
+		sig,
+		sig,
+		firstCommit.Id(),
+		newContent,
+		true,
+	)
+	if err != nil {
+		return fmt.Errorf("Failed to add note to tree: %v", err)
+	}
+
+	return nil
 }
 
 func Remove(entity Entity) error {
