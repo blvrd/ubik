@@ -30,62 +30,6 @@ type Entity interface {
   Delete() error
 }
 
-type Project struct {
-	Id          string    `json:"id"`
-	Author      string    `json:"author"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Closed      string    `json:"closed"`
-	RefPath     string    `json:"refpath"`
-	Progress    int       `json:"progress"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-  DeletedAt   time.Time `json:"deleted_at"`
-}
-
-func (p Project) GetRefPath() string {
-	return ProjectsPath
-}
-
-func (p Project) GetId() string {
-	return p.Id
-}
-
-func (p Project) Marshal() ([]byte, error) {
-	return json.Marshal(p)
-}
-
-func (p *Project) Unmarshal(data []byte) error {
-	return json.Unmarshal(data, p)
-}
-
-func (p Project) ToMap() map[string]interface{} {
-	return map[string]interface{}{
-		"id":          p.Id,
-		"author":      p.Author,
-		"title":       p.Title,
-		"description": p.Description,
-		"closed":      p.Closed,
-		"refpath":     p.RefPath,
-		"created_at":  p.CreatedAt,
-		"updated_at":  p.UpdatedAt,
-	}
-}
-
-func (p *Project) Touch() {
-  p.UpdatedAt = time.Now().UTC()
-}
-
-func (p *Project) Delete() error {
-  p.DeletedAt = time.Now().UTC()
-  err := Update(p)
-  if err != nil {
-    return err
-  }
-
-  return nil
-}
-
 type Issue struct {
 	Id          string    `json:"id"`
 	Author      string    `json:"author"`
@@ -143,61 +87,6 @@ func (i Issue) ToMap() map[string]interface{} {
 		"created_at":  i.CreatedAt,
 		"updated_at":  i.UpdatedAt,
 		"deleted_at":  i.DeletedAt,
-	}
-}
-
-type Comment struct {
-	Id          string    `json:"id"`
-	Author      string    `json:"author"`
-	Description string    `json:"content"`
-	ParentType  string    `json:"parent_type"`
-	ParentId    string    `json:"parent_id"`
-	RefPath     string    `json:"refpath"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-  DeletedAt   time.Time `json:"deleted_at"`
-}
-
-func (c Comment) GetRefPath() string {
-	return CommentsPath
-}
-
-func (c Comment) GetId() string {
-	return c.Id
-}
-
-func (c Comment) Marshal() ([]byte, error) {
-	return json.Marshal(c)
-}
-
-func (c *Comment) Unmarshal(data []byte) error {
-	return json.Unmarshal(data, c)
-}
-
-func (c *Comment) Touch() {
-  c.UpdatedAt = time.Now().UTC()
-}
-
-func (c *Comment) Delete() error {
-  c.DeletedAt = time.Now().UTC()
-  err := Update(c)
-  if err != nil {
-    return err
-  }
-
-  return nil
-}
-
-func (c Comment) ToMap() map[string]interface{} {
-	return map[string]interface{}{
-		"id":          c.Id,
-		"author":      c.Author,
-		"description": c.Description,
-		"parent_type": c.ParentType,
-		"parent_id":   c.ParentId,
-		"refpath":     c.RefPath,
-		"created_at":  c.CreatedAt,
-		"updated_at":  c.UpdatedAt,
 	}
 }
 
