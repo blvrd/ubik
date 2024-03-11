@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 
@@ -14,9 +15,7 @@ import (
 )
 
 const (
-	ProjectsPath = "refs/notes/ubik/projects"
-	IssuesPath   = "refs/notes/ubik/issues"
-	CommentsPath = "refs/notes/ubik/comments"
+	IssuesPath = "refs/notes/ubik/issues"
 )
 
 type Entity interface {
@@ -26,9 +25,21 @@ type Entity interface {
 	Unmarshal([]byte) error
 	// Fields() for generating forms
 	ToMap() map[string]interface{}
-  Touch()
-  Delete() error
+	Touch()
+	Delete() error
 }
+
+type ByUpdatedAtDescending []*Issue
+
+func (n ByUpdatedAtDescending) Len() int           { return len(n) }
+func (n ByUpdatedAtDescending) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
+func (n ByUpdatedAtDescending) Less(i, j int) bool { return n[i].UpdatedAt.After(n[j].UpdatedAt) }
+
+type ByUpdatedAtAscending []*Issue
+
+func (n ByUpdatedAtAscending) Len() int           { return len(n) }
+func (n ByUpdatedAtAscending) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
+func (n ByUpdatedAtAscending) Less(i, j int) bool { return n[i].UpdatedAt.Before(n[j].UpdatedAt) }
 
 type Issue struct {
 	Id          string    `json:"id"`
@@ -41,7 +52,7 @@ type Issue struct {
 	RefPath     string    `json:"refpath"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
-  DeletedAt   time.Time `json:"deleted_at"`
+	DeletedAt   time.Time `json:"deleted_at"`
 }
 
 func (i Issue) GetRefPath() string {
@@ -61,17 +72,17 @@ func (i *Issue) Unmarshal(data []byte) error {
 }
 
 func (i *Issue) Touch() {
-  i.UpdatedAt = time.Now().UTC()
+	i.UpdatedAt = time.Now().UTC()
 }
 
 func (i *Issue) Delete() error {
-  i.DeletedAt = time.Now().UTC()
-  err := Update(i)
-  if err != nil {
-    return err
-  }
+	i.DeletedAt = time.Now().UTC()
+	err := Update(i)
+	if err != nil {
+		return err
+	}
 
-  return nil
+	return nil
 }
 
 func (i Issue) ToMap() map[string]interface{} {
@@ -134,43 +145,12 @@ func GetFirstCommit(repo *git.Repository) *git.Commit {
 	return firstCommit
 }
 
-func ListProjects() {
-	refPath := ProjectsPath
-	notes := GetNotes(refPath)
-	uProjects := ProjectsFromGitNotes(notes)
-
-	for _, uNotePtr := range uProjects {
-		uNote := *uNotePtr
-
-		issues := GetIssuesForProject(uNote.Id)
-
-		fmt.Println("--------")
-		fmt.Printf("Project %s\n", uNote.Id)
-		fmt.Printf("Title: %s\n", uNote.Title)
-		fmt.Printf("Description: %s\n", uNote.Description)
-		fmt.Printf("Closed: %s\n", uNote.Closed)
-		fmt.Println("Issues:")
-		for _, issue := range issues {
-			fmt.Printf("\t- %s (closed: %s)\n", issue.Title, issue.Closed)
-			comments := GetCommentsForEntity(issue.Id)
-
-			for _, comment := range comments {
-				fmt.Printf("\t\t%s\n", comment.Description)
-				fmt.Printf("\t\t- %s\n", comment.Author)
-			}
-
-		}
-		fmt.Println("----------")
-	}
-}
-
 func ListIssues() {
 	refPath := IssuesPath
 	notes := GetNotes(refPath)
 	uNotes := IssuesFromGitNotes(notes)
 
-	for _, uNotePtr := range uNotes {
-		uNote := *uNotePtr
+	for _, uNote := range uNotes {
 		fmt.Println("--------")
 		fmt.Println(uNote.Id)
 		fmt.Println(uNote.Title)
@@ -195,36 +175,6 @@ func GetIssuesForProject(parentId string) []*Issue {
 	}
 
 	return filteredIssues
-}
-
-func ListComments() {
-	refPath := CommentsPath
-	notes := GetNotes(refPath)
-	uNotes := CommentsFromGitNotes(notes)
-
-	for _, uNotePtr := range uNotes {
-		uNote := *uNotePtr
-		fmt.Println("--------")
-		fmt.Println(uNote.Description)
-		fmt.Println(uNote.ParentId)
-		fmt.Println()
-	}
-}
-
-func GetCommentsForEntity(parentId string) []*Comment {
-	refPath := CommentsPath
-	notes := GetNotes(refPath)
-	uNotes := CommentsFromGitNotes(notes)
-
-	var filteredComments []*Comment
-
-	for _, comment := range uNotes {
-		if comment.ParentId == parentId {
-			filteredComments = append(filteredComments, comment)
-		}
-	}
-
-	return filteredComments
 }
 
 func GetAuthorEmail() string {
@@ -327,7 +277,7 @@ func Update(entity Entity) error {
 		if err != nil {
 			log.Fatalf("Failed to unmarshal data: %v\n", err)
 		}
-    entity.Touch()
+		entity.Touch()
 		data[entity.GetId()] = entity
 
 		newJSON, err := json.Marshal(data)
@@ -435,15 +385,15 @@ func GetRefsByPath(repo *git.Repository, refPath string) *git.Reference {
 		}
 
 		_, err = repo.Notes.Create(
-		  IssuesPath,
+			IssuesPath,
 			sig,
 			sig,
 			firstCommit.Id(),
 			"{}",
 			true,
 		)
-	  notesRefObj, err := repo.References.Lookup(refPath)
-    return notesRefObj
+		notesRefObj, err := repo.References.Lookup(refPath)
+		return notesRefObj
 	}
 
 	return notesRefObj
@@ -483,31 +433,6 @@ func GetNotes(refPath string) []*git.Note {
 	return notes
 }
 
-func ProjectsFromGitNotes(gitNotes []*git.Note) []*Project {
-	var uProjects []*Project
-	for _, notePtr := range gitNotes {
-		note := *notePtr
-		author := *note.Author()
-		lines := strings.Split(note.Message(), "\n")
-
-		for _, line := range lines {
-			if line != "" {
-				var uProject Project
-				err := json.Unmarshal([]byte(line), &uProject)
-				if err != nil {
-					log.Fatalf("Error unmarshaling JSON: %v", err)
-				}
-
-				uProject.Author = author.Email
-				// fmt.Printf("%+v\n", uProject)
-				uProjects = append(uProjects, &uProject)
-			}
-		}
-	}
-
-	return uProjects
-}
-
 func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
 	var uIssues []*Issue
 	for _, notePtr := range gitNotes {
@@ -525,7 +450,9 @@ func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
 			updatedAt, _ := time.Parse(time.RFC3339, obj["updated_at"].(string))
 			deletedAt, _ := time.Parse(time.RFC3339, obj["deleted_at"].(string))
 
-      if !deletedAt.IsZero() { continue }
+			if !deletedAt.IsZero() {
+				continue
+			}
 
 			issue := Issue{
 				Id:          obj["id"].(string),
@@ -545,30 +472,7 @@ func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
 		}
 	}
 
+	sort.Sort(ByUpdatedAtDescending(uIssues))
+
 	return uIssues
-}
-
-func CommentsFromGitNotes(gitNotes []*git.Note) []*Comment {
-	var uComments []*Comment
-	for _, notePtr := range gitNotes {
-		note := *notePtr
-		author := *note.Author()
-		lines := strings.Split(note.Message(), "\n")
-
-		for _, line := range lines {
-			if line != "" {
-				var uComment Comment
-				err := json.Unmarshal([]byte(line), &uComment)
-				if err != nil {
-					log.Fatalf("Error unmarshaling JSON: %v", err)
-				}
-
-				uComment.Author = author.Email
-				// fmt.Printf("%+v\n", uComment)
-				uComments = append(uComments, &uComment)
-			}
-		}
-	}
-
-	return uComments
 }

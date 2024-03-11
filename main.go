@@ -243,6 +243,8 @@ func main() {
 		loadTestDataCmd,
 	)
 
+  issuesCmd.AddCommand(issuesListCmd)
+
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
