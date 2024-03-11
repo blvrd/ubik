@@ -27,6 +27,7 @@ type Entity interface {
 	// Fields() for generating forms
 	ToMap() map[string]interface{}
   Touch()
+  Delete() error
 }
 
 type Project struct {
@@ -39,6 +40,7 @@ type Project struct {
 	Progress    int       `json:"progress"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+  DeletedAt   time.Time `json:"deleted_at"`
 }
 
 func (p Project) GetRefPath() string {
@@ -74,6 +76,16 @@ func (p *Project) Touch() {
   p.UpdatedAt = time.Now().UTC()
 }
 
+func (p *Project) Delete() error {
+  p.DeletedAt = time.Now().UTC()
+  err := Update(p)
+  if err != nil {
+    return err
+  }
+
+  return nil
+}
+
 type Issue struct {
 	Id          string    `json:"id"`
 	Author      string    `json:"author"`
@@ -85,6 +97,7 @@ type Issue struct {
 	RefPath     string    `json:"refpath"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+  DeletedAt   time.Time `json:"deleted_at"`
 }
 
 func (i Issue) GetRefPath() string {
@@ -107,6 +120,16 @@ func (i *Issue) Touch() {
   i.UpdatedAt = time.Now().UTC()
 }
 
+func (i *Issue) Delete() error {
+  i.DeletedAt = time.Now().UTC()
+  err := Update(i)
+  if err != nil {
+    return err
+  }
+
+  return nil
+}
+
 func (i Issue) ToMap() map[string]interface{} {
 	return map[string]interface{}{
 		"id":          i.Id,
@@ -119,6 +142,7 @@ func (i Issue) ToMap() map[string]interface{} {
 		"refpath":     i.RefPath,
 		"created_at":  i.CreatedAt,
 		"updated_at":  i.UpdatedAt,
+		"deleted_at":  i.DeletedAt,
 	}
 }
 
@@ -131,6 +155,7 @@ type Comment struct {
 	RefPath     string    `json:"refpath"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+  DeletedAt   time.Time `json:"deleted_at"`
 }
 
 func (c Comment) GetRefPath() string {
@@ -151,6 +176,16 @@ func (c *Comment) Unmarshal(data []byte) error {
 
 func (c *Comment) Touch() {
   c.UpdatedAt = time.Now().UTC()
+}
+
+func (c *Comment) Delete() error {
+  c.DeletedAt = time.Now().UTC()
+  err := Update(c)
+  if err != nil {
+    return err
+  }
+
+  return nil
 }
 
 func (c Comment) ToMap() map[string]interface{} {
@@ -596,10 +631,13 @@ func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
 		}
 
 		for _, obj := range data {
-			// TODO Need to implement entity.Unmarshal()
 			obj := obj.(map[string]interface{})
 			createdAt, _ := time.Parse(time.RFC3339, obj["created_at"].(string))
 			updatedAt, _ := time.Parse(time.RFC3339, obj["updated_at"].(string))
+			deletedAt, _ := time.Parse(time.RFC3339, obj["deleted_at"].(string))
+
+      if !deletedAt.IsZero() { continue }
+
 			issue := Issue{
 				Id:          obj["id"].(string),
 				Author:      obj["author"].(string),
@@ -611,6 +649,7 @@ func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
 				RefPath:     obj["refpath"].(string),
 				CreatedAt:   createdAt,
 				UpdatedAt:   updatedAt,
+				DeletedAt:   deletedAt,
 			}
 
 			uIssues = append(uIssues, &issue)

@@ -120,6 +120,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         entity.Update(m.currentIssue)
         return m, GetIssues
       }
+    case "d", "backspace":
+      if m.state != formView {
+        m.currentIssue.Delete()
+        return m, GetIssues
+      }
 		case "esc":
 			if m.table.Focused() {
 				m.table.Blur()
@@ -165,7 +170,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     m.table.SetRows(rows)
     m.loading = false
 
-    tea.Printf("%+v\n", m.table.Rows())
     m.table, cmd = m.table.Update(msg)
 
     if len(m.issues) > 0 {

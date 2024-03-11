@@ -41,6 +41,7 @@ func (m Model) View() string {
   s.WriteString(fmt.Sprintf("Description: %s\n\n", entMap["description"]))
   s.WriteString(fmt.Sprintf("Created: %s\n\n", entMap["created_at"]))
   s.WriteString(fmt.Sprintf("Updated: %s\n\n", entMap["updated_at"]))
+  s.WriteString(fmt.Sprintf("Deleted: %s\n\n", entMap["deleted_at"]))
 
   return s.String()
 }
