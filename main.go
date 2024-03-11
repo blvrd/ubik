@@ -33,18 +33,12 @@ func main() {
 	// rootCmd represents the base command when called without any subcommands
 	var rootCmd = &cobra.Command{
 		Use:   "ubik",
-		Short: "A brief description of your application",
-		// Run: func(cmd *cobra.Command, args []string) { },
-	}
-
-	var termUiCmd = &cobra.Command{
-		Use:   "termui",
 		Short: "Use Ubik from the handy Terminal UI",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := tui.Run(); err != nil {
 				log.Fatal(err)
 			}
-		},
+    },
 	}
 
 	var pushCmd = &cobra.Command{
@@ -480,7 +474,6 @@ func main() {
 		projectsCmd,
 		issuesCmd,
 		commentsCmd,
-		termUiCmd,
 		pushCmd,
 		pullCmd,
 		nukeCmd,
