@@ -5,7 +5,6 @@ import (
 	"github.com/blvrd/ubik/entity"
 	"github.com/blvrd/ubik/form"
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
@@ -25,7 +24,6 @@ const (
 
 type model struct {
 	focusState   focusedView
-	table        table.Model
 	list         list.Model
 	issues       []*entity.Issue
 	currentIssue *entity.Issue
@@ -35,43 +33,12 @@ type model struct {
 }
 
 func NewModel() tea.Model {
-	columns := []table.Column{
-		{Title: "Title", Width: 20},
-		{Title: "Author", Width: 20},
-		{Title: "Closed", Width: 10},
-		{Title: "Created", Width: 20},
-		{Title: "Updated", Width: 20},
-	}
-
-	rows := []table.Row{
-		[]string{"Loading..."},
-	}
-
-	t := table.New(
-		table.WithColumns(columns),
-		table.WithRows(rows),
-		table.WithFocused(true),
-		table.WithHeight(10),
-	)
-
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-	t.SetStyles(s)
-
 	d := detail.New(&entity.Issue{})
 	f := form.New(&entity.Issue{})
+  l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 
 	return model{
-		table:      t,
-		list:       list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0),
+		list:       l,
 		detail:     d,
 		form:       f,
 		focusState: listView,
