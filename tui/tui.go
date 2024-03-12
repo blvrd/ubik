@@ -102,6 +102,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         m.form = form.New(&entity.Issue{})
         m.form.Init()
       }
+      return m, nil
     case "enter", "e":
       if m.state != formView {
         m.table.Blur()
@@ -109,6 +110,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         m.form = form.New(m.currentIssue)
         m.form.Init()
       }
+      return m, nil
     case " ":
       if m.state != formView {
         if m.currentIssue.Closed == "true" {
@@ -134,9 +136,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "q":
       if m.state != formView {
-        // formModel, cmd := m.form.Update(msg)
-        // m.form = formModel
-        // return m, cmd
         return m, tea.Quit
       }
 
