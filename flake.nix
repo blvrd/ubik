@@ -38,5 +38,38 @@
           ];
         };
       });
+
+       # Package output
+      packages = forAllSystems ({ pkgs }: {
+        default = pkgs.buildGoModule {
+          pname = "ubik";
+          version = "0.1.0";
+          vendorSha256 = "sha256-Hk7SECmVO3I7GYBHtPewV/mYx0CRwxFHnW4LNlPrwzU=";
+
+          nativeBuildInputs = with pkgs; [
+            pkg-config
+          ];
+
+          buildInputs = with pkgs; [
+            libgit2_1_5
+          ];
+
+
+          subPackages = [
+            "." # Build the package in the current directory
+            # Add more packages if needed
+          ];
+
+          src = ./.;
+        };
+      });
+
+      # App output
+      apps = forAllSystems ({ pkgs }: {
+        default = {
+          type = "app";
+          program = "${self.packages.${pkgs.system}.default}/bin/ubik";
+        };
+      });
     };
 }
