@@ -27,11 +27,12 @@ func New(ent entity.Entity) Model {
 				Key("title").
 				Title("Title").
 				Value(&title).
-				CharLimit(50),
+				CharLimit(100),
 			huh.NewText().
 				Key("description").
 				Value(&description).
-				Title("Description"),
+				Title("Description").
+				CharLimit(600),
 			huh.NewConfirm().
 				Key("done").
 				Title("All done?").
