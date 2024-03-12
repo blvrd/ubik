@@ -132,7 +132,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         m.state = detailView
 				m.table.Focus()
 			}
-		case "q", "ctrl+c":
+		case "q":
+      if m.state != formView {
+        // formModel, cmd := m.form.Update(msg)
+        // m.form = formModel
+        // return m, cmd
+        return m, tea.Quit
+      }
+
+    case "ctrl+c":
 			return m, tea.Quit
     }
   case tea.WindowSizeMsg:
