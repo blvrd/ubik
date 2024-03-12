@@ -434,7 +434,8 @@ func GetNotes(refPath string) []*git.Note {
 }
 
 func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
-	var uIssues []*Issue
+	var issues []*Issue
+  var closedIssues []*Issue
 	for _, notePtr := range gitNotes {
 		note := *notePtr
 
@@ -450,9 +451,6 @@ func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
 			updatedAt, _ := time.Parse(time.RFC3339, obj["updated_at"].(string))
 			deletedAt, _ := time.Parse(time.RFC3339, obj["deleted_at"].(string))
 
-			if !deletedAt.IsZero() {
-				continue
-			}
 
 			issue := Issue{
 				Id:          obj["id"].(string),
@@ -468,11 +466,21 @@ func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
 				DeletedAt:   deletedAt,
 			}
 
-			uIssues = append(uIssues, &issue)
+			if !issue.DeletedAt.IsZero() {
+				continue
+			}
+
+      if issue.Closed == "true" {
+        closedIssues = append(closedIssues, &issue)
+        continue
+      }
+
+			issues = append(issues, &issue)
 		}
 	}
 
-	sort.Sort(ByUpdatedAtDescending(uIssues))
+	sort.Sort(ByUpdatedAtDescending(issues))
+	sort.Sort(ByUpdatedAtDescending(closedIssues))
 
-	return uIssues
+	return append(issues, closedIssues...)
 }
