@@ -7,6 +7,7 @@ import (
 
 	"github.com/blvrd/ubik/entity"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/huh"
 	"github.com/google/uuid"
 )
@@ -46,7 +47,22 @@ func New(ent entity.Entity) Model {
 	).
 		WithWidth(60).
 		WithShowHelp(false).
-		WithShowErrors(false)
+		WithShowErrors(false).
+    WithKeyMap(&huh.KeyMap{
+      Input: huh.InputKeyMap{
+        AcceptSuggestion: key.NewBinding(key.WithKeys("ctrl+e"), key.WithHelp("ctrl+e", "complete")),
+        Prev:             key.NewBinding(key.WithKeys("shift+tab", "ctrl+k"), key.WithHelp("shift+tab", "back")),
+        Next:             key.NewBinding(key.WithKeys("tab", "ctrl+j"), key.WithHelp("enter", "next")),
+        Submit:           key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "submit")),
+      },
+      Text: huh.TextKeyMap{
+        Next:    key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next")),
+        Prev:    key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift+tab", "back")),
+        Submit:  key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "submit")),
+        NewLine: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "new line")),
+        Editor:  key.NewBinding(key.WithKeys("ctrl+e"), key.WithHelp("ctrl+e", "open editor")),
+      },
+    })
 
 	return Model{
 		ent:  ent,
@@ -95,6 +111,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	// switch msg := msg.(type) {
 	// case tea.KeyMsg:
 	//   switch msg.String() {
+	//      case "shift+enter":
+	//
 	//   }
 	// }
 
