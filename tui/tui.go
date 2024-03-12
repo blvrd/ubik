@@ -128,9 +128,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         return m, GetIssues
       }
 		case "esc":
-			if m.table.Focused() {
-				m.table.Blur()
-			} else {
+			if !m.table.Focused() {
         m.state = detailView
 				m.table.Focus()
 			}
