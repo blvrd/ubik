@@ -32,6 +32,14 @@ type model struct {
 	loading      bool
 }
 
+type li struct {
+  title, desc string
+}
+func (i li) Title() string       { return i.title }
+func (i li) Description() string { return i.desc }
+func (i li) FilterValue() string { return i.title }
+
+
 func NewModel() tea.Model {
 	d := detail.New(&entity.Issue{})
 	f := form.New(&entity.Issue{})
@@ -102,16 +110,11 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 		m.issues = msg
 
 		for _, issue := range msg {
-			items = append(items, issue)
+      item := li{title: issue.Title, desc: issue.Description}
+			items = append(items, item)
 		}
 
-		if len(items) == 0 {
-			items = []list.Item{}
-		}
-
-		m.loading = false
-
-		m.list, cmd = m.list.Update(msg)
+		m.list, cmd = m.list.Update(items)
 
 		if len(m.issues) > 0 {
 			m.currentIssue = m.issues[m.list.Cursor()]
