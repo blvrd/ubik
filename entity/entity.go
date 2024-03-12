@@ -29,6 +29,10 @@ type Entity interface {
 	Delete() error
 }
 
+type Listable interface {
+  FilterValue() string
+}
+
 type ByUpdatedAtDescending []*Issue
 
 func (n ByUpdatedAtDescending) Len() int           { return len(n) }
@@ -99,6 +103,10 @@ func (i Issue) ToMap() map[string]interface{} {
 		"updated_at":  i.UpdatedAt,
 		"deleted_at":  i.DeletedAt,
 	}
+}
+
+func (i Issue) FilterValue() string {
+  return i.Title
 }
 
 func GetWd() string {
@@ -466,9 +474,9 @@ func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
 				DeletedAt:   deletedAt,
 			}
 
-			if !issue.DeletedAt.IsZero() {
-				continue
-			}
+			// if !issue.DeletedAt.IsZero() {
+			// 	continue
+			// }
 
       if issue.Closed == "true" {
         closedIssues = append(closedIssues, &issue)

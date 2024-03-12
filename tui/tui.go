@@ -3,6 +3,7 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/lipgloss"
   "github.com/charmbracelet/log"
   "github.com/blvrd/ubik/entity"
@@ -12,7 +13,8 @@ import (
 
 var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.RoundedBorder()).
-	BorderForeground(lipgloss.Color("105"))
+	BorderForeground(lipgloss.Color("105")).
+  Margin(2, 2)
 
 type sessionState int
 
@@ -24,6 +26,7 @@ const (
 type model struct {
   state        sessionState
   table        table.Model
+  list         list.Model
   issues       []*entity.Issue
   currentIssue *entity.Issue
   detail       detail.Model
@@ -68,6 +71,7 @@ func NewModel() tea.Model {
 
   return model{
     table: t,
+    list: list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0),
     detail: d,
     form: f,
     state: detailView,
@@ -123,7 +127,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
         return m, GetIssues
       }
     case "d", "backspace":
-      if m.state != formView {
+      if m.state != formView && m.list.FilterState() != list.Filtering {
+        log.Info("deleting")
         m.currentIssue.Delete()
         return m, GetIssues
       }
@@ -141,47 +146,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
     }
   case tea.WindowSizeMsg:
-    m.table.SetHeight(msg.Height - 5)
+    h, v := baseStyle.GetFrameSize()
+    m.list.SetSize(msg.Width - h, msg.Height - v)
   case issuesLoadedMsg:
-    var rows []table.Row
+    var items []list.Item
     m.issues = msg
 
     for _, issue := range msg {
-      var closed string
+      // var closed string
+      //
+      // if issue.Closed == "false" {
+      //   closed = "✕"
+      // } else {
+      //   closed = "✓"
+      // }
 
-      if issue.Closed == "false" {
-        closed = "✕"
-      } else {
-        closed = "✓"
-      }
-
-      row := []string{
-        issue.Title,
-        issue.Author,
-        closed,
-        issue.CreatedAt.String(),
-        issue.UpdatedAt.String(),
-      }
-
-      rows = append(rows, row)
+      items = append(items, issue)
     }
 
-    if len(rows) == 0 {
-      rows = []table.Row{
-        []string{"No issues found"},
-      }
+    if len(items) == 0 {
+      items = []list.Item{}
     }
 
-    m.table.SetRows(rows)
     m.loading = false
 
-    m.table, cmd = m.table.Update(msg)
-
+    m.list, cmd = m.list.Update(msg)
     if len(m.issues) > 0 {
-      m.currentIssue = m.issues[m.table.Cursor()]
+      m.currentIssue = m.issues[m.list.Cursor()]
+      m.list.SetItems(items)
       d := detail.New(m.currentIssue)
       m.detail = d
     }
+
 
     return m, cmd
   case form.FormCompletedMsg:
@@ -190,7 +186,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
     return m, GetIssues
   }
 
-	m.table, cmd = m.table.Update(msg)
+	m.list, cmd = m.list.Update(msg)
   cmds = append(cmds, cmd)
 
   if m.state == formView {
@@ -199,7 +195,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
   }
 
   if len(m.issues) > 0 {
-    m.currentIssue = m.issues[m.table.Cursor()]
+    m.currentIssue = m.issues[m.list.Cursor()]
     d := detail.New(m.currentIssue)
     m.detail = d
   }
@@ -207,7 +203,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-  table := baseStyle.Render(m.table.View())
+  table := baseStyle.Render(m.list.View())
   currentIssue := m.currentIssue
 
   if currentIssue == nil {
@@ -217,9 +213,9 @@ func (m model) View() string {
   var sidebarView string
 
   if m.state == detailView {
-    sidebarView = m.detail.View()
+    sidebarView = baseStyle.Render(m.detail.View())
   } else {
-    sidebarView = m.form.View()
+    sidebarView = baseStyle.Render(m.form.View())
   }
 
   view := lipgloss.JoinHorizontal(lipgloss.Top, table, sidebarView)
