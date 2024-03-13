@@ -16,6 +16,7 @@ import (
 type Model struct {
 	ent  entity.Entity
 	form *huh.Form
+  persisted bool
 }
 
 func New(ent entity.Entity) Model {
@@ -64,6 +65,12 @@ func New(ent entity.Entity) Model {
         NewLine: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "new line")),
         Editor:  key.NewBinding(key.WithKeys("ctrl+e"), key.WithHelp("ctrl+e", "open editor")),
       },
+      Confirm: huh.ConfirmKeyMap{
+        Prev:   key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift+tab", "back")),
+        Next:   key.NewBinding(key.WithKeys("enter", "tab"), key.WithHelp("enter", "next")),
+        Submit: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "submit")),
+        Toggle: key.NewBinding(key.WithKeys("h", "l", "right", "left"), key.WithHelp("←/→", "toggle")),
+      },
     })
 
 	return Model{
@@ -102,6 +109,7 @@ func CompleteForm(m Model) tea.Cmd {
 		}
 		entity.Add(&issue)
 
+    log.Info("attempting form completion")
 		return FormCompletedMsg("Form is complete")
 	}
 }
@@ -110,16 +118,6 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
-	// switch msg := msg.(type) {
-	// case tea.KeyMsg:
-	//   switch msg.String() {
-	//      case "shift+enter":
-	//
-	//   }
-	// }
-  log.Infof("heyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: %s", msg)
-  log.Infof("keymap: %+v", m.form.KeyBinds())
-
 	form, cmd := m.form.Update(msg)
 	if f, ok := form.(*huh.Form); ok {
 		m.form = f
@@ -127,7 +125,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	if m.form.State == huh.StateCompleted {
-		cmds = append(cmds, CompleteForm(m))
+    // Don't try to submit the same completed form twice
+    if !m.persisted {
+      cmds = append(cmds, CompleteForm(m))
+      m.persisted = true
+    }
 	}
 
 	return m, tea.Batch(cmds...)

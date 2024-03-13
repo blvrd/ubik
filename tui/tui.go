@@ -1,6 +1,7 @@
 package tui
 
 import (
+  "fmt"
 	"github.com/blvrd/ubik/detail"
 	"github.com/blvrd/ubik/entity"
 	"github.com/blvrd/ubik/form"
@@ -33,9 +34,18 @@ type model struct {
 }
 
 type li struct {
-  title, desc string
+  title, desc, closed string
 }
-func (i li) Title() string       { return i.title }
+func (i li) Title() string {
+  var closed string
+
+  if i.closed == "true" {
+    closed = "✓"
+  } else {
+    closed = "✕"
+  }
+  return fmt.Sprintf("%s (%s)", i.title, closed)
+}
 func (i li) Description() string { return i.desc }
 func (i li) FilterValue() string { return i.title }
 
@@ -44,6 +54,7 @@ func NewModel() tea.Model {
 	d := detail.New(&entity.Issue{})
 	f := form.New(&entity.Issue{})
   l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+  l.Title = "Issues"
 
 	return model{
 		list:       l,
@@ -83,13 +94,13 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			m.form = form.New(m.currentIssue)
 			m.form.Init()
 		case " ":
+      log.Infof("current issue: %+v", m.currentIssue)
 			if m.currentIssue.Closed == "true" {
-				m.currentIssue.Closed = "false"
+        m.currentIssue.Open()
 			} else {
-				m.currentIssue.Closed = "true"
+        m.currentIssue.Close()
 			}
 
-			entity.Update(m.currentIssue)
 			cmds = append(cmds, GetIssues)
 			return m, cmds
 		case "d", "backspace":
@@ -101,23 +112,33 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 		case "q", "ctrl+c":
 			cmds = append(cmds, tea.Quit)
 			return m, cmds
+    case "r":
+			if m.list.FilterState() != list.Filtering {
+				m.currentIssue.Restore()
+				cmds = append(cmds, GetIssues)
+				return m, cmds
+			}
 		}
 	case tea.WindowSizeMsg:
-		h, v := baseStyle.GetFrameSize()
-		m.list.SetSize(msg.Width-h, msg.Height-v)
+		_, y := baseStyle.GetFrameSize()
+		m.list.SetSize(msg.Width / 2, msg.Height-y)
 	case issuesLoadedMsg:
 		var items []list.Item
 		m.issues = msg
 
 		for _, issue := range msg {
-      item := li{title: issue.Title, desc: issue.Description}
+      item := li{
+        title: issue.Title,
+        desc: issue.Description,
+        closed: issue.Closed,
+      }
 			items = append(items, item)
 		}
 
 		m.list, cmd = m.list.Update(items)
 
 		if len(m.issues) > 0 {
-			m.currentIssue = m.issues[m.list.Cursor()]
+			m.currentIssue = m.issues[m.list.Index()]
 			m.list.SetItems(items)
 			d := detail.New(m.currentIssue)
 			m.detail = d
@@ -125,13 +146,14 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 
 		cmds = append(cmds, cmd)
 		return m, cmds
-	case form.FormCompletedMsg:
-		m.focusState = listView
-		cmds = append(cmds, GetIssues)
-		return m, cmds
 	}
 
 	m.list, cmd = m.list.Update(msg)
+	if len(m.issues) > 0 {
+    m.currentIssue = m.issues[m.list.Index()]
+    d := detail.New(m.currentIssue)
+    m.detail = d
+  }
 	cmds = append(cmds, cmd)
 
 	return m, cmds
@@ -149,8 +171,14 @@ func handleFormViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
     case "ctrl+c":
       cmds = append(cmds, tea.Quit)
 		}
+	case form.FormCompletedMsg:
+    log.Info("form completed message")
+		m.focusState = listView
+		cmds = append(cmds, GetIssues)
+		return m, cmds
 	}
 
+  log.Info("updating form")
 	m.form, cmd = m.form.Update(msg)
 	cmds = append(cmds, cmd)
 	return m, cmds

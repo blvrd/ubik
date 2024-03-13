@@ -27,6 +27,7 @@ type Entity interface {
 	ToMap() map[string]interface{}
 	Touch()
 	Delete() error
+  Restore() error
 }
 
 type Listable interface {
@@ -87,6 +88,36 @@ func (i *Issue) Delete() error {
 	}
 
 	return nil
+}
+
+func (i *Issue) Restore() error {
+  i.DeletedAt = time.Time{}
+  err := Update(i)
+  if err != nil {
+    return err
+  }
+
+  return nil
+}
+
+func (i *Issue) Open() error {
+  i.Closed = "false"
+  err := Update(i)
+  if err != nil {
+    return err
+  }
+
+  return nil
+}
+
+func (i *Issue) Close() error {
+  i.Closed = "true"
+  err := Update(i)
+  if err != nil {
+    return err
+  }
+
+  return nil
 }
 
 func (i Issue) ToMap() map[string]interface{} {
