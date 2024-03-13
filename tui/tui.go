@@ -2,6 +2,7 @@ package tui
 
 import (
   "fmt"
+  "time"
 	"github.com/blvrd/ubik/detail"
 	"github.com/blvrd/ubik/entity"
 	"github.com/blvrd/ubik/form"
@@ -34,8 +35,14 @@ type model struct {
 }
 
 type li struct {
-  title, desc, closed, id string
+  id string
+  author string
+  title string
+  desc string
+  closed string
+  createdAt time.Time
 }
+
 func (i li) Id() string { return i.id }
 func (i li) Title() string {
   var closed string
@@ -45,9 +52,11 @@ func (i li) Title() string {
   } else {
     closed = "✕"
   }
-  return fmt.Sprintf("%s (%s)", i.title, closed)
+  return fmt.Sprintf("[%s] %s", closed, i.title)
 }
-func (i li) Description() string { return i.desc }
+func (i li) Description() string {
+  return fmt.Sprintf("opened %s by %s", i.createdAt.Format(time.RFC822), i.author)
+}
 func (i li) FilterValue() string { return i.title }
 
 func NewModel() tea.Model {
@@ -95,7 +104,6 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
         m.form = form.New(m.currentIssue)
         m.form.Init()
       case " ":
-        log.Infof("current issue: %+v", m.currentIssue)
         if m.currentIssue.Closed == "true" {
           m.currentIssue.Open()
         } else {
@@ -118,7 +126,8 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
       }
     case tea.WindowSizeMsg:
       _, y := baseStyle.GetFrameSize()
-      m.list.SetSize(msg.Width / 2, msg.Height-y)
+      log.Infof("received window message: %+v", msg)
+      m.list.SetSize(100, msg.Height-y)
     case issuesLoadedMsg:
       var items []list.Item
       m.issues = msg
@@ -126,9 +135,11 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
       for _, issue := range msg {
         item := li{
           id: issue.Id,
+          author: issue.Author,
           title: issue.Title,
           desc: issue.Description,
           closed: issue.Closed,
+          createdAt: issue.CreatedAt,
         }
         items = append(items, item)
       }
@@ -151,9 +162,8 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
   if len(m.issues) > 0 {
     selectedItem := m.list.SelectedItem().(li)
     currentIssue := &entity.Issue{}
-    log.Infof("selected item: %+v", selectedItem)
 
-    // This would be simpler as a map access
+    // This would be simpler/faster as a map access
     for _, issue := range m.issues {
       if issue.Id == selectedItem.Id() {
         currentIssue = issue
@@ -162,7 +172,6 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
     }
 
     m.currentIssue = currentIssue
-    log.Infof("currentIssue: %+v", currentIssue)
     d := detail.New(m.currentIssue)
     m.detail = d
   }
@@ -185,13 +194,11 @@ func handleFormViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
       cmds = append(cmds, tea.Quit)
 		}
 	case form.FormCompletedMsg:
-    log.Info("form completed message")
 		m.focusState = listView
 		cmds = append(cmds, GetIssues)
 		return m, cmds
 	}
 
-  log.Info("updating form")
 	m.form, cmd = m.form.Update(msg)
 	cmds = append(cmds, cmd)
 	return m, cmds
@@ -211,7 +218,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	list := baseStyle.Render(m.list.View())
+	list := lipgloss.NewStyle().Width(m.list.Width()).Render(m.list.View())
 	currentIssue := m.currentIssue
 
 	if currentIssue == nil {
@@ -221,9 +228,9 @@ func (m model) View() string {
 	var sidebarView string
 
 	if m.focusState == listView {
-		sidebarView = baseStyle.Render(m.detail.View())
+		sidebarView = lipgloss.NewStyle().Width(50).Render(m.detail.View())
 	} else {
-		sidebarView = baseStyle.Render(m.form.View())
+		sidebarView = m.form.View()
 	}
 
 	view := lipgloss.JoinHorizontal(lipgloss.Top, list, sidebarView)
