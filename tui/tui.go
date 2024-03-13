@@ -49,7 +49,6 @@ func (i li) Title() string {
 func (i li) Description() string { return i.desc }
 func (i li) FilterValue() string { return i.title }
 
-
 func NewModel() tea.Model {
 	d := detail.New(&entity.Issue{})
 	f := form.New(&entity.Issue{})
@@ -82,6 +81,18 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
+  if m.list.SettingFilter() {
+    m.list, cmd = m.list.Update(msg)
+    if len(m.issues) > 0 {
+      m.currentIssue = m.issues[m.list.Index()]
+      d := detail.New(m.currentIssue)
+      m.detail = d
+    }
+    cmds = append(cmds, cmd)
+
+    return m, cmds
+  }
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -104,20 +115,16 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			cmds = append(cmds, GetIssues)
 			return m, cmds
 		case "d", "backspace":
-			if m.list.FilterState() != list.Filtering {
-				m.currentIssue.Delete()
-				cmds = append(cmds, GetIssues)
-				return m, cmds
-			}
+      m.currentIssue.Delete()
+      cmds = append(cmds, GetIssues)
+      return m, cmds
 		case "q", "ctrl+c":
 			cmds = append(cmds, tea.Quit)
 			return m, cmds
     case "r":
-			if m.list.FilterState() != list.Filtering {
-				m.currentIssue.Restore()
-				cmds = append(cmds, GetIssues)
-				return m, cmds
-			}
+      m.currentIssue.Restore()
+      cmds = append(cmds, GetIssues)
+      return m, cmds
 		}
 	case tea.WindowSizeMsg:
 		_, y := baseStyle.GetFrameSize()
