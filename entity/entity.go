@@ -1,16 +1,18 @@
 package entity
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"os/exec"
 	"sort"
 	"strings"
 	"time"
 
-	// tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/log"
+	"github.com/google/uuid"
 	git "github.com/libgit2/git2go/v34"
 )
 
@@ -21,17 +23,16 @@ const (
 type Entity interface {
 	GetRefPath() string
 	GetId() string
-	Marshal() ([]byte, error)
-	Unmarshal([]byte) error
-	// Fields() for generating forms
 	ToMap() map[string]interface{}
 	Touch()
 	Delete() error
-  Restore() error
+	Restore() error
+	json.Marshaler
+	json.Unmarshaler
 }
 
 type Listable interface {
-  FilterValue() string
+	FilterValue() string
 }
 
 type ByUpdatedAtDescending []*Issue
@@ -47,17 +48,46 @@ func (n ByUpdatedAtAscending) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
 func (n ByUpdatedAtAscending) Less(i, j int) bool { return n[i].UpdatedAt.Before(n[j].UpdatedAt) }
 
 type Issue struct {
-	Id          string    `json:"id"`
-	Author      string    `json:"author"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Closed      string    `json:"closed"`
-	ParentType  string    `json:"parent_type"`
-	ParentId    string    `json:"parent_id"`
-	RefPath     string    `json:"refpath"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	DeletedAt   time.Time `json:"deleted_at"`
+	Id          string
+	Author      string
+	Title       string
+	Description string
+	Closed      string
+	ParentType  string
+	ParentId    string
+	RefPath     string
+	shortcode   string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DeletedAt   time.Time
+}
+
+func NewIssue(
+	author string,
+	title string,
+	description string,
+	parentType string,
+	parentId string,
+) Issue {
+	id := uuid.NewString()
+	shortcode := GenerateShortcode(id)
+	closed := "false"
+
+	return Issue{
+		Id:          id,
+		Author:      author,
+		Title:       title,
+		Description: description,
+		Closed:      closed,
+		shortcode:   shortcode,
+		ParentType:  parentType,
+		ParentId:    parentId,
+		RefPath:     IssuesPath,
+	}
+}
+
+func (i Issue) Shortcode() string {
+	return i.shortcode
 }
 
 func (i Issue) GetRefPath() string {
@@ -68,16 +98,105 @@ func (i Issue) GetId() string {
 	return i.Id
 }
 
-func (i Issue) Marshal() ([]byte, error) {
-	return json.Marshal(i)
+func (i Issue) MarshalJSON() ([]byte, error) {
+	type IssueJSON struct {
+		Id          string    `json:"id"`
+		Author      string    `json:"author"`
+		Title       string    `json:"title"`
+		Description string    `json:"description"`
+		Closed      string    `json:"closed"`
+		ParentType  string    `json:"parent_type"`
+		ParentId    string    `json:"parent_id"`
+		RefPath     string    `json:"refpath"`
+		Shortcode   string    `json:"shortcode"`
+		CreatedAt   time.Time `json:"created_at"`
+		UpdatedAt   time.Time `json:"updated_at"`
+		DeletedAt   time.Time `json:"deleted_at"`
+	}
+
+	// Convert the original struct to the custom struct
+	issueJSON := IssueJSON{
+		Id:          i.Id,
+		Author:      i.Author,
+		Title:       i.Title,
+		Description: i.Description,
+		Closed:      i.Closed,
+		ParentType:  i.ParentType,
+		ParentId:    i.ParentId,
+		RefPath:     i.RefPath,
+		Shortcode:   i.shortcode,
+		CreatedAt:   i.CreatedAt,
+		UpdatedAt:   i.UpdatedAt,
+		DeletedAt:   i.DeletedAt,
+	}
+
+	log.Info("marshaling issue!")
+	return json.Marshal(issueJSON)
 }
 
-func (i *Issue) Unmarshal(data []byte) error {
-	return json.Unmarshal(data, i)
+func (i *Issue) UnmarshalJSON(data []byte) error {
+	type IssueJSON struct {
+		Id          string `json:"id"`
+		Author      string `json:"author"`
+		Title       string `json:"title"`
+		Description string `json:"description"`
+		Closed      string `json:"closed"`
+		ParentType  string `json:"parent_type"`
+		ParentId    string `json:"parent_id"`
+		RefPath     string `json:"refpath"`
+		Shortcode   string `json:"shortcode"`
+		CreatedAt   string `json:"created_at"`
+		UpdatedAt   string `json:"updated_at"`
+		DeletedAt   string `json:"deleted_at"`
+	}
+
+	var issueJSON IssueJSON
+	err := json.Unmarshal(data, &issueJSON)
+	if err != nil {
+		return err
+	}
+
+	i.Id = issueJSON.Id
+  log.Infof("unmarshaling issue: %s", i.Id)
+
+	i.Author = issueJSON.Author
+	i.Title = issueJSON.Title
+	i.Description = issueJSON.Description
+	i.Closed = issueJSON.Closed
+	i.ParentType = issueJSON.ParentType
+	i.ParentId = issueJSON.ParentId
+	i.RefPath = issueJSON.RefPath
+	i.shortcode = issueJSON.Shortcode
+
+	createdAt, err := time.Parse(time.RFC3339, issueJSON.CreatedAt)
+	if err != nil {
+    i.CreatedAt = time.Time{}
+    return nil
+	}
+	updatedAt, err := time.Parse(time.RFC3339, issueJSON.UpdatedAt)
+	if err != nil {
+    i.UpdatedAt = time.Time{}
+    return nil
+	}
+	deletedAt, err := time.Parse(time.RFC3339, issueJSON.DeletedAt)
+	if err != nil {
+    i.DeletedAt = time.Time{}
+    return nil
+	}
+
+	i.CreatedAt = createdAt
+	i.UpdatedAt = updatedAt
+	i.DeletedAt = deletedAt
+
+	return nil
 }
 
 func (i *Issue) Touch() {
-	i.UpdatedAt = time.Now().UTC()
+	timestamp := time.Now().UTC()
+	if time.Time.IsZero(i.CreatedAt) {
+		i.CreatedAt = timestamp
+	}
+	i.UpdatedAt = timestamp
 }
 
 func (i *Issue) Delete() error {
@@ -91,33 +210,33 @@ func (i *Issue) Delete() error {
 }
 
 func (i *Issue) Restore() error {
-  i.DeletedAt = time.Time{}
-  err := Update(i)
-  if err != nil {
-    return err
-  }
+	i.DeletedAt = time.Time{}
+	err := Update(i)
+	if err != nil {
+		return err
+	}
 
-  return nil
+	return nil
 }
 
 func (i *Issue) Open() error {
-  i.Closed = "false"
-  err := Update(i)
-  if err != nil {
-    return err
-  }
+	i.Closed = "false"
+	err := Update(i)
+	if err != nil {
+		return err
+	}
 
-  return nil
+	return nil
 }
 
 func (i *Issue) Close() error {
-  i.Closed = "true"
-  err := Update(i)
-  if err != nil {
-    return err
-  }
+	i.Closed = "true"
+	err := Update(i)
+	if err != nil {
+		return err
+	}
 
-  return nil
+	return nil
 }
 
 func (i Issue) ToMap() map[string]interface{} {
@@ -137,7 +256,49 @@ func (i Issue) ToMap() map[string]interface{} {
 }
 
 func (i Issue) FilterValue() string {
-  return i.Title
+	return i.Title
+}
+
+const charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+const shortcodeLength = 6
+
+// Placeholder for your actual storage check
+func isUnique(shortcode string) bool {
+	// Implement logic to check if shortcode exists in your storage
+	return true // Assume it's unique for this example
+}
+
+// Placeholder for your actual storage operation
+func storeShortcode(shortcode, uuid string) {
+	// Implement logic to store the shortcode-UUID mapping
+}
+
+func GenerateShortcode(uuid string) string {
+	hash := sha256.Sum256([]byte(uuid))
+	hashInt := new(big.Int).SetBytes(hash[:])
+
+	base := big.NewInt(int64(len(charset)))
+	var shortcode string
+
+	for {
+		shortcode = ""
+		tempHashInt := new(big.Int).Set(hashInt)
+		for i := 0; i < shortcodeLength; i++ {
+			mod := new(big.Int)
+			tempHashInt.DivMod(tempHashInt, base, mod)
+			shortcode = string(charset[mod.Int64()]) + shortcode
+		}
+
+		if isUnique(shortcode) {
+			storeShortcode(shortcode, uuid) // Save the unique shortcode
+			break
+		} else {
+			// Modify the hashInt (e.g., by adding 1) to try a different shortcode
+			hashInt = hashInt.Add(hashInt, big.NewInt(1))
+		}
+	}
+
+	return shortcode
 }
 
 func GetWd() string {
@@ -250,6 +411,7 @@ func Add(entity Entity) error {
 			log.Fatalf("Failed to marshal entity: %v\n", err)
 		}
 
+		entity.Touch()
 		newContent = string(newJSON)
 	} else if err == nil {
 		data := make(map[string]interface{})
@@ -257,6 +419,7 @@ func Add(entity Entity) error {
 		if err != nil {
 			log.Fatalf("Failed to unmarshal data: %v\n", err)
 		}
+		entity.Touch()
 		data[entity.GetId()] = entity
 
 		newJSON, err := json.Marshal(data)
@@ -303,6 +466,7 @@ func Update(entity Entity) error {
 	note, err := repo.Notes.Read(entity.GetRefPath(), firstCommit.Id())
 	if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
 		data := make(map[string]interface{})
+		entity.Touch()
 		data[entity.GetId()] = entity
 		newJSON, err := json.Marshal(data)
 		if err != nil {
@@ -474,49 +638,33 @@ func GetNotes(refPath string) []*git.Note {
 
 func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
 	var issues []*Issue
-  var closedIssues []*Issue
+	var closedIssues []*Issue
 	for _, notePtr := range gitNotes {
 		note := *notePtr
 
-		data := make(map[string]interface{})
+		data := make(map[string]Issue)
 		err := json.Unmarshal([]byte(note.Message()), &data)
 		if err != nil {
 			log.Fatalf("Failed to unmarshal data: %v\n", err)
 		}
 
-		for _, obj := range data {
-			obj := obj.(map[string]interface{})
-			createdAt, _ := time.Parse(time.RFC3339, obj["created_at"].(string))
-			updatedAt, _ := time.Parse(time.RFC3339, obj["updated_at"].(string))
-			deletedAt, _ := time.Parse(time.RFC3339, obj["deleted_at"].(string))
-
-
-			issue := Issue{
-				Id:          obj["id"].(string),
-				Author:      obj["author"].(string),
-				Title:       obj["title"].(string),
-				Description: obj["description"].(string),
-				Closed:      obj["closed"].(string),
-				ParentType:  obj["parent_type"].(string),
-				ParentId:    obj["parent_id"].(string),
-				RefPath:     obj["refpath"].(string),
-				CreatedAt:   createdAt,
-				UpdatedAt:   updatedAt,
-				DeletedAt:   deletedAt,
+		for _, issue := range data {
+      issue := issue
+			if !issue.DeletedAt.IsZero() {
+				continue
 			}
 
-			// if !issue.DeletedAt.IsZero() {
-			// 	continue
-			// }
-
-      if issue.Closed == "true" {
-        closedIssues = append(closedIssues, &issue)
-        continue
-      }
+			if issue.Closed == "true" {
+				closedIssues = append(closedIssues, &issue)
+				continue
+			}
 
 			issues = append(issues, &issue)
 		}
 	}
+
+  log.Infof("%+v", issues)
+
 
 	sort.Sort(ByUpdatedAtDescending(issues))
 	sort.Sort(ByUpdatedAtDescending(closedIssues))

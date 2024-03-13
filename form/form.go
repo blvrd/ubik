@@ -3,14 +3,13 @@ package form
 import (
 	"fmt"
 	"strings"
-	"time"
+	// "time"
 
 	"github.com/blvrd/ubik/entity"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/huh"
-	"github.com/google/uuid"
-  "github.com/charmbracelet/log"
+  // "github.com/charmbracelet/log"
 )
 
 type Model struct {
@@ -86,30 +85,17 @@ func (m Model) Init() tea.Cmd {
 type FormCompletedMsg string
 
 func CompleteForm(m Model) tea.Cmd {
-	var id string
-	var createdAt time.Time
-	if m.ent.GetId() != "" {
-		id = m.ent.GetId()
-		createdAt = m.ent.(*entity.Issue).CreatedAt
-	} else {
-		id = uuid.NewString()
-		createdAt = time.Now().UTC()
-	}
-
 	return func() tea.Msg {
-		issue := entity.Issue{
-			Id:          id,
-			Author:      entity.GetAuthorEmail(),
-			Title:       m.form.GetString("title"),
-			Description: m.form.GetString("description"),
-			Closed:      "false",
-			RefPath:     entity.IssuesPath,
-			CreatedAt:   createdAt,
-			UpdatedAt:   time.Now().UTC(),
-		}
+		issue := entity.NewIssue(
+			entity.GetAuthorEmail(),
+			m.form.GetString("title"),
+			m.form.GetString("description"),
+      "",
+      "",
+    )
+
 		entity.Add(&issue)
 
-    log.Info("attempting form completion")
 		return FormCompletedMsg("Form is complete")
 	}
 }

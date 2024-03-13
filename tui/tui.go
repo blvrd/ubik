@@ -40,6 +40,7 @@ type li struct {
   title string
   desc string
   closed string
+  shortcode string
   createdAt time.Time
 }
 
@@ -55,7 +56,7 @@ func (i li) Title() string {
   return fmt.Sprintf("[%s] %s", closed, i.title)
 }
 func (i li) Description() string {
-  return fmt.Sprintf("opened %s by %s", i.createdAt.Format(time.RFC822), i.author)
+  return fmt.Sprintf("#%s opened %s by %s", i.shortcode, i.createdAt.Format(time.RFC822), i.author)
 }
 func (i li) FilterValue() string { return i.title }
 
@@ -133,12 +134,14 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
       m.issues = msg
 
       for _, issue := range msg {
+        log.Infof("shortcode: %s", issue.Shortcode())
         item := li{
           id: issue.Id,
           author: issue.Author,
           title: issue.Title,
           desc: issue.Description,
           closed: issue.Closed,
+          shortcode: issue.Shortcode(),
           createdAt: issue.CreatedAt,
         }
         items = append(items, item)
