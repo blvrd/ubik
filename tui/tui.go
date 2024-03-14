@@ -21,7 +21,7 @@ var borderStyle = lipgloss.NewStyle().
     BorderStyle(lipgloss.NormalBorder()).
     BorderForeground(lipgloss.Color("#333333")).
     BorderRight(true).
-    MarginRight(5)
+    MarginRight(3)
 
 type focusedView int
 
@@ -137,13 +137,13 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 		case tea.WindowSizeMsg:
 			_, y := baseStyle.GetFrameSize()
 			log.Infof("received window message: %+v", msg)
-			m.list.SetSize(100, msg.Height-y)
+			m.list.SetSize(90, msg.Height-y)
 		case issuesLoadedMsg:
 			var items []list.Item
 			m.issues = msg
 
 			for _, issue := range msg {
-				log.Infof("shortcode: %s", issue.Shortcode())
+        log.Infof("%s created_at: %s", issue.Id, issue.CreatedAt)
 				item := li{
 					id:        issue.Id,
 					author:    issue.Author,
@@ -240,7 +240,7 @@ func (m model) View() string {
 	var sidebarView string
 
 	if m.focusState == listView {
-		sidebarView = lipgloss.NewStyle().Width(50).Render(m.detail.View())
+		sidebarView = lipgloss.NewStyle().Width(60).Render(m.detail.View())
 	} else {
 		sidebarView = m.form.View()
 	}
