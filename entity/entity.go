@@ -164,23 +164,21 @@ func (i *Issue) UnmarshalJSON(data []byte) error {
 
 	createdAt, err := time.Parse(time.RFC3339, issueJSON.CreatedAt)
 	if err != nil {
-		i.CreatedAt = time.Time{}
-		return nil
+	  createdAt = time.Time{}
 	}
 	updatedAt, err := time.Parse(time.RFC3339, issueJSON.UpdatedAt)
 	if err != nil {
-		i.UpdatedAt = time.Time{}
-		return nil
+		updatedAt = time.Time{}
 	}
 	deletedAt, err := time.Parse(time.RFC3339, issueJSON.DeletedAt)
 	if err != nil {
-		i.DeletedAt = time.Time{}
-		return nil
+		deletedAt = time.Time{}
 	}
 
 	i.CreatedAt = createdAt
 	i.UpdatedAt = updatedAt
 	i.DeletedAt = deletedAt
+  log.Infof("%s created_at: %s", i.Id, i.CreatedAt)
 
 	return nil
 }
@@ -243,6 +241,7 @@ func (i Issue) ToMap() map[string]interface{} {
 		"parent_type": i.ParentType,
 		"parent_id":   i.ParentId,
 		"refpath":     i.RefPath,
+		"shortcode":   i.shortcode,
 		"created_at":  i.CreatedAt,
 		"updated_at":  i.UpdatedAt,
 		"deleted_at":  i.DeletedAt,
