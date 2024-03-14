@@ -61,8 +61,9 @@ func (i li) Description() string {
 func (i li) FilterValue() string { return i.title }
 
 func NewModel() tea.Model {
-	d := detail.New(&entity.Issue{})
-	f := form.New(&entity.Issue{})
+  issue := entity.NewIssue()
+	d := detail.New(&issue)
+	f := form.New(&issue)
   l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
   l.Title = "Issues"
 
@@ -92,13 +93,15 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
+  newIssue := entity.NewIssue()
+
   if !m.list.SettingFilter() {
     switch msg := msg.(type) {
     case tea.KeyMsg:
       switch msg.String() {
       case "n":
         m.focusState = formView
-        m.form = form.New(&entity.Issue{})
+        m.form = form.New(&newIssue)
         m.form.Init()
       case "enter", "e":
         m.focusState = formView
@@ -164,17 +167,17 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
   m.list, cmd = m.list.Update(msg)
   if len(m.issues) > 0 {
     selectedItem := m.list.SelectedItem().(li)
-    currentIssue := &entity.Issue{}
+    currentIssue := entity.NewIssue()
 
     // This would be simpler/faster as a map access
     for _, issue := range m.issues {
       if issue.Id == selectedItem.Id() {
-        currentIssue = issue
+        currentIssue = *issue
         break
       }
     }
 
-    m.currentIssue = currentIssue
+    m.currentIssue = &currentIssue
     d := detail.New(m.currentIssue)
     m.detail = d
   }

@@ -27,6 +27,7 @@ type Entity interface {
 	Touch()
 	Delete() error
 	Restore() error
+	IsPersisted() bool
 	json.Marshaler
 	json.Unmarshaler
 }
@@ -62,28 +63,21 @@ type Issue struct {
 	DeletedAt   time.Time
 }
 
-func NewIssue(
-	author string,
-	title string,
-	description string,
-	parentType string,
-	parentId string,
-) Issue {
-	id := uuid.NewString()
-	shortcode := GenerateShortcode(id)
-	closed := "false"
-
+func NewIssue() Issue {
+	author := GetAuthorEmail()
 	return Issue{
-		Id:          id,
 		Author:      author,
-		Title:       title,
-		Description: description,
-		Closed:      closed,
-		shortcode:   shortcode,
-		ParentType:  parentType,
-		ParentId:    parentId,
+		Title:       "",
+		Description: "",
+		Closed:      "false",
+		ParentType:  "",
+		ParentId:    "",
 		RefPath:     IssuesPath,
 	}
+}
+
+func (i Issue) IsPersisted() bool {
+	return i.Id != ""
 }
 
 func (i Issue) Shortcode() string {
@@ -157,7 +151,7 @@ func (i *Issue) UnmarshalJSON(data []byte) error {
 	}
 
 	i.Id = issueJSON.Id
-  log.Infof("unmarshaling issue: %s", i.Id)
+	log.Infof("unmarshaling issue: %s", i.Id)
 
 	i.Author = issueJSON.Author
 	i.Title = issueJSON.Title
@@ -170,18 +164,18 @@ func (i *Issue) UnmarshalJSON(data []byte) error {
 
 	createdAt, err := time.Parse(time.RFC3339, issueJSON.CreatedAt)
 	if err != nil {
-    i.CreatedAt = time.Time{}
-    return nil
+		i.CreatedAt = time.Time{}
+		return nil
 	}
 	updatedAt, err := time.Parse(time.RFC3339, issueJSON.UpdatedAt)
 	if err != nil {
-    i.UpdatedAt = time.Time{}
-    return nil
+		i.UpdatedAt = time.Time{}
+		return nil
 	}
 	deletedAt, err := time.Parse(time.RFC3339, issueJSON.DeletedAt)
 	if err != nil {
-    i.DeletedAt = time.Time{}
-    return nil
+		i.DeletedAt = time.Time{}
+		return nil
 	}
 
 	i.CreatedAt = createdAt
@@ -392,26 +386,36 @@ func GetAuthorEmail() string {
 	return strings.TrimSpace(author)
 }
 
-func Add(entity Entity) error {
+func Add(issue *Issue) error {
 	wd := GetWd()
 	repo, err := git.OpenRepository(wd)
 	if err != nil {
 		return fmt.Errorf("Failed to open repository: %v", err)
 	}
 
+	if issue.IsPersisted() {
+		log.Fatal("issue has already been persisted")
+	}
+
 	firstCommit := GetFirstCommit(repo)
 
 	var newContent string
-	note, err := repo.Notes.Read(entity.GetRefPath(), firstCommit.Id())
+	note, err := repo.Notes.Read(issue.GetRefPath(), firstCommit.Id())
+	id := uuid.NewString()
+	shortcode := GenerateShortcode(id)
+	issue.Id = id
+	issue.shortcode = shortcode
+
 	if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
 		data := make(map[string]interface{})
-		data[entity.GetId()] = entity
+
+		data[id] = issue
 		newJSON, err := json.Marshal(data)
 		if err != nil {
 			log.Fatalf("Failed to marshal entity: %v\n", err)
 		}
 
-		entity.Touch()
+		issue.Touch()
 		newContent = string(newJSON)
 	} else if err == nil {
 		data := make(map[string]interface{})
@@ -419,8 +423,8 @@ func Add(entity Entity) error {
 		if err != nil {
 			log.Fatalf("Failed to unmarshal data: %v\n", err)
 		}
-		entity.Touch()
-		data[entity.GetId()] = entity
+		issue.Touch()
+		data[id] = issue
 
 		newJSON, err := json.Marshal(data)
 
@@ -439,7 +443,7 @@ func Add(entity Entity) error {
 	}
 
 	_, err = repo.Notes.Create(
-		entity.GetRefPath(),
+		issue.GetRefPath(),
 		sig,
 		sig,
 		firstCommit.Id(),
@@ -649,7 +653,7 @@ func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
 		}
 
 		for _, issue := range data {
-      issue := issue
+			issue := issue
 			if !issue.DeletedAt.IsZero() {
 				continue
 			}
@@ -663,8 +667,7 @@ func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
 		}
 	}
 
-  log.Infof("%+v", issues)
-
+	log.Infof("%+v", issues)
 
 	sort.Sort(ByUpdatedAtDescending(issues))
 	sort.Sort(ByUpdatedAtDescending(closedIssues))

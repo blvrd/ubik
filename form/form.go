@@ -6,21 +6,21 @@ import (
 	// "time"
 
 	"github.com/blvrd/ubik/entity"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/bubbles/key"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
-  // "github.com/charmbracelet/log"
+	// "github.com/charmbracelet/log"
 )
 
 type Model struct {
-	ent  entity.Entity
-	form *huh.Form
-  persisted bool
+	issue     *entity.Issue
+	form      *huh.Form
+	persisted bool
 }
 
-func New(ent entity.Entity) Model {
-	title := ent.(*entity.Issue).Title
-	description := ent.(*entity.Issue).Description
+func New(issue *entity.Issue) Model {
+	title := issue.Title
+	description := issue.Description
 
 	f := huh.NewForm(
 		huh.NewGroup(
@@ -43,38 +43,38 @@ func New(ent entity.Entity) Model {
 					}
 					return nil
 				}).
-				Affirmative("Yep").
+				Affirmative("Save").
 				Negative("Wait, no"),
 		),
 	).
 		WithWidth(60).
 		WithShowHelp(false).
 		WithShowErrors(false).
-    WithKeyMap(&huh.KeyMap{
-      Input: huh.InputKeyMap{
-        AcceptSuggestion: key.NewBinding(key.WithKeys("ctrl+e"), key.WithHelp("ctrl+e", "complete")),
-        Prev:             key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift+tab", "back")),
-        Next:             key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next")),
-        Submit:           key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "submit")),
-      },
-      Text: huh.TextKeyMap{
-        Next:    key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next")),
-        Prev:    key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift+tab", "back")),
-        Submit:  key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "submit")),
-        NewLine: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "new line")),
-        Editor:  key.NewBinding(key.WithKeys("ctrl+e"), key.WithHelp("ctrl+e", "open editor")),
-      },
-      Confirm: huh.ConfirmKeyMap{
-        Prev:   key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift+tab", "back")),
-        Next:   key.NewBinding(key.WithKeys("enter", "tab"), key.WithHelp("enter", "next")),
-        Submit: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "submit")),
-        Toggle: key.NewBinding(key.WithKeys("h", "l", "right", "left"), key.WithHelp("←/→", "toggle")),
-      },
-    })
+		WithKeyMap(&huh.KeyMap{
+			Input: huh.InputKeyMap{
+				AcceptSuggestion: key.NewBinding(key.WithKeys("ctrl+e"), key.WithHelp("ctrl+e", "complete")),
+				Prev:             key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift+tab", "back")),
+				Next:             key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next")),
+				Submit:           key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "submit")),
+			},
+			Text: huh.TextKeyMap{
+				Next:    key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next")),
+				Prev:    key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift+tab", "back")),
+				Submit:  key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "submit")),
+				NewLine: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "new line")),
+				Editor:  key.NewBinding(key.WithKeys("ctrl+e"), key.WithHelp("ctrl+e", "open editor")),
+			},
+			Confirm: huh.ConfirmKeyMap{
+				Prev:   key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift+tab", "back")),
+				Next:   key.NewBinding(key.WithKeys("enter", "tab"), key.WithHelp("enter", "next")),
+				Submit: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "submit")),
+				Toggle: key.NewBinding(key.WithKeys("h", "l", "right", "left"), key.WithHelp("←/→", "toggle")),
+			},
+		})
 
 	return Model{
-		ent:  ent,
-		form: f,
+		issue: issue,
+		form:  f,
 	}
 }
 
@@ -86,15 +86,17 @@ type FormCompletedMsg string
 
 func CompleteForm(m Model) tea.Cmd {
 	return func() tea.Msg {
-		issue := entity.NewIssue(
-			entity.GetAuthorEmail(),
-			m.form.GetString("title"),
-			m.form.GetString("description"),
-      "",
-      "",
-    )
+		title := m.form.GetString("title")
+		description := m.form.GetString("description")
 
-		entity.Add(&issue)
+		m.issue.Title = title
+		m.issue.Description = description
+
+		if m.issue.IsPersisted() {
+			entity.Update(m.issue)
+		} else {
+			entity.Add(m.issue)
+		}
 
 		return FormCompletedMsg("Form is complete")
 	}
@@ -111,11 +113,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	if m.form.State == huh.StateCompleted {
-    // Don't try to submit the same completed form twice
-    if !m.persisted {
-      cmds = append(cmds, CompleteForm(m))
-      m.persisted = true
-    }
+		// Don't try to submit the same completed form twice
+		if !m.persisted {
+			cmds = append(cmds, CompleteForm(m))
+			m.persisted = true
+		}
 	}
 
 	return m, tea.Batch(cmds...)
