@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/blvrd/ubik/entity"
+	"github.com/charmbracelet/lipgloss"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -29,9 +30,9 @@ func (m Model) View() string {
   var closed string
 
   if entMap["closed"] == "false" {
-    closed = "[ ]"
+		closed = lipgloss.NewStyle().Foreground(lipgloss.Color("#838383")).Render("[·]")
   } else {
-    closed = "[x]"
+    closed = lipgloss.NewStyle().Foreground(lipgloss.Color("#5db158")).Render("[✓]")
   }
 
   s.WriteString(fmt.Sprintf("ID: %s\n", entMap["id"]))

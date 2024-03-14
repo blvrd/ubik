@@ -1,8 +1,7 @@
 package tui
 
 import (
-  "fmt"
-  "time"
+	"fmt"
 	"github.com/blvrd/ubik/detail"
 	"github.com/blvrd/ubik/entity"
 	"github.com/blvrd/ubik/form"
@@ -10,12 +9,19 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
+	"time"
 )
 
 var baseStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.RoundedBorder()).
 	BorderForeground(lipgloss.Color("105")).
 	Margin(2, 2)
+
+var borderStyle = lipgloss.NewStyle().
+    BorderStyle(lipgloss.NormalBorder()).
+    BorderForeground(lipgloss.Color("#333333")).
+    BorderRight(true).
+    MarginRight(5)
 
 type focusedView int
 
@@ -35,37 +41,37 @@ type model struct {
 }
 
 type li struct {
-  id string
-  author string
-  title string
-  desc string
-  closed string
-  shortcode string
-  createdAt time.Time
+	id        string
+	author    string
+	title     string
+	desc      string
+	closed    string
+	shortcode string
+	createdAt time.Time
 }
 
 func (i li) Id() string { return i.id }
 func (i li) Title() string {
-  var closed string
+	var closed string
 
-  if i.closed == "true" {
-    closed = "✓"
-  } else {
-    closed = "✕"
-  }
-  return fmt.Sprintf("[%s] %s", closed, i.title)
+	if i.closed == "true" {
+		closed = lipgloss.NewStyle().Foreground(lipgloss.Color("#5db158")).Render("[✓]")
+	} else {
+		closed = lipgloss.NewStyle().Foreground(lipgloss.Color("#838383")).Render("[·]")
+	}
+	return fmt.Sprintf("%s %s", closed, i.title)
 }
 func (i li) Description() string {
-  return fmt.Sprintf("#%s opened %s by %s", i.shortcode, i.createdAt.Format(time.RFC822), i.author)
+	return fmt.Sprintf("#%s opened %s by %s", i.shortcode, i.createdAt.Format(time.RFC822), i.author)
 }
 func (i li) FilterValue() string { return i.title }
 
 func NewModel() tea.Model {
-  issue := entity.NewIssue()
+	issue := entity.NewIssue()
 	d := detail.New(&issue)
 	f := form.New(&issue)
-  l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
-  l.Title = "Issues"
+	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	l.Title = "Issues"
 
 	return model{
 		list:       l,
@@ -93,98 +99,98 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
-  newIssue := entity.NewIssue()
+	newIssue := entity.NewIssue()
 
-  if !m.list.SettingFilter() {
-    switch msg := msg.(type) {
-    case tea.KeyMsg:
-      switch msg.String() {
-      case "n":
-        m.focusState = formView
-        m.form = form.New(&newIssue)
-        m.form.Init()
-      case "enter", "e":
-        m.focusState = formView
-        m.form = form.New(m.currentIssue)
-        m.form.Init()
-      case " ":
-        if m.currentIssue.Closed == "true" {
-          m.currentIssue.Open()
-        } else {
-          m.currentIssue.Close()
-        }
+	if !m.list.SettingFilter() {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "n":
+				m.focusState = formView
+				m.form = form.New(&newIssue)
+				m.form.Init()
+			case "enter", "e":
+				m.focusState = formView
+				m.form = form.New(m.currentIssue)
+				m.form.Init()
+			case " ":
+				if m.currentIssue.Closed == "true" {
+					m.currentIssue.Open()
+				} else {
+					m.currentIssue.Close()
+				}
 
-        cmds = append(cmds, GetIssues)
-        return m, cmds
-      case "d", "backspace":
-        m.currentIssue.Delete()
-        cmds = append(cmds, GetIssues)
-        return m, cmds
-      case "q", "ctrl+c":
-        cmds = append(cmds, tea.Quit)
-        return m, cmds
-      case "r":
-        m.currentIssue.Restore()
-        cmds = append(cmds, GetIssues)
-        return m, cmds
-      }
-    case tea.WindowSizeMsg:
-      _, y := baseStyle.GetFrameSize()
-      log.Infof("received window message: %+v", msg)
-      m.list.SetSize(100, msg.Height-y)
-    case issuesLoadedMsg:
-      var items []list.Item
-      m.issues = msg
+				cmds = append(cmds, GetIssues)
+				return m, cmds
+			case "d", "backspace":
+				m.currentIssue.Delete()
+				cmds = append(cmds, GetIssues)
+				return m, cmds
+			case "q", "ctrl+c":
+				cmds = append(cmds, tea.Quit)
+				return m, cmds
+			case "r":
+				m.currentIssue.Restore()
+				cmds = append(cmds, GetIssues)
+				return m, cmds
+			}
+		case tea.WindowSizeMsg:
+			_, y := baseStyle.GetFrameSize()
+			log.Infof("received window message: %+v", msg)
+			m.list.SetSize(100, msg.Height-y)
+		case issuesLoadedMsg:
+			var items []list.Item
+			m.issues = msg
 
-      for _, issue := range msg {
-        log.Infof("shortcode: %s", issue.Shortcode())
-        item := li{
-          id: issue.Id,
-          author: issue.Author,
-          title: issue.Title,
-          desc: issue.Description,
-          closed: issue.Closed,
-          shortcode: issue.Shortcode(),
-          createdAt: issue.CreatedAt,
-        }
-        items = append(items, item)
-      }
+			for _, issue := range msg {
+				log.Infof("shortcode: %s", issue.Shortcode())
+				item := li{
+					id:        issue.Id,
+					author:    issue.Author,
+					title:     issue.Title,
+					desc:      issue.Description,
+					closed:    issue.Closed,
+					shortcode: issue.Shortcode(),
+					createdAt: issue.CreatedAt,
+				}
+				items = append(items, item)
+			}
 
-      m.list, cmd = m.list.Update(items)
+			m.list, cmd = m.list.Update(items)
 
-      if len(m.issues) > 0 {
-        m.currentIssue = m.issues[m.list.Index()]
-        m.list.SetItems(items)
-        d := detail.New(m.currentIssue)
-        m.detail = d
-      }
+			if len(m.issues) > 0 {
+				m.currentIssue = m.issues[m.list.Index()]
+				m.list.SetItems(items)
+				d := detail.New(m.currentIssue)
+				m.detail = d
+			}
 
-      cmds = append(cmds, cmd)
-      return m, cmds
-    }
-  }
+			cmds = append(cmds, cmd)
+			return m, cmds
+		}
+	}
 
-  m.list, cmd = m.list.Update(msg)
-  if len(m.issues) > 0 {
-    selectedItem := m.list.SelectedItem().(li)
-    currentIssue := entity.NewIssue()
+	m.list, cmd = m.list.Update(msg)
+	if len(m.issues) > 0 {
+		selectedItem := m.list.SelectedItem().(li)
+		currentIssue := entity.NewIssue()
 
-    // This would be simpler/faster as a map access
-    for _, issue := range m.issues {
-      if issue.Id == selectedItem.Id() {
-        currentIssue = *issue
-        break
-      }
-    }
+		// This would be simpler/faster as a map access
+		for _, issue := range m.issues {
+			if issue.Id == selectedItem.Id() {
+				currentIssue = *issue
+				break
+			}
+		}
 
-    m.currentIssue = &currentIssue
-    d := detail.New(m.currentIssue)
-    m.detail = d
-  }
+		m.currentIssue = &currentIssue
+		d := detail.New(m.currentIssue)
+		m.detail = d
+	}
 
-  cmds = append(cmds, cmd)
+	cmds = append(cmds, cmd)
 
-  return m, cmds
+	return m, cmds
 }
 
 func handleFormViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
@@ -194,10 +200,10 @@ func handleFormViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-    case "esc":
-      m.focusState = listView
-    case "ctrl+c":
-      cmds = append(cmds, tea.Quit)
+		case "esc":
+			m.focusState = listView
+		case "ctrl+c":
+			cmds = append(cmds, tea.Quit)
 		}
 	case form.FormCompletedMsg:
 		m.focusState = listView
@@ -224,7 +230,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	list := lipgloss.NewStyle().Width(m.list.Width()).Render(m.list.View())
+	list := borderStyle.Width(m.list.Width()).Render(m.list.View())
 	currentIssue := m.currentIssue
 
 	if currentIssue == nil {
