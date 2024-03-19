@@ -18,10 +18,10 @@ var baseStyle = lipgloss.NewStyle().
 	Margin(2, 2)
 
 var borderStyle = lipgloss.NewStyle().
-    BorderStyle(lipgloss.NormalBorder()).
-    BorderForeground(lipgloss.Color("#333333")).
-    BorderRight(true).
-    MarginRight(3)
+	BorderStyle(lipgloss.NormalBorder()).
+	BorderForeground(lipgloss.Color("#333333")).
+	BorderRight(true).
+	MarginRight(3)
 
 type focusedView int
 
@@ -143,7 +143,7 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			m.issues = msg
 
 			for _, issue := range msg {
-        log.Infof("%s created_at: %s", issue.Id, issue.CreatedAt)
+				log.Infof("%s created_at: %s", issue.Id, issue.CreatedAt)
 				item := li{
 					id:        issue.Id,
 					author:    issue.Author,
