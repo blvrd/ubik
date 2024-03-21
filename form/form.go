@@ -33,7 +33,8 @@ func New(issue *entity.Issue) Model {
 				Key("description").
 				Value(&description).
 				Title("Description").
-				CharLimit(600),
+				CharLimit(600).
+				Lines(15),
 			huh.NewConfirm().
 				Key("done").
 				Title("All done?").
