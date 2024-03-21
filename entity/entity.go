@@ -1,10 +1,8 @@
 package entity
 
 import (
-	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"os"
 	"os/exec"
 	"sort"
@@ -14,6 +12,7 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/google/uuid"
 	git "github.com/libgit2/git2go/v34"
+	"github.com/blvrd/ubik/shortcode"
 )
 
 const (
@@ -252,48 +251,6 @@ func (i Issue) FilterValue() string {
 	return i.Title
 }
 
-const charset = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-const shortcodeLength = 6
-
-// Placeholder for your actual storage check
-func isUnique(shortcode string) bool {
-	// Implement logic to check if shortcode exists in your storage
-	return true // Assume it's unique for this example
-}
-
-// Placeholder for your actual storage operation
-func storeShortcode(shortcode, uuid string) {
-	// Implement logic to store the shortcode-UUID mapping
-}
-
-func GenerateShortcode(uuid string) string {
-	hash := sha256.Sum256([]byte(uuid))
-	hashInt := new(big.Int).SetBytes(hash[:])
-
-	base := big.NewInt(int64(len(charset)))
-	var shortcode string
-
-	for {
-		shortcode = ""
-		tempHashInt := new(big.Int).Set(hashInt)
-		for i := 0; i < shortcodeLength; i++ {
-			mod := new(big.Int)
-			tempHashInt.DivMod(tempHashInt, base, mod)
-			shortcode = string(charset[mod.Int64()]) + shortcode
-		}
-
-		if isUnique(shortcode) {
-			storeShortcode(shortcode, uuid) // Save the unique shortcode
-			break
-		} else {
-			// Modify the hashInt (e.g., by adding 1) to try a different shortcode
-			hashInt = hashInt.Add(hashInt, big.NewInt(1))
-		}
-	}
-
-	return shortcode
-}
-
 func GetWd() string {
 	wd, err := os.Getwd()
 
@@ -401,7 +358,8 @@ func Add(issue *Issue) error {
 	var newContent string
 	note, err := repo.Notes.Read(issue.GetRefPath(), firstCommit.Id())
 	id := uuid.NewString()
-	shortcode := GenerateShortcode(id)
+  shortcodeCache := make(map[string]bool)
+	shortcode := shortcode.GenerateShortcode(id, &shortcodeCache)
 	issue.Id = id
 	issue.shortcode = shortcode
 
