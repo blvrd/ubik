@@ -67,6 +67,11 @@ func main() {
 			if err != nil {
 				log.Fatalf("error merging refs: %v", err)
 			}
+
+			err = repo.DeleteLocalRefs("refs/notes/ubik/merging/issues")
+			if err != nil {
+				log.Fatalf("error merging refs: %v", err)
+			}
 		},
 	}
 
