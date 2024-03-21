@@ -171,7 +171,7 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 	}
 
 	m.list, cmd = m.list.Update(msg)
-	if len(m.issues) > 0 {
+	if len(m.issues) > 0 && m.list.SelectedItem() != nil {
 		selectedItem := m.list.SelectedItem().(li)
 		currentIssue := entity.NewIssue()
 
