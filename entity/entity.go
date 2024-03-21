@@ -123,7 +123,6 @@ func (i Issue) MarshalJSON() ([]byte, error) {
 		DeletedAt:   i.DeletedAt,
 	}
 
-	log.Info("marshaling issue!")
 	return json.Marshal(issueJSON)
 }
 
@@ -150,7 +149,6 @@ func (i *Issue) UnmarshalJSON(data []byte) error {
 	}
 
 	i.Id = issueJSON.Id
-	log.Infof("unmarshaling issue: %s", i.Id)
 
 	i.Author = issueJSON.Author
 	i.Title = issueJSON.Title
@@ -177,7 +175,6 @@ func (i *Issue) UnmarshalJSON(data []byte) error {
 	i.CreatedAt = createdAt
 	i.UpdatedAt = updatedAt
 	i.DeletedAt = deletedAt
-  log.Infof("%s created_at: %s", i.Id, i.CreatedAt)
 
 	return nil
 }
