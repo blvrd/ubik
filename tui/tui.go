@@ -105,11 +105,11 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
-			case "n":
+			case "ctrl+n":
 				m.focusState = formView
 				m.form = form.New(&newIssue)
 				m.form.Init()
-			case "enter", "e":
+			case "enter", "ctrl+e":
 				m.focusState = formView
 				m.form = form.New(m.currentIssue)
 				m.form.Init()
@@ -122,14 +122,14 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 
 				cmds = append(cmds, GetIssues)
 				return m, cmds
-			case "d", "backspace":
+			case "ctrl+d", "backspace":
 				m.currentIssue.Delete()
 				cmds = append(cmds, GetIssues)
 				return m, cmds
-			case "q", "ctrl+c":
+			case "ctrl+q", "ctrl+c":
 				cmds = append(cmds, tea.Quit)
 				return m, cmds
-			case "r":
+			case "ctrl+r":
 				m.currentIssue.Restore()
 				cmds = append(cmds, GetIssues)
 				return m, cmds
