@@ -1,6 +1,7 @@
 package entity
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -9,10 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blvrd/ubik/shortcode"
 	"github.com/charmbracelet/log"
 	"github.com/google/uuid"
-	git "github.com/libgit2/git2go/v34"
-	"github.com/blvrd/ubik/shortcode"
 )
 
 const (
@@ -161,7 +161,7 @@ func (i *Issue) UnmarshalJSON(data []byte) error {
 
 	createdAt, err := time.Parse(time.RFC3339, issueJSON.CreatedAt)
 	if err != nil {
-	  createdAt = time.Time{}
+		createdAt = time.Time{}
 	}
 	updatedAt, err := time.Parse(time.RFC3339, issueJSON.UpdatedAt)
 	if err != nil {
@@ -258,43 +258,23 @@ func GetWd() string {
 	return wd
 }
 
-func GetFirstCommit(repo *git.Repository) *git.Commit {
-	revWalk, err := repo.Walk()
+func GetFirstCommit() string {
+	cmd := exec.Command("git", "rev-list", "--max-parents=0", "HEAD")
+	bytes, err := cmd.Output()
 	if err != nil {
-		log.Fatalf("Failed to create revision walker: %v\n", err)
-	}
-	defer revWalk.Free()
-
-	// Start from the HEAD
-	err = revWalk.PushHead()
-	if err != nil {
-		log.Fatalf("Failed to start rev walk at HEAD: %v\n", err)
+		panic(err)
 	}
 
-	revWalk.Sorting(git.SortTime)
-
-	// Iterating to find the first commit
-	var firstCommit *git.Commit
-	oid := new(git.Oid)
-	for revWalk.Next(oid) == nil {
-		commit, err := repo.LookupCommit(oid)
-		if err != nil {
-			log.Fatalf("Failed to lookup commit: %v\n", err)
-		}
-		// Assuming the first commit we can reach is the oldest/root
-		firstCommit = commit
-	}
-
-	if firstCommit == nil {
-		log.Fatalf("No commits found in repository.")
-	}
-
-	return firstCommit
+	str := string(bytes)
+	trimmed := strings.TrimSpace(str)
+	log.Infof("str: %s", str)
+	log.Infof("trimmed: %s", trimmed)
+	return trimmed
 }
 
 func ListIssues() {
 	refPath := IssuesPath
-	notes := GetNotes(refPath)
+	notes, _ := GetNotes(refPath)
 	uNotes := IssuesFromGitNotes(notes)
 
 	for _, uNote := range uNotes {
@@ -310,7 +290,7 @@ func ListIssues() {
 
 func GetIssuesForProject(parentId string) []*Issue {
 	refPath := IssuesPath
-	notes := GetNotes(refPath)
+	notes, _ := GetNotes(refPath)
 	uNotes := IssuesFromGitNotes(notes)
 
 	var filteredIssues []*Issue
@@ -340,27 +320,25 @@ func GetAuthorEmail() string {
 }
 
 func Add(issue *Issue) error {
-	wd := GetWd()
-	repo, err := git.OpenRepository(wd)
-	if err != nil {
-		return fmt.Errorf("Failed to open repository: %v", err)
-	}
-
 	if issue.IsPersisted() {
 		log.Fatal("issue has already been persisted")
 	}
 
-	firstCommit := GetFirstCommit(repo)
+	firstCommit := GetFirstCommit()
 
 	var newContent string
-	note, err := repo.Notes.Read(issue.GetRefPath(), firstCommit.Id())
+	cmd := exec.Command("git", "notes", "--ref", IssuesPath, "show", firstCommit)
+	note, err := cmd.CombinedOutput()
+	log.Infof("output: %s", note)
+	log.Infof("cmd: %s", cmd.String())
+	log.Errorf("error: %v", err)
 	id := uuid.NewString()
-  shortcodeCache := make(map[string]bool)
+	shortcodeCache := make(map[string]bool)
 	shortcode := shortcode.GenerateShortcode(id, &shortcodeCache)
 	issue.Id = id
 	issue.shortcode = shortcode
 
-	if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
+	if err != nil {
 		data := make(map[string]interface{})
 
 		data[id] = issue
@@ -373,7 +351,7 @@ func Add(issue *Issue) error {
 		newContent = string(newJSON)
 	} else if err == nil {
 		data := make(map[string]interface{})
-		err := json.Unmarshal([]byte(note.Message()), &data)
+		err := json.Unmarshal(note, &data)
 		if err != nil {
 			log.Fatalf("Failed to unmarshal data: %v\n", err)
 		}
@@ -387,23 +365,10 @@ func Add(issue *Issue) error {
 		}
 
 		newContent = string(newJSON)
-	} else {
-		return err
 	}
 
-	sig, err := repo.DefaultSignature()
-	if err != nil {
-		return fmt.Errorf("Couldn't find default signature: %v", err)
-	}
-
-	_, err = repo.Notes.Create(
-		issue.GetRefPath(),
-		sig,
-		sig,
-		firstCommit.Id(),
-		newContent,
-		true,
-	)
+	cmd = exec.Command("git", "notes", "--ref", IssuesPath, "add", "-m", newContent, "-f", firstCommit)
+	err = cmd.Run()
 	if err != nil {
 		return fmt.Errorf("Failed to add note to tree: %v", err)
 	}
@@ -412,17 +377,13 @@ func Add(issue *Issue) error {
 }
 
 func Update(entity Entity) error {
-	wd := GetWd()
-	repo, err := git.OpenRepository(wd)
-	if err != nil {
-		return fmt.Errorf("Failed to open repository: %v", err)
-	}
-
-	firstCommit := GetFirstCommit(repo)
+	firstCommit := GetFirstCommit()
 
 	var newContent string
-	note, err := repo.Notes.Read(entity.GetRefPath(), firstCommit.Id())
-	if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
+	cmd := exec.Command("git", "notes", "--ref", "refs/notes/ubik/issues", "show", firstCommit)
+	note, err := cmd.Output()
+
+	if err != nil {
 		data := make(map[string]interface{})
 		entity.Touch()
 		data[entity.GetId()] = entity
@@ -434,7 +395,7 @@ func Update(entity Entity) error {
 		newContent = string(newJSON)
 	} else if err == nil {
 		data := make(map[string]interface{})
-		err := json.Unmarshal([]byte(note.Message()), &data)
+		err := json.Unmarshal([]byte(note), &data)
 		if err != nil {
 			log.Fatalf("Failed to unmarshal data: %v\n", err)
 		}
@@ -452,19 +413,8 @@ func Update(entity Entity) error {
 		return err
 	}
 
-	sig, err := repo.DefaultSignature()
-	if err != nil {
-		return fmt.Errorf("Couldn't find default signature: %v", err)
-	}
-
-	_, err = repo.Notes.Create(
-		entity.GetRefPath(),
-		sig,
-		sig,
-		firstCommit.Id(),
-		newContent,
-		true,
-	)
+	cmd = exec.Command("git", "notes", "--ref", "refs/notes/ubik/issues", "add", "-m", newContent, "-f", firstCommit)
+	err = cmd.Run()
 	if err != nil {
 		return fmt.Errorf("Failed to add note to tree: %v", err)
 	}
@@ -473,21 +423,17 @@ func Update(entity Entity) error {
 }
 
 func Remove(entity Entity) error {
-	wd := GetWd()
-	repo, err := git.OpenRepository(wd)
-	if err != nil {
-		return fmt.Errorf("Failed to open repository: %v", err)
-	}
-
-	firstCommit := GetFirstCommit(repo)
+	firstCommit := GetFirstCommit()
 
 	var newContent string
-	note, err := repo.Notes.Read(entity.GetRefPath(), firstCommit.Id())
-	if err != nil && git.IsErrorCode(err, git.ErrNotFound) {
+	cmd := exec.Command("git", "notes", "--ref", "refs/notes/ubik/issues", "show", firstCommit)
+	note, err := cmd.Output()
+
+	if err != nil {
 		log.Fatalf("%v", err)
 	} else if err == nil {
 		data := make(map[string]interface{})
-		err := json.Unmarshal([]byte(note.Message()), &data)
+		err := json.Unmarshal([]byte(note), &data)
 		if err != nil {
 			log.Fatalf("Failed to unmarshal data: %v\n", err)
 		}
@@ -500,23 +446,10 @@ func Remove(entity Entity) error {
 		}
 
 		newContent = string(newJSON)
-	} else {
-		return err
 	}
 
-	sig, err := repo.DefaultSignature()
-	if err != nil {
-		return fmt.Errorf("Couldn't find default signature: %v", err)
-	}
-
-	_, err = repo.Notes.Create(
-		entity.GetRefPath(),
-		sig,
-		sig,
-		firstCommit.Id(),
-		newContent,
-		true,
-	)
+	cmd = exec.Command("git", "notes", "--ref", "refs/notes/ubik/issues", "add", "-m", newContent, "-f", firstCommit)
+	err = cmd.Run()
 	if err != nil {
 		return fmt.Errorf("Failed to add note to tree: %v", err)
 	}
@@ -524,85 +457,86 @@ func Remove(entity Entity) error {
 	return nil
 }
 
-func OpenRepo(wd string) *git.Repository {
-	repo, err := git.OpenRepository(wd)
+func GetRefsByPath(refPath string) []string {
+	// cmd := exec.Command("git", "for-each-ref", "--format='%(objectname)'", "refs/notes/ubik")
+	cmd := exec.Command("git", "notes", "--ref", refPath, "list")
+	bytes, err := cmd.Output()
 	if err != nil {
-		log.Fatalf("Failed to open repository: %v", err)
+		panic(err)
 	}
 
-	return repo
+	var noteIds []string
+	str := string(bytes)
+	for _, s := range strings.Split(str, "\n") {
+		noteId := strings.Split(s, " ")[0]
+		if noteId != "" {
+			noteIds = append(noteIds, noteId)
+		}
+	}
+
+	log.Info(len(noteIds))
+	return noteIds
 }
 
-func GetRefsByPath(repo *git.Repository, refPath string) *git.Reference {
-	notesRefObj, err := repo.References.Lookup(refPath)
+func GetNotes(refPath string) ([]*Note, error) {
+	var notes []*Note
+	refs := GetRefsByPath(refPath)
+
+	cmd := exec.Command("git", "cat-file", "--batch")
+
+	stdin, err := cmd.StdinPipe()
 	if err != nil {
-		log.Errorf("Failed to look up notes ref: %v", err)
-		log.Infof("Creating ref: %v", err)
+		return nil, err
+	}
+	defer stdin.Close()
 
-		firstCommit := GetFirstCommit(repo)
-		sig, err := repo.DefaultSignature()
-		if err != nil {
-			log.Errorf("Couldn't find default signature: %v", err)
-		}
-
-		_, err = repo.Notes.Create(
-			IssuesPath,
-			sig,
-			sig,
-			firstCommit.Id(),
-			"{}",
-			true,
-		)
-		notesRefObj, err := repo.References.Lookup(refPath)
-		return notesRefObj
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
 	}
 
-	return notesRefObj
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+
+	for _, object := range refs {
+		fmt.Fprintln(stdin, object)
+	}
+	stdin.Close()
+
+	scanner := bufio.NewScanner(stdout)
+
+	for scanner.Scan() {
+		objectInfo := strings.SplitN(scanner.Text(), " ", 3)
+		objectHash := objectInfo[0]
+		scanner.Scan()
+		if scanner.Text() != "" {
+			// log.Infof("scanner text: %+v", scanner.Text())
+			notes = append(notes, &Note{
+				ObjectId: objectHash,
+				Ref:      refPath,
+				Message:  scanner.Text(),
+			})
+		}
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return nil, err
+	}
+
+	return notes, nil
 }
 
-func GetNotes(refPath string) []*git.Note {
-	wd := GetWd()
-	repo := OpenRepo(wd)
-	notesRefObj := GetRefsByPath(repo, refPath)
-
-	iter, err := repo.NewNoteIterator(notesRefObj.Name())
-	if err != nil {
-		fmt.Printf("Failed to get notes iterator: %v", err)
-	}
-	defer iter.Free()
-
-	var notes []*git.Note
-
-	var annotatedId *git.Oid
-	for {
-		_, annotatedId, err = iter.Next()
-		if err != nil {
-			if git.IsErrorCode(err, git.ErrIterOver) {
-				break // End of the iterator
-			}
-			log.Fatalf("Error iterating notes: %v", err)
-		}
-
-		note, err := repo.Notes.Read(refPath, annotatedId)
-		if err != nil {
-			log.Fatalf("Error reading note: %v", err)
-		}
-
-		notes = append(notes, note)
-	}
-
-	return notes
-}
-
-func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
+func IssuesFromGitNotes(gitNotes []*Note) []*Issue {
 	var issues []*Issue
 	var closedIssues []*Issue
 	for _, notePtr := range gitNotes {
 		note := *notePtr
 
 		data := make(map[string]Issue)
-		err := json.Unmarshal([]byte(note.Message()), &data)
+		err := json.Unmarshal([]byte(note.Message), &data)
 		if err != nil {
+			log.Info("note message: %s", note.Message)
 			log.Fatalf("Failed to unmarshal data: %v\n", err)
 		}
 
@@ -620,8 +554,6 @@ func IssuesFromGitNotes(gitNotes []*git.Note) []*Issue {
 			issues = append(issues, &issue)
 		}
 	}
-
-	log.Infof("%+v", issues)
 
 	sort.Sort(ByUpdatedAtDescending(issues))
 	sort.Sort(ByUpdatedAtDescending(closedIssues))

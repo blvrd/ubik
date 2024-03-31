@@ -15,6 +15,7 @@ type Note struct {
   AttachedObjectId string
   Ref string
   Stale bool
+  Message string
 }
 
 func (n *Note) Read() (map[string]interface{}, error) {

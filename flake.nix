@@ -46,12 +46,8 @@
           version = "0.1.0";
           vendorSha256 = "sha256-Hk7SECmVO3I7GYBHtPewV/mYx0CRwxFHnW4LNlPrwzU=";
 
-          nativeBuildInputs = with pkgs; [
-            pkg-config
-          ];
-
           buildInputs = with pkgs; [
-            libgit2_1_5
+            git
           ];
 
 

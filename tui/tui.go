@@ -85,7 +85,10 @@ type issuesLoadedMsg []*entity.Issue
 
 func GetIssues() tea.Msg {
 	refPath := entity.IssuesPath
-	notes := entity.GetNotes(refPath)
+	notes, err := entity.GetNotes(refPath)
+	if err != nil {
+		log.Fatal(err)
+	}
 	issues := entity.IssuesFromGitNotes(notes)
 
 	return issuesLoadedMsg(issues)
