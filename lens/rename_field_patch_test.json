@@ -1,0 +1,25 @@
+{
+  "name": "Renaming a field",
+  "original": [
+    {
+      "op": "replace",
+      "path": "/title",
+      "value": "new title"
+    }
+  ],
+  "lens": [
+    {
+      "rename": {
+        "source": "title",
+        "destination": "name"
+      }
+    }
+  ],
+  "evolved": [
+    {
+      "op": "replace",
+      "path": "/name",
+      "value": "new title"
+    }
+  ]
+}

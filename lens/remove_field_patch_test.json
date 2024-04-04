@@ -1,0 +1,18 @@
+{
+  "name": "Removing a field",
+  "original": [
+    {
+      "op": "replace",
+      "path": "/description",
+      "value": "new description"
+    }
+  ],
+  "lens": [
+    { "remove": { "name": "description" } }
+  ],
+  "evolved": [
+    {
+      "op": "noop"
+    }
+  ]
+}

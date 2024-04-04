@@ -3,11 +3,13 @@ module github.com/blvrd/ubik
 go 1.20
 
 require (
+	github.com/Jeffail/gabs/v2 v2.7.0
 	github.com/charmbracelet/bubbles v0.18.0
 	github.com/charmbracelet/bubbletea v0.25.0
 	github.com/charmbracelet/huh v0.3.0
 	github.com/charmbracelet/lipgloss v0.9.1
 	github.com/charmbracelet/log v0.3.1
+	github.com/google/go-cmp v0.5.8
 	github.com/google/uuid v1.6.0
 	github.com/spf13/cobra v1.8.0
 )

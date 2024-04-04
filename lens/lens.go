@@ -1,5 +1,14 @@
 package lens
 
+import (
+	// "encoding/json"
+	// "fmt"
+
+	// "fmt"
+	"github.com/Jeffail/gabs/v2"
+	// "github.com/charmbracelet/log"
+)
+
 // export interface Property {
 //   name?: string
 //   type: JSONSchema7TypeName | JSONSchema7TypeName[]
@@ -16,38 +25,40 @@ package lens
 //   op: 'remove'
 // }
 
-
-// TODO: make operations more generic
-type AddPropertyOperation struct {
-	op           string
-	name         string
-	dataType     string
-	defaultValue any
-	required     bool
+// type Lens interface {
+// 	Op() string
+// }
+//
+type Lens struct {
+  JSON *gabs.Container
 }
 
-func ReverseAddPropertyOp(lensop AddPropertyOperation) RemovePropertyOperation {
-	return RemovePropertyOperation{
-		op:   "remove",
-		name: lensop.name,
-	}
+func (lens Lens) Op() string {
+  var op string
+  for key := range lens.JSON.ChildrenMap() {
+    op = key
+  }
+  return op
 }
 
-type RemovePropertyOperation struct {
-	op   string
-	name string
+func (lens *Lens) Destination() string {
+  return lens.JSON.Search(lens.Op(), "destination").Data().(string)
 }
 
-type RenamePropertyOperation struct {
-	op          string
-	source      string
-	destination string
+
+func NewLens(c *gabs.Container) Lens {
+  return Lens{JSON: c}
 }
 
-func ReverseRenamePropertyOp(lensop RenamePropertyOperation) RenamePropertyOperation {
-	return RenamePropertyOperation{
-		op:          "rename",
-		source:      lensop.destination,
-		destination: lensop.source,
-	}
+type LensSource []Lens
+
+func NewLensSource(c *gabs.Container) LensSource {
+  var lensSource LensSource
+
+  for _, item := range c.Children() {
+    lens := NewLens(item)
+    lensSource = append(lensSource, lens)
+  }
+
+  return lensSource
 }
