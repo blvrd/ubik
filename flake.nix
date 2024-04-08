@@ -3,7 +3,7 @@
 
   # Flake inputs
   inputs = {
-    nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.2305.491812.tar.gz";
+    nixpkgs.url = "github:nixos/nixpkgs/nixpkgs-unstable";
   };
 
   # Flake outputs
@@ -29,12 +29,8 @@
           # The Nix packages provided in the environment
           packages = with pkgs; [
             go
-            libgit2_1_5
-            pkg-config
             gotools # Go tools like goimports, godoc, and others
             gum
-            cloc
-            gore
           ];
         };
       });
