@@ -45,6 +45,13 @@ func (lens *Lens) Destination() string {
   return lens.JSON.Search(lens.Op(), "destination").Data().(string)
 }
 
+func (lens *Lens) Source() string {
+  return lens.JSON.Search(lens.Op(), "source").Data().(string)
+}
+
+func (lens *Lens) Name() string {
+  return lens.JSON.Search(lens.Op(), "name").Data().(string)
+}
 
 func NewLens(c *gabs.Container) Lens {
   return Lens{JSON: c}
