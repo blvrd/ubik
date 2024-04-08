@@ -69,8 +69,8 @@ func TestLensPatch(t *testing.T) {
     lensJSON := parsedJSON.Search("lens")
 
 		t.Run("forward", func(t *testing.T) {
-      originalPatch := NewPatch(originalPatchJSON)
-      evolvedPatch := NewPatch(evolvedPatchJSON)
+      originalPatch := NewPatchFromJSON(originalPatchJSON)
+      evolvedPatch := NewPatchFromJSON(evolvedPatchJSON)
       lensSource := NewLensSource(lensJSON)
 			result := ApplyLensToPatch(lensSource, originalPatch)
 

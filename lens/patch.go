@@ -2,7 +2,7 @@ package lens
 
 import (
 	"encoding/json"
-  "strings"
+	"strings"
 	// "fmt"
 
 	"fmt"
@@ -14,14 +14,14 @@ import (
 )
 
 func PatchToDoc(p Patch, optionalDoc *gabs.Container) *gabs.Container {
-  var original []byte
-  var filtered Patch
+	var original []byte
+	var filtered Patch
 
-  for _, patchOp := range p {
-    if patchOp.Op() != "noop" {
-      filtered = append(filtered, patchOp)
-    }
-  }
+	for _, patchOp := range p {
+		if patchOp.Op() != "noop" {
+			filtered = append(filtered, patchOp)
+		}
+	}
 
 	patchJSON, err := json.Marshal(filtered)
 	if err != nil {
@@ -29,30 +29,30 @@ func PatchToDoc(p Patch, optionalDoc *gabs.Container) *gabs.Container {
 	}
 	var doc *gabs.Container
 	if optionalDoc != nil {
-    fmt.Printf("patch in patchtodoc: %s\n\n", p)
-    original = optionalDoc.Bytes()
+		fmt.Printf("patch in patchtodoc: %s\n\n", p)
+		original = optionalDoc.Bytes()
 	} else {
-    original = []byte(`{}`)
+		original = []byte(`{}`)
 	}
-  patch, err := jsonpatch.DecodePatch(patchJSON)
-  if err != nil {
-    panic(err)
-  }
+	patch, err := jsonpatch.DecodePatch(patchJSON)
+	if err != nil {
+		panic(err)
+	}
 
-  modified, err := patch.Apply(original)
-  if err != nil {
-    panic(err)
-  }
+	modified, err := patch.Apply(original)
+	if err != nil {
+		panic(err)
+	}
 	// modified := []byte(`{"category":"bug","description":"I'm having a problem with this.","id":1,"status":"todo","title":"Found a bug"}`)
-  fmt.Printf("Original document: %s\n", original)
-  fmt.Printf("Modified document: %s\n", modified)
+	fmt.Printf("Original document: %s\n", original)
+	fmt.Printf("Modified document: %s\n", modified)
 
-  doc, err = gabs.ParseJSON(modified)
-  if err != nil {
-    panic(err)
-  }
+	doc, err = gabs.ParseJSON(modified)
+	if err != nil {
+		panic(err)
+	}
 
-  return doc
+	return doc
 }
 
 func ApplyLensToDoc(ls LensSource, doc *gabs.Container) *gabs.Container {
@@ -60,14 +60,14 @@ func ApplyLensToDoc(ls LensSource, doc *gabs.Container) *gabs.Container {
 	// original := []byte(`{"name": "John", "age": 24, "height": 3.21}`)
 	// original := []byte(`{"name": "Jane", "age": 24}`)
 	original := doc.Bytes()
-  fmt.Printf("doc: %s\n\n", string(original))
+	fmt.Printf("doc: %s\n\n", string(original))
 	patch := DocToPatch(original)
-  fmt.Printf("patch: %s\n\n", patch)
-  evolvedPatch := ApplyLensToPatch(ls, patch)
-  fmt.Printf("evolved patch: %s\n\n", evolvedPatch)
-  x := PatchToDoc(evolvedPatch, nil)
-  fmt.Printf("heyyyy there: %s", x)
-  return x
+	fmt.Printf("patch: %s\n\n", patch)
+	evolvedPatch := ApplyLensToPatch(ls, patch)
+	fmt.Printf("evolved patch: %s\n\n", evolvedPatch)
+	x := PatchToDoc(evolvedPatch, nil)
+	fmt.Printf("heyyyy there: %s", x)
+	return x
 }
 
 func DocToPatch(target []byte) Patch {
@@ -86,25 +86,50 @@ func DocToPatch(target []byte) Patch {
 		panic(err)
 	}
 
-	return NewPatch(parsedJSON)
+	return NewPatchFromJSON(parsedJSON)
 }
 
 func ApplyLensToPatch(ls LensSource, p Patch) Patch {
+	// var newPatch Patch
+
 	for _, lens := range ls {
 		for _, patchOp := range p {
-      // fmt.Printf("lens op: %s\n\n", lens.Op())
+			// fmt.Printf("lens op: %s\n\n", lens.Op())
 			switch lens.Op() {
 			case "rename":
-        if (patchOp.Op() == "replace" || patchOp.Op() == "add") && strings.Split(patchOp.Path(), "/")[1] == lens.Source() {
-          destination := lens.Destination()
-          str := fmt.Sprintf("/%s", destination)
-          patchOp.SetPath(&str)
-        }
+				if (patchOp.Op() == "replace" || patchOp.Op() == "add") && strings.Split(patchOp.Path(), "/")[1] == lens.Source() {
+					destination := lens.Destination()
+					str := fmt.Sprintf("/%s", destination)
+					patchOp.SetPath(&str)
+				}
 			case "remove":
-        if strings.Split(patchOp.Path(), "/")[1] == lens.Name() {
-          patchOp.Clear()
+				if strings.Split(patchOp.Path(), "/")[1] == lens.Name() {
+					patchOp.Clear()
+				}
+			case "convert":
+				if patchOp.Op() != "add" && patchOp.Op() != "replace" {
+					break
+				}
+
+				if fmt.Sprintf("/%s", lens.Name()) != patchOp.Path() {
+					break
+				}
+
+				stringifiedValue := string(patchOp.Value())
+        var newValue any
+        for _, mapping := range lens.Mapping().([]any) {
+          fmt.Printf("mapping!!!!! %#v\n\n", mapping)
+          m := mapping.(map[string]any)
+          if _, exists := m[stringifiedValue]; !exists {
+            break
+          } else {
+            newValue = m[stringifiedValue]
+          }
         }
-      default:
+
+        patchOp.SetValue(&newValue)
+			default:
+				fmt.Printf("IMPLEMENT: %s\n", lens.Op())
 			}
 		}
 	}
@@ -126,7 +151,7 @@ type PatchOperation struct {
 }
 
 func (p *PatchOperation) Path() string {
-  return p.JSON.Search("path").Data().(string)
+	return p.JSON.Search("path").Data().(string)
 }
 
 func (p *PatchOperation) SetPath(path *string) error {
@@ -151,7 +176,7 @@ func (p *PatchOperation) Clear() {
 }
 
 func (p PatchOperation) Op() string {
-  return p.JSON.Search("op").Data().(string)
+	return p.JSON.Search("op").Data().(string)
 }
 
 func (p *PatchOperation) SetOp(op string) error {
@@ -160,6 +185,10 @@ func (p *PatchOperation) SetOp(op string) error {
 		return err
 	}
 	return nil
+}
+
+func (p *PatchOperation) Value() string {
+	return p.JSON.Search("value").Data().(string)
 }
 
 func (p *PatchOperation) SetSource(source *string) error {
@@ -177,7 +206,7 @@ func (p *PatchOperation) SetSource(source *string) error {
 	return nil
 }
 
-func (p *PatchOperation) SetValue(value *string) error {
+func (p *PatchOperation) SetValue(value *any) error {
 	if value != nil {
 		_, err := p.JSON.SetP(value, "value")
 		if err != nil {
@@ -193,20 +222,20 @@ func (p *PatchOperation) SetValue(value *string) error {
 }
 
 func (p *PatchOperation) MarshalJSON() ([]byte, error) {
-  b, err := json.Marshal(p.JSON)
+	b, err := json.Marshal(p.JSON)
 
-  return b, err
+	return b, err
 }
 
-func NewPatchOperation(c *gabs.Container) PatchOperation {
+func NewPatchOperationFromJSON(c *gabs.Container) PatchOperation {
 	return PatchOperation{JSON: c}
 }
 
-func NewPatch(c *gabs.Container) Patch {
+func NewPatchFromJSON(c *gabs.Container) Patch {
 	var patch Patch
 
 	for _, item := range c.Children() {
-		patchOp := NewPatchOperation(item)
+		patchOp := NewPatchOperationFromJSON(item)
 		patch = append(patch, patchOp)
 	}
 
