@@ -25,51 +25,56 @@ import (
 //   op: 'remove'
 // }
 
-// type Lens interface {
-// 	Op() string
-// }
-//
+//	type Lens interface {
+//		Op() string
+//	}
 type Lens struct {
-  JSON *gabs.Container
+	JSON       *gabs.Container
+	lensSource *LensSource
 }
 
 func (lens Lens) Op() string {
-  var op string
-  for key := range lens.JSON.ChildrenMap() {
-    op = key
-  }
-  return op
+	var op string
+	for key := range lens.JSON.ChildrenMap() {
+		op = key
+	}
+	return op
 }
 
 func (lens *Lens) Destination() string {
-  return lens.JSON.Search(lens.Op(), "destination").Data().(string)
+	return lens.JSON.Search(lens.Op(), "destination").Data().(string)
 }
 
 func (lens *Lens) Source() string {
-  return lens.JSON.Search(lens.Op(), "source").Data().(string)
+	return lens.JSON.Search(lens.Op(), "source").Data().(string)
 }
 
 func (lens *Lens) Name() string {
-  return lens.JSON.Search(lens.Op(), "name").Data().(string)
+	return lens.JSON.Search(lens.Op(), "name").Data().(string)
 }
 
 func (lens *Lens) Mapping() any {
-  return lens.JSON.Search(lens.Op(), "mapping").Data().(any)
+	return lens.JSON.Search(lens.Op(), "mapping").Data().(any)
+}
+
+func (lens *Lens) NestedLensSource() LensSource {
+  search := lens.JSON.Search(lens.Op(), "lens")
+	return NewLensSource(search)
 }
 
 func NewLens(c *gabs.Container) Lens {
-  return Lens{JSON: c}
+	return Lens{JSON: c}
 }
 
 type LensSource []Lens
 
 func NewLensSource(c *gabs.Container) LensSource {
-  var lensSource LensSource
+	var lensSource LensSource
 
-  for _, item := range c.Children() {
-    lens := NewLens(item)
-    lensSource = append(lensSource, lens)
-  }
+	for _, item := range c.Children() {
+		lens := NewLens(item)
+		lensSource = append(lensSource, lens)
+	}
 
-  return lensSource
+	return lensSource
 }

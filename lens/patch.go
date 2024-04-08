@@ -13,7 +13,7 @@ import (
 	// "github.com/charmbracelet/log"
 )
 
-func PatchToDoc(p Patch, optionalDoc *gabs.Container) *gabs.Container {
+func PatchToDoc(p Patch) *gabs.Container {
 	var original []byte
 	var filtered Patch
 
@@ -28,12 +28,7 @@ func PatchToDoc(p Patch, optionalDoc *gabs.Container) *gabs.Container {
 		panic(err)
 	}
 	var doc *gabs.Container
-	if optionalDoc != nil {
-		fmt.Printf("patch in patchtodoc: %s\n\n", p)
-		original = optionalDoc.Bytes()
-	} else {
-		original = []byte(`{}`)
-	}
+	original = []byte(`{}`)
 	patch, err := jsonpatch.DecodePatch(patchJSON)
 	if err != nil {
 		panic(err)
@@ -60,13 +55,11 @@ func ApplyLensToDoc(ls LensSource, doc *gabs.Container) *gabs.Container {
 	// original := []byte(`{"name": "John", "age": 24, "height": 3.21}`)
 	// original := []byte(`{"name": "Jane", "age": 24}`)
 	original := doc.Bytes()
-	fmt.Printf("doc: %s\n\n", string(original))
 	patch := DocToPatch(original)
-	fmt.Printf("patch: %s\n\n", patch)
 	evolvedPatch := ApplyLensToPatch(ls, patch)
+	fmt.Printf("patch: %s\n\n", patch)
 	fmt.Printf("evolved patch: %s\n\n", evolvedPatch)
-	x := PatchToDoc(evolvedPatch, nil)
-	fmt.Printf("heyyyy there: %s", x)
+	x := PatchToDoc(evolvedPatch)
 	return x
 }
 
@@ -90,22 +83,37 @@ func DocToPatch(target []byte) Patch {
 }
 
 func ApplyLensToPatch(ls LensSource, p Patch) Patch {
-	// var newPatch Patch
+	var newPatch Patch
 
 	for _, lens := range ls {
 		for _, patchOp := range p {
-			// fmt.Printf("lens op: %s\n\n", lens.Op())
+      newPatchOp := PatchOperation{JSON: gabs.Wrap(patchOp.JSON.Data())}
+      fmt.Printf("using new copy: %v\n", patchOp.JSON != newPatchOp.JSON)
 			switch lens.Op() {
 			case "rename":
 				if (patchOp.Op() == "replace" || patchOp.Op() == "add") && strings.Split(patchOp.Path(), "/")[1] == lens.Source() {
 					destination := lens.Destination()
 					str := fmt.Sprintf("/%s", destination)
-					patchOp.SetPath(&str)
+					newPatchOp.SetPath(&str)
+          newPatch = append(newPatch, newPatchOp)
 				}
 			case "remove":
 				if strings.Split(patchOp.Path(), "/")[1] == lens.Name() {
-					patchOp.Clear()
+					newPatchOp.Clear()
+          newPatch = append(newPatch, newPatchOp)
 				}
+			case "head":
+				if strings.Split(patchOp.Path(), "/")[1] == lens.Name() {
+					head := patchOp.Value().([]any)[0]
+					newPatchOp.SetValue(&head)
+          newPatch = append(newPatch, newPatchOp)
+				}
+			case "in":
+				if strings.Split(patchOp.Path(), "/")[1] == lens.Name() {
+					fmt.Printf("nested lens: %#v\n", lens.NestedLensSource())
+          newPatch = append(newPatch, newPatchOp)
+				}
+				// case "hoist":
 			case "convert":
 				if patchOp.Op() != "add" && patchOp.Op() != "replace" {
 					break
@@ -115,25 +123,26 @@ func ApplyLensToPatch(ls LensSource, p Patch) Patch {
 					break
 				}
 
-				stringifiedValue := string(patchOp.Value())
-        var newValue any
-        for _, mapping := range lens.Mapping().([]any) {
-          fmt.Printf("mapping!!!!! %#v\n\n", mapping)
-          m := mapping.(map[string]any)
-          if _, exists := m[stringifiedValue]; !exists {
-            break
-          } else {
-            newValue = m[stringifiedValue]
-          }
-        }
+				stringifiedValue := string(patchOp.Value().(string))
+				var newValue any
+				for _, mapping := range lens.Mapping().([]any) {
+					m := mapping.(map[string]any)
+					if _, exists := m[stringifiedValue]; !exists {
+						break
+					} else {
+						newValue = m[stringifiedValue]
+					}
+				}
 
-        patchOp.SetValue(&newValue)
+			  newPatchOp.SetValue(&newValue)
+        newPatch = append(newPatch, newPatchOp)
 			default:
+        newPatch = append(newPatch, newPatchOp)
 				fmt.Printf("IMPLEMENT: %s\n", lens.Op())
 			}
 		}
 	}
-	return p
+	return newPatch
 }
 
 type Patch []PatchOperation
@@ -187,8 +196,8 @@ func (p *PatchOperation) SetOp(op string) error {
 	return nil
 }
 
-func (p *PatchOperation) Value() string {
-	return p.JSON.Search("value").Data().(string)
+func (p *PatchOperation) Value() any {
+	return p.JSON.Search("value").Data().(any)
 }
 
 func (p *PatchOperation) SetSource(source *string) error {
@@ -208,7 +217,8 @@ func (p *PatchOperation) SetSource(source *string) error {
 
 func (p *PatchOperation) SetValue(value *any) error {
 	if value != nil {
-		_, err := p.JSON.SetP(value, "value")
+		_, err := p.JSON.SetP(*value, "value")
+
 		if err != nil {
 			return err
 		}
