@@ -1,5 +1,6 @@
 {
   "name": "Removing a field",
+  "reverse": true,
   "original": [
     {
       "op": "replace",

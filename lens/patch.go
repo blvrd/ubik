@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"strings"
 
-
 	"github.com/Jeffail/gabs/v2"
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/wI2L/jsondiff"
@@ -77,113 +76,128 @@ func DocToPatch(target []byte) Patch {
 }
 
 type PatchOperation struct {
-	Op    string      `json:"op"`
-	Path  string      `json:"path"`
-	Value interface{} `json:"value,omitempty"`
+	Op         string      `json:"op"`
+	Path       string      `json:"path"`
+	Value      interface{} `json:"value,omitempty"`
+  LensSource *LensSource `json:"lens,omitempty"`
 }
 
 type Patch []PatchOperation
 
-func InterpretLens(patches []PatchOperation, lenses []Lens) Patch {
+func InterpretLens(patches Patch, lenses []Lens) Patch {
 	var result Patch
 
-	for _, patch := range patches {
-		transformedPatch := applyLens(patch, lenses)
-		if transformedPatch.Path != "" || transformedPatch.Value != nil {
-			result = append(result, transformedPatch)
+	for _, lens := range lenses {
+		var transformedPatches []PatchOperation
+
+		for _, patch := range patches {
+			transformedPatch := applyLens(patch, lens)
+			if transformedPatch.Op != "" {
+				transformedPatches = append(transformedPatches, transformedPatch)
+			}
 		}
+
+		if lens.Add != nil {
+			addPatch := PatchOperation{
+				Op:    "add",
+				Path:  "/" + lens.Add.Name,
+				Value: lens.Add.Default,
+			}
+			transformedPatches = append(transformedPatches, addPatch)
+		}
+
+		patches = transformedPatches
 	}
 
-  if result == nil {
-    result = Patch{}
-  }
+	result = patches
 
+	if result == nil {
+		return Patch{}
+	}
 	return result
-
 }
 
-func applyLens(patch PatchOperation, lenses []Lens) PatchOperation {
-	for _, lens := range lenses {
-		if lens.Rename != nil {
-			// Perform rename operation
-			if strings.HasSuffix(patch.Path, "/"+lens.Rename.Source) {
-				patch.Path = strings.TrimSuffix(patch.Path, "/"+lens.Rename.Source) + "/" + lens.Rename.Destination
-			}
-		} else if lens.Convert != nil {
-			// Perform convert operation
-			if strings.HasSuffix(patch.Path, "/"+lens.Convert.Name) {
-				if value, ok := patch.Value.(string); ok {
-					for _, mapping := range lens.Convert.Mapping {
-						for k, v := range mapping {
-							if value == k {
-								patch.Value = v
-								break
-							}
+func applyLens(patchOp PatchOperation, lens Lens) PatchOperation {
+	if lens.Rename != nil {
+		// Perform rename operation
+		if strings.HasSuffix(patchOp.Path, "/"+lens.Rename.Source) {
+			patchOp.Path = strings.TrimSuffix(patchOp.Path, "/"+lens.Rename.Source) + "/" + lens.Rename.Destination
+		}
+	} else if lens.Convert != nil {
+		// Perform convert operation
+		if strings.HasSuffix(patchOp.Path, "/"+lens.Convert.Name) {
+			if value, ok := patchOp.Value.(string); ok {
+				for _, mapping := range lens.Convert.Mapping {
+					for k, v := range mapping {
+						if value == k {
+							patchOp.Value = v
+							break
 						}
 					}
 				}
-			}
-		} else if lens.Head != nil {
-			// Perform head operation
-			if strings.HasSuffix(patch.Path, "/"+lens.Head.Name) {
-				if slice, ok := patch.Value.([]interface{}); ok && len(slice) > 0 {
-					patch.Value = slice[0]
-				}
-			}
-		} else if lens.In != nil {
-			if strings.HasPrefix(patch.Path, "/"+lens.In.Name) {
-				if arr, ok := patch.Value.([]interface{}); ok {
-					for i := range arr {
-						if obj, ok := arr[i].(map[string]interface{}); ok {
-              jsonBytes, err := json.Marshal(obj)
-              if err != nil {
-                panic(err)
-              }
-							nestedPatches := DocToPatch(jsonBytes)
-							for _, nestedPatch := range nestedPatches {
-								nestedPatch.Path = patch.Path + "/" + strconv.Itoa(i) + nestedPatch.Path
-								for _, nestedLens := range lens.In.Lens {
-									nestedPatch = applyLens(nestedPatch, []Lens{nestedLens})
-								}
-							}
-							arr[i] = PatchToDoc(nestedPatches)
-						}
-					}
-					patch.Value = arr
-				} else if obj, ok := patch.Value.(map[string]interface{}); ok {
-          jsonBytes, err := json.Marshal(obj)
-          if err != nil {
-            panic(err)
-          }
-					nestedPatches := DocToPatch(jsonBytes)
-          var appliedNestedPatches []PatchOperation
-					for _, nestedPatch := range nestedPatches {
-						for _, nestedLens := range lens.In.Lens {
-							nestedPatch = applyLens(nestedPatch, []Lens{nestedLens})
-              appliedNestedPatches = append(appliedNestedPatches, nestedPatch)
-						}
-					}
-					patch.Value = PatchToDoc(appliedNestedPatches).Data()
-				}
-			}
-		} else if lens.Hoist != nil {
-			// Perform hoist operation
-			if strings.HasPrefix(patch.Path, "/"+lens.Hoist.Host) {
-				if nestedData, ok := patch.Value.(map[string]interface{}); ok {
-					if hoistValue, ok := nestedData[lens.Hoist.Name]; ok {
-						patch.Path = strings.TrimPrefix(patch.Path, "/"+lens.Hoist.Host) + "/" + lens.Hoist.Name
-						patch.Value = hoistValue
-					}
-				}
-			}
-		} else if lens.Remove != nil {
-			// Perform remove operation
-			if strings.HasSuffix(patch.Path, "/"+lens.Remove.Name) {
-				return PatchOperation{} // Return an empty patch to remove the field
 			}
 		}
+	} else if lens.Head != nil {
+		// Perform head operation
+		if strings.HasSuffix(patchOp.Path, "/"+lens.Head.Name) {
+			if slice, ok := patchOp.Value.([]interface{}); ok && len(slice) > 0 {
+				patchOp.Value = slice[0]
+			}
+		}
+	} else if lens.In != nil {
+		if strings.HasPrefix(patchOp.Path, "/"+lens.In.Name) {
+			if arr, ok := patchOp.Value.([]interface{}); ok {
+				for i := range arr {
+					if obj, ok := arr[i].(map[string]interface{}); ok {
+						jsonBytes, err := json.Marshal(obj)
+						if err != nil {
+							panic(err)
+						}
+						nestedpatchOpes := DocToPatch(jsonBytes)
+						for _, nestedpatchOp := range nestedpatchOpes {
+							nestedpatchOp.Path = patchOp.Path + "/" + strconv.Itoa(i) + nestedpatchOp.Path
+							for _, nestedLens := range lens.In.Lens {
+								nestedpatchOp = applyLens(nestedpatchOp, nestedLens)
+							}
+						}
+						arr[i] = PatchToDoc(nestedpatchOpes)
+					}
+				}
+				patchOp.Value = arr
+			} else if obj, ok := patchOp.Value.(map[string]interface{}); ok {
+				jsonBytes, err := json.Marshal(obj)
+				if err != nil {
+					panic(err)
+				}
+				nestedpatchOpes := DocToPatch(jsonBytes)
+				var appliedNestedpatchOpes Patch
+				for _, nestedpatchOp := range nestedpatchOpes {
+					for _, nestedLens := range lens.In.Lens {
+						nestedpatchOp = applyLens(nestedpatchOp, nestedLens)
+						appliedNestedpatchOpes = append(appliedNestedpatchOpes, nestedpatchOp)
+					}
+				}
+				patchOp.Value = PatchToDoc(appliedNestedpatchOpes).Data()
+			}
+		}
+	} else if lens.Hoist != nil {
+		// Perform hoist operation
+		if strings.HasPrefix(patchOp.Path, "/"+lens.Hoist.Host) {
+			if nestedData, ok := patchOp.Value.(map[string]interface{}); ok {
+				if hoistValue, ok := nestedData[lens.Hoist.Name]; ok {
+					patchOp.Path = strings.TrimPrefix(patchOp.Path, "/"+lens.Hoist.Host) + "/" + lens.Hoist.Name
+					patchOp.Value = hoistValue
+				}
+			}
+		}
+	} else if lens.Remove != nil {
+		// Perform remove operation
+		if strings.HasSuffix(patchOp.Path, "/"+lens.Remove.Name) {
+			return PatchOperation{} // Return an empty patchOp to remove the field
+		}
 	}
-	return patch
+
+	return patchOp
 }
 
 // func (p *PatchOperation) MarshalJSON() ([]byte, error) {

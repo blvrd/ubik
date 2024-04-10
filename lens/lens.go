@@ -3,10 +3,6 @@ package lens
 import (
 	"encoding/json"
 	// "fmt"
-
-	// "fmt"
-	// "github.com/Jeffail/gabs/v2"
-	// "github.com/charmbracelet/log"
 )
 
 type Lens struct {
@@ -16,6 +12,7 @@ type Lens struct {
 	In      *In      `json:"in,omitempty"`
 	Hoist   *Hoist   `json:"hoist,omitempty"`
 	Remove  *Remove  `json:"remove,omitempty"`
+	Add     *Add     `json:"add,omitempty"`
 }
 
 type Rename struct {
@@ -43,71 +40,50 @@ type Hoist struct {
 }
 
 type Remove struct {
-	Name string `json:"name"`
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Default string `json:"default,omitempty"`
+}
+
+type Add struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"`
+	Default string `json:"default,omitempty"`
+	// Items   []any `json:"items,omitempty"`
+}
+
+func (lens Lens) Reverse() Lens {
+	if lens.Remove != nil {
+		operation := Add{
+			Name:    lens.Remove.Name,
+			Type:    lens.Remove.Type,
+			Default: lens.Remove.Default,
+		}
+
+    return Lens{Add: &operation}
+	}
+	return lens
 }
 
 type LensSource []Lens
 
-// export interface Property {
-//   name?: string
-//   type: JSONSchema7TypeName | JSONSchema7TypeName[]
-//   default?: any
-//   required?: boolean
-//   items?: Property
-// }
-//
-// export interface AddProperty extends Property {
-//   op: 'add'
-// }
-//
-// export interface RemoveProperty extends Property {
-//   op: 'remove'
-// }
+func (ls LensSource) Reverse() LensSource {
+	var reverse LensSource
 
-//	type Lens interface {
-//		Op() string
-//	}
-// type Lens struct {
-// 	JSON       *gabs.Container
-// 	lensSource *LensSource
-// }
-//
-// func (lens Lens) Op() string {
-// 	var op string
-// 	for key := range lens.JSON.ChildrenMap() {
-// 		op = key
-// 	}
-// 	return op
-// }
-//
-// func (lens *Lens) Destination() string {
-// 	return lens.JSON.Search(lens.Op(), "destination").Data().(string)
-// }
-//
-// func (lens *Lens) Source() string {
-// 	return lens.JSON.Search(lens.Op(), "source").Data().(string)
-// }
-//
-// func (lens *Lens) Name() string {
-// 	return lens.JSON.Search(lens.Op(), "name").Data().(string)
-// }
-//
-// func (lens *Lens) Mapping() any {
-// 	return lens.JSON.Search(lens.Op(), "mapping").Data().(any)
-// }
-//
-// func (lens *Lens) NestedLensSource() LensSource {
-//   search := lens.JSON.Search(lens.Op(), "lens")
-// 	return NewLensSource(search)
-// }
+	for _, lens := range ls {
+		reverse = append(reverse, lens.Reverse())
+	}
+
+	return reverse
+}
 
 func NewLensSource(jsonData []byte) LensSource {
-  var ls LensSource
+	var ls LensSource
 
-  err := json.Unmarshal(jsonData, &ls)
-  if err != nil {
-    panic(err)
-  }
+	err := json.Unmarshal(jsonData, &ls)
+	if err != nil {
+		panic(err)
+	}
 
-  return ls
+	return ls
 }
