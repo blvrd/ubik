@@ -39,8 +39,8 @@ func PatchToDoc(p Patch) *gabs.Container {
 		panic(err)
 	}
 	// modified := []byte(`{"category":"bug","description":"I'm having a problem with this.","id":1,"status":"todo","title":"Found a bug"}`)
-	fmt.Printf("Original document: %s\n", original)
-	fmt.Printf("Modified document: %s\n", modified)
+	// fmt.Printf("Original document: %s\n", original)
+	// fmt.Printf("Modified document: %s\n", modified)
 
 	doc, err = gabs.ParseJSON(modified)
 	if err != nil {
@@ -56,7 +56,7 @@ func ApplyLensToDoc(ls LensSource, doc *gabs.Container) *gabs.Container {
 	// original := []byte(`{"name": "Jane", "age": 24}`)
 	original := doc.Bytes()
 	patch := DocToPatch(original)
-	evolvedPatch := ApplyLensToPatch(ls, patch)
+	evolvedPatch := ApplyLensToPatch(ls, patch, nil)
 	fmt.Printf("patch: %s\n\n", patch)
 	fmt.Printf("evolved patch: %s\n\n", evolvedPatch)
 	x := PatchToDoc(evolvedPatch)
@@ -82,48 +82,96 @@ func DocToPatch(target []byte) Patch {
 	return NewPatchFromJSON(parsedJSON)
 }
 
-func ApplyLensToPatch(ls LensSource, p Patch) Patch {
+func ApplyLensToPatch(ls LensSource, p Patch, debug *string) Patch {
 	var newPatch Patch
 
-	for _, lens := range ls {
-		for _, patchOp := range p {
-      newPatchOp := PatchOperation{JSON: gabs.Wrap(patchOp.JSON.Data())}
-      fmt.Printf("using new copy: %v\n", patchOp.JSON != newPatchOp.JSON)
+	for _, patchOp := range p {
+		JSONcopy, err := gabs.ParseJSON(patchOp.JSON.Bytes())
+		newPatchOp := PatchOperation{JSON: JSONcopy}
+		if err != nil {
+			panic(err)
+		}
+
+		for _, lens := range ls {
 			switch lens.Op() {
 			case "rename":
-				if (patchOp.Op() == "replace" || patchOp.Op() == "add") && strings.Split(patchOp.Path(), "/")[1] == lens.Source() {
+        if newPatchOp.Path() == "" {
+          break
+        }
+
+        if debug != nil {
+          fmt.Println("DEBUGGING!!!!!!!!!!!!!!!")
+          fmt.Printf("newPatchOp path: %s\n\n", newPatchOp.Path())
+          fmt.Printf("lens source name: %s\n\n", lens.Source())
+        }
+				if (newPatchOp.Op() == "replace" || newPatchOp.Op() == "add") && strings.Split(newPatchOp.Path(), "/")[1] == lens.Source() {
 					destination := lens.Destination()
+          fmt.Println("UGHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
+          fmt.Println(destination)
+          fmt.Println(lens.Source())
 					str := fmt.Sprintf("/%s", destination)
 					newPatchOp.SetPath(&str)
-          newPatch = append(newPatch, newPatchOp)
+					newPatch = append(newPatch, newPatchOp)
 				}
 			case "remove":
-				if strings.Split(patchOp.Path(), "/")[1] == lens.Name() {
+        if newPatchOp.Path() == "" {
+          break
+        }
+				if strings.Split(newPatchOp.Path(), "/")[1] == lens.Name() {
+					// fmt.Printf("Remove: %s\n", patchOp)
 					newPatchOp.Clear()
-          newPatch = append(newPatch, newPatchOp)
+					newPatch = append(newPatch, newPatchOp)
 				}
 			case "head":
-				if strings.Split(patchOp.Path(), "/")[1] == lens.Name() {
-					head := patchOp.Value().([]any)[0]
+        if newPatchOp.Path() == "" {
+          break
+        }
+				if strings.Split(newPatchOp.Path(), "/")[1] == lens.Name() {
+					head := newPatchOp.Value().([]any)[0]
 					newPatchOp.SetValue(&head)
-          newPatch = append(newPatch, newPatchOp)
+					newPatch = append(newPatch, newPatchOp)
 				}
 			case "in":
-				if strings.Split(patchOp.Path(), "/")[1] == lens.Name() {
-					fmt.Printf("nested lens: %#v\n", lens.NestedLensSource())
-          newPatch = append(newPatch, newPatchOp)
+        if newPatchOp.Path() == "" {
+          break
+        }
+
+				if strings.Split(newPatchOp.Path(), "/")[1] == lens.Name() {
+          fmt.Printf("AAAAAAAAAAAAAAAAAAAAAAAAAA: %s\n", newPatchOp.Value().(map[string]any))
+          fmt.Printf("BBBBBBBBBBBBBBBBBBBBBBBBBB: %s\n", lens.Name())
+          fmt.Printf("CCCCCCCCCCCCCCCCCCCCCCCCCC: %s\n", lens.NestedLensSource()[0].Source())
+          fmt.Printf("CCCCCCCCCCCCCCCCCCCCCCCCCC: %s\n", lens.NestedLensSource()[0].Destination())
+					str := strings.Replace(
+						newPatchOp.Path(),
+						fmt.Sprintf("/%s", lens.Name()),
+						fmt.Sprintf("/%s", lens.NestedLensSource()[0].Source()),
+						1,
+					)
+
+					newPatchOp.SetPath(&str)
+
+          // fmt.Printf("newPatchOp path: %#v\n", newPatchOp.Path())
+          // fmt.Printf("newPatchOp path should be: %#v\n", str)
+          debugstr := "recursing"
+					childPatch := ApplyLensToPatch(
+						lens.NestedLensSource(),
+						Patch{newPatchOp},
+            &debugstr,
+					)
+
+					// newPatch = append(newPatch, newPatchOp)
+          fmt.Printf("childPatch: %#v\n\n", childPatch[0].JSON)
 				}
-				// case "hoist":
 			case "convert":
-				if patchOp.Op() != "add" && patchOp.Op() != "replace" {
+				if newPatchOp.Op() != "add" && newPatchOp.Op() != "replace" {
 					break
 				}
 
-				if fmt.Sprintf("/%s", lens.Name()) != patchOp.Path() {
+				if fmt.Sprintf("/%s", lens.Name()) != newPatchOp.Path() {
 					break
 				}
 
-				stringifiedValue := string(patchOp.Value().(string))
+				stringifiedValue := string(newPatchOp.Value().(string))
 				var newValue any
 				for _, mapping := range lens.Mapping().([]any) {
 					m := mapping.(map[string]any)
@@ -134,11 +182,11 @@ func ApplyLensToPatch(ls LensSource, p Patch) Patch {
 					}
 				}
 
-			  newPatchOp.SetValue(&newValue)
-        newPatch = append(newPatch, newPatchOp)
+				newPatchOp.SetValue(&newValue)
+				newPatch = append(newPatch, newPatchOp)
 			default:
-        newPatch = append(newPatch, newPatchOp)
-				fmt.Printf("IMPLEMENT: %s\n", lens.Op())
+				newPatch = append(newPatch, newPatchOp)
+				// fmt.Printf("IMPLEMENT: %s\n", lens.Op())
 			}
 		}
 	}
