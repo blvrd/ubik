@@ -84,8 +84,8 @@ type PatchOperation struct {
 
 type Patch []PatchOperation
 
-func InterpretLens(patches []PatchOperation, lenses []Lens) []PatchOperation {
-	var result []PatchOperation
+func InterpretLens(patches []PatchOperation, lenses []Lens) Patch {
+	var result Patch
 
 	for _, patch := range patches {
 		transformedPatch := applyLens(patch, lenses)
@@ -93,6 +93,10 @@ func InterpretLens(patches []PatchOperation, lenses []Lens) []PatchOperation {
 			result = append(result, transformedPatch)
 		}
 	}
+
+  if result == nil {
+    result = Patch{}
+  }
 
 	return result
 
