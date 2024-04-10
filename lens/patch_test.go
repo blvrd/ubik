@@ -34,7 +34,7 @@ func TestLensDoc(t *testing.T) {
     lensJSON := parsedJSON.Search("lens")
 
 		t.Run("forward", func(t *testing.T) {
-      lensSource := NewLensSource(lensJSON)
+      lensSource := NewLensSource(lensJSON.Bytes())
 			result := ApplyLensToDoc(lensSource, originalDocJSON)
 
 			if diff := cmp.Diff(evolvedDocJSON, result, cmp.AllowUnexported(gabs.Container{})); diff != "" {
@@ -69,10 +69,10 @@ func TestLensPatch(t *testing.T) {
     lensJSON := parsedJSON.Search("lens")
 
 		t.Run("forward", func(t *testing.T) {
-      originalPatch := NewPatchFromJSON(originalPatchJSON)
-      evolvedPatch := NewPatchFromJSON(evolvedPatchJSON)
-      lensSource := NewLensSource(lensJSON)
-			result := ApplyLensToPatch(lensSource, originalPatch, nil)
+      originalPatch := NewPatchFromJSON(originalPatchJSON.Bytes())
+      evolvedPatch := NewPatchFromJSON(evolvedPatchJSON.Bytes())
+      lensSource := NewLensSource(lensJSON.Bytes())
+			result := InterpretLens(originalPatch, lensSource)
 
 			if diff := cmp.Diff(evolvedPatch, result, cmp.AllowUnexported(gabs.Container{})); diff != "" {
 				t.Errorf("ApplyLensToPatch mismatch (-want +got):\n%s", diff)
