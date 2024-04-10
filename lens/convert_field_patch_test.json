@@ -1,0 +1,35 @@
+{
+  "name": "Converting a field",
+  "original": [
+    {
+      "op": "replace",
+      "path": "/status",
+      "value": "open"
+    }
+  ],
+  "lens": [
+    {
+      "convert": {
+        "name": "status",
+        "mapping": [
+          {
+            "open": "todo",
+            "closed": "done"
+          },
+          {
+            "todo": "open",
+            "doing": "open",
+            "done": "closed"
+          }
+        ]
+      }
+    }
+  ],
+  "evolved": [
+    {
+      "op": "replace",
+      "path": "/status",
+      "value": "todo"
+    }
+  ]
+}
