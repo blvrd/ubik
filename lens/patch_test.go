@@ -2,11 +2,13 @@ package lens
 
 import (
 	// "encoding/json"
-	"github.com/google/go-cmp/cmp"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
-  "github.com/Jeffail/gabs/v2"
+
+	"github.com/Jeffail/gabs/v2"
+	"github.com/google/go-cmp/cmp"
 )
 func TestLensDoc(t *testing.T) {
 	pattern := "*_doc_test.json"
@@ -29,11 +31,12 @@ func TestLensDoc(t *testing.T) {
       t.Fatalf("Could not parse JSON file: %v", err)
     }
 
+    exampleName := parsedJSON.Search("name").Data().(string)
     originalDocJSON := parsedJSON.Search("original")
     evolvedDocJSON := parsedJSON.Search("evolved")
     lensJSON := parsedJSON.Search("lens")
 
-		t.Run("forward", func(t *testing.T) {
+		t.Run(fmt.Sprintf("%s (forward)", exampleName), func(t *testing.T) {
       lensSource := NewLensSource(lensJSON.Bytes())
 			result := ApplyLensToDoc(lensSource, originalDocJSON)
 
@@ -64,11 +67,12 @@ func TestLensPatch(t *testing.T) {
       t.Fatalf("Could not parse JSON file: %s", f.Name())
     }
 
+    exampleName := parsedJSON.Search("name").Data().(string)
     originalPatchJSON := parsedJSON.Search("original")
     evolvedPatchJSON := parsedJSON.Search("evolved")
     lensJSON := parsedJSON.Search("lens")
 
-		t.Run("forward", func(t *testing.T) {
+		t.Run(fmt.Sprintf("%s forward", exampleName), func(t *testing.T) {
       originalPatch := NewPatchFromJSON(originalPatchJSON.Bytes())
       evolvedPatch := NewPatchFromJSON(evolvedPatchJSON.Bytes())
       lensSource := NewLensSource(lensJSON.Bytes())
