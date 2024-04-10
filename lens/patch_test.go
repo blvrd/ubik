@@ -74,7 +74,7 @@ func TestLensPatch(t *testing.T) {
       lensSource := NewLensSource(lensJSON.Bytes())
 			result := InterpretLens(originalPatch, lensSource)
 
-			if diff := cmp.Diff(evolvedPatch, result, cmp.AllowUnexported(gabs.Container{})); diff != "" {
+			if diff := cmp.Diff(evolvedPatch, result); diff != "" {
 				t.Errorf("ApplyLensToPatch mismatch (-want +got):\n%s", diff)
 			}
 		})
