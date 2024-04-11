@@ -69,7 +69,7 @@ func TestLensPatch(t *testing.T) {
 		}
 
 		exampleName := parsedJSON.Search("name").Data().(string)
-		shouldTestReverse := parsedJSON.Search("reverse").Data()
+		shouldTestReverse := parsedJSON.Search("reversed")
 		originalPatchJSON := parsedJSON.Search("original")
 		evolvedPatchJSON := parsedJSON.Search("evolved")
 		lensJSON := parsedJSON.Search("lens")
@@ -88,14 +88,12 @@ func TestLensPatch(t *testing.T) {
 		if shouldTestReverse != nil {
 			t.Run(fmt.Sprintf("%s reverse", exampleName), func(t *testing.T) {
 				originalPatch := NewPatchFromJSON(originalPatchJSON.Bytes())
+				expectedReversedPatch := NewPatchFromJSON(shouldTestReverse.Bytes())
 				lensSource := NewLensSource(lensJSON.Bytes())
 				forwardResult := InterpretLens(originalPatch, lensSource)
 				reverseResult := InterpretLens(forwardResult, lensSource.Reverse())
-        fmt.Printf("forward result: %#v\n", forwardResult)
-        fmt.Printf("reversed lens: %#v\n", lensSource.Reverse())
-        fmt.Printf("reverse result: %#v\n", reverseResult)
 
-				if diff := cmp.Diff(originalPatch, reverseResult); diff != "" {
+				if diff := cmp.Diff(expectedReversedPatch, reverseResult); diff != "" {
 					t.Errorf("ApplyLensToPatch mismatch (-want +got):\n%s", diff)
 				}
 			})

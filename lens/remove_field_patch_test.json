@@ -1,6 +1,5 @@
 {
   "name": "Removing a field",
-  "reverse": true,
   "original": [
     {
       "op": "replace",
@@ -9,7 +8,16 @@
     }
   ],
   "lens": [
-    { "remove": { "name": "description" } }
+    {
+      "remove": {"name": "description"}
+    }
   ],
-  "evolved": []
+  "evolved": [],
+  "reversed": [
+    {
+      "op":    "add",
+      "path":  "/description",
+      "value": ""
+    }
+  ]
 }
