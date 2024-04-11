@@ -119,12 +119,10 @@ func InterpretLens(patches Patch, lenses []Lens) Patch {
 
 func applyLens(patchOp PatchOperation, lens Lens) PatchOperation {
 	if lens.Rename != nil {
-		// Perform rename operation
 		if strings.HasSuffix(patchOp.Path, "/"+lens.Rename.Source) {
 			patchOp.Path = strings.TrimSuffix(patchOp.Path, "/"+lens.Rename.Source) + "/" + lens.Rename.Destination
 		}
 	} else if lens.Convert != nil {
-		// Perform convert operation
 		if strings.HasSuffix(patchOp.Path, "/"+lens.Convert.Name) {
 			if value, ok := patchOp.Value.(string); ok {
 				for _, mapping := range lens.Convert.Mapping {
@@ -138,7 +136,6 @@ func applyLens(patchOp PatchOperation, lens Lens) PatchOperation {
 			}
 		}
 	} else if lens.Head != nil {
-		// Perform head operation
 		if strings.HasSuffix(patchOp.Path, "/"+lens.Head.Name) {
 			if slice, ok := patchOp.Value.([]interface{}); ok && len(slice) > 0 {
 				patchOp.Value = slice[0]
@@ -181,7 +178,6 @@ func applyLens(patchOp PatchOperation, lens Lens) PatchOperation {
 			}
 		}
 	} else if lens.Hoist != nil {
-		// Perform hoist operation
 		if strings.HasPrefix(patchOp.Path, "/"+lens.Hoist.Host) {
 			if nestedData, ok := patchOp.Value.(map[string]interface{}); ok {
 				if hoistValue, ok := nestedData[lens.Hoist.Name]; ok {
@@ -191,12 +187,21 @@ func applyLens(patchOp PatchOperation, lens Lens) PatchOperation {
 			}
 		}
 	} else if lens.Remove != nil {
-		// Perform remove operation
 		if strings.HasSuffix(patchOp.Path, "/"+lens.Remove.Name) {
 			return PatchOperation{} // Return an empty patchOp to remove the field
 		}
 	}
 
+  var newLensSource LensSource
+  existingLensSource := patchOp.LensSource
+
+  if existingLensSource != nil {
+    newLensSource = append(*existingLensSource, lens)
+  } else {
+    newLensSource = LensSource{lens}
+  }
+
+  patchOp.LensSource = &newLensSource
 	return patchOp
 }
 

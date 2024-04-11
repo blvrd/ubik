@@ -19,7 +19,15 @@
     {
       "op": "replace",
       "path": "/name",
-      "value": "new title"
+      "value": "new title",
+      "lens": [
+        {
+          "rename": {
+            "source": "title",
+            "destination": "name"
+          }
+        }
+      ]
     }
   ]
 }

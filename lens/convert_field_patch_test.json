@@ -29,7 +29,25 @@
     {
       "op": "replace",
       "path": "/status",
-      "value": "todo"
+      "value": "todo",
+      "lens": [
+        {
+          "convert": {
+            "name": "status",
+            "mapping": [
+              {
+                "open": "todo",
+                "closed": "done"
+              },
+              {
+                "todo": "open",
+                "doing": "open",
+                "done": "closed"
+              }
+            ]
+          }
+        }
+      ]
     }
   ]
 }
