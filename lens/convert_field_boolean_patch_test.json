@@ -1,0 +1,39 @@
+{
+  "name": "Converting a boolean field",
+  "original": [
+    {
+      "op": "replace",
+      "path": "/complete",
+      "value": true
+    }
+  ],
+  "lens": [
+    {
+      "convert": {
+        "name": "complete",
+        "mapping": [
+          { "false": "todo", "true": "done" },
+          { "todo": false, "inProgress": false, "done": true }
+        ]
+      }
+    }
+  ],
+  "evolved": [
+    {
+      "op": "replace",
+      "path": "/complete",
+      "value": "done",
+      "lens": [
+        {
+          "convert": {
+            "name": "complete",
+            "mapping": [
+              { "false": "todo", "true": "done" },
+              { "todo": false, "inProgress": false, "done": true }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

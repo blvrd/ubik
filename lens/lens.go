@@ -21,8 +21,8 @@ type Rename struct {
 }
 
 type Convert struct {
-	Name    string              `json:"name"`
-	Mapping []map[string]string `json:"mapping"`
+	Name    string           `json:"name"`
+	Mapping []map[string]any `json:"mapping"`
 }
 
 type Head struct {
@@ -60,7 +60,7 @@ func (lens Lens) Reverse() Lens {
 			Default: lens.Remove.Default,
 		}
 
-    return Lens{Add: &operation}
+		return Lens{Add: &operation}
 	}
 	return lens
 }

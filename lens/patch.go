@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
+  // "fmt"
 
 	"github.com/Jeffail/gabs/v2"
 	jsonpatch "github.com/evanphx/json-patch"
@@ -124,12 +125,19 @@ func applyLens(patchOp PatchOperation, lens Lens) PatchOperation {
 		}
 	} else if lens.Convert != nil {
 		if strings.HasSuffix(patchOp.Path, "/"+lens.Convert.Name) {
-			if value, ok := patchOp.Value.(string); ok {
+			if value, ok := patchOp.Value.(bool); ok {
+				for _, mapping := range lens.Convert.Mapping {
+					for k, v := range mapping {
+						if string(strconv.FormatBool(value)) == k {
+							patchOp.Value = v
+						}
+					}
+				}
+			} else if value, ok := patchOp.Value.(string); ok {
 				for _, mapping := range lens.Convert.Mapping {
 					for k, v := range mapping {
 						if value == k {
 							patchOp.Value = v
-							break
 						}
 					}
 				}
