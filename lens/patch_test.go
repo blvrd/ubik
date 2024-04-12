@@ -4,12 +4,33 @@ import (
 	// "encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/Jeffail/gabs/v2"
 	"github.com/google/go-cmp/cmp"
 )
+
+func findFocusedFiles(dir string) ([]string, error) {
+	cmd := exec.Command("grep", "-rl", `"focus": true`, dir)
+	output, err := cmd.Output()
+	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+			// grep returns exit code 1 if no matches are found
+			return []string{}, nil
+		}
+		return nil, err
+	}
+
+	filePaths := strings.Split(strings.TrimSpace(string(output)), "\n")
+	return filePaths, nil
+}
+
+func findTestFiles(dir string) ([]string, error) {
+	return filepath.Glob(filepath.Join(dir, "*.json"))
+}
 
 func TestLensDoc(t *testing.T) {
 	pattern := "*_doc_test.json"
@@ -49,14 +70,28 @@ func TestLensDoc(t *testing.T) {
 }
 
 func TestLensPatch(t *testing.T) {
-	pattern := "*_patch_test.json"
+  var files []string
+  testDir := "./patch_tests"
 
-	files, err := filepath.Glob(pattern)
-	if err != nil {
-		t.Errorf("Error finding files: %v", err)
-	}
+  focusedFiles, err := findFocusedFiles(testDir)
+  if err != nil {
+    fmt.Println("Error:", err)
+    os.Exit(1)
+  }
+
+  if len(focusedFiles) > 0 {
+    files = append(files, focusedFiles...)
+  } else {
+    testFiles, err := findTestFiles(testDir)
+    if err != nil {
+      fmt.Println("Error:", err)
+      os.Exit(1)
+    }
+    files = append(files, testFiles...)
+  }
 
 	for _, file := range files {
+
 		f, err := os.Open(file)
 		if err != nil {
 			t.Errorf("Error opening file: %v", err)
