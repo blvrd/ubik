@@ -98,15 +98,6 @@ func InterpretLens(patches Patch, lenses LensSource) Patch {
 			}
 		}
 
-		if lens.Add != nil {
-			addPatch := PatchOperation{
-				Op:    "add",
-				Path:  "/" + lens.Add.Name,
-				Value: lens.Add.Default,
-			}
-			transformedPatches = append(transformedPatches, addPatch)
-		}
-
 		patches = transformedPatches
 	}
 
@@ -196,9 +187,15 @@ func applyLens(patchOp PatchOperation, lens Lens) PatchOperation {
 		}
 	} else if lens.Remove != nil {
 		if strings.HasSuffix(patchOp.Path, "/"+lens.Remove.Name) {
-			return PatchOperation{} // Return an empty patchOp to remove the field
+			patchOp.Op = "noop"
 		}
-	}
+	} else if lens.Add != nil {
+    if patchOp.Op == "noop" {
+      patchOp.Op = "add"
+    } else {
+
+    }
+  }
 
 	var newLensSource LensSource
 	existingLensSource := patchOp.LensSource
