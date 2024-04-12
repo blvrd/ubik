@@ -35,5 +35,23 @@
         }
       ]
     }
+  ],
+  "reversed": [
+    {
+      "op": "replace",
+      "path": "/complete",
+      "value": true,
+      "lens": [
+        {
+          "convert": {
+            "name": "complete",
+            "mapping": [
+              { "false": "todo", "true": "done" },
+              { "todo": false, "inProgress": false, "done": true }
+            ]
+          }
+        }
+      ]
+    }
   ]
 }

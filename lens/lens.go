@@ -2,6 +2,7 @@ package lens
 
 import (
 	"encoding/json"
+  "reflect"
 	// "fmt"
 )
 
@@ -63,6 +64,110 @@ func (lens Lens) Reverse() Lens {
 		return Lens{Add: &operation}
 	}
 	return lens
+}
+
+
+func (l Lens) Equals(other Lens) bool {
+    if (l.Rename == nil && other.Rename != nil) || (l.Rename != nil && other.Rename == nil) {
+        return false
+    }
+    if l.Rename != nil && other.Rename != nil && !l.Rename.Equals(*other.Rename) {
+        return false
+    }
+
+    if (l.Convert == nil && other.Convert != nil) || (l.Convert != nil && other.Convert == nil) {
+        return false
+    }
+    if l.Convert != nil && other.Convert != nil && !l.Convert.Equals(*other.Convert) {
+        return false
+    }
+
+    if (l.Head == nil && other.Head != nil) || (l.Head != nil && other.Head == nil) {
+        return false
+    }
+    if l.Head != nil && other.Head != nil && !l.Head.Equals(*other.Head) {
+        return false
+    }
+
+    if (l.In == nil && other.In != nil) || (l.In != nil && other.In == nil) {
+        return false
+    }
+    if l.In != nil && other.In != nil && !l.In.Equals(*other.In) {
+        return false
+    }
+
+    if (l.Hoist == nil && other.Hoist != nil) || (l.Hoist != nil && other.Hoist == nil) {
+        return false
+    }
+    if l.Hoist != nil && other.Hoist != nil && !l.Hoist.Equals(*other.Hoist) {
+        return false
+    }
+
+    if (l.Remove == nil && other.Remove != nil) || (l.Remove != nil && other.Remove == nil) {
+        return false
+    }
+    if l.Remove != nil && other.Remove != nil && !l.Remove.Equals(*other.Remove) {
+        return false
+    }
+
+    if (l.Add == nil && other.Add != nil) || (l.Add != nil && other.Add == nil) {
+        return false
+    }
+    if l.Add != nil && other.Add != nil && !l.Add.Equals(*other.Add) {
+        return false
+    }
+
+    return true
+}
+
+func (r Rename) Equals(other Rename) bool {
+    return r.Source == other.Source && r.Destination == other.Destination
+}
+
+func (c Convert) Equals(other Convert) bool {
+    if c.Name != other.Name {
+        return false
+    }
+    if len(c.Mapping) != len(other.Mapping) {
+        return false
+    }
+    for i := range c.Mapping {
+        if !reflect.DeepEqual(c.Mapping[i], other.Mapping[i]) {
+            return false
+        }
+    }
+    return true
+}
+
+func (h Head) Equals(other Head) bool {
+    return h.Name == other.Name
+}
+
+func (i In) Equals(other In) bool {
+    if i.Name != other.Name {
+        return false
+    }
+    if len(i.Lens) != len(other.Lens) {
+        return false
+    }
+    for j := range i.Lens {
+        if !i.Lens[j].Equals(other.Lens[j]) {
+            return false
+        }
+    }
+    return true
+}
+
+func (h Hoist) Equals(other Hoist) bool {
+    return h.Name == other.Name && h.Host == other.Host
+}
+
+func (r Remove) Equals(other Remove) bool {
+    return r.Name == other.Name && r.Type == other.Type && r.Default == other.Default
+}
+
+func (a Add) Equals(other Add) bool {
+    return a.Name == other.Name && a.Type == other.Type && a.Default == other.Default
 }
 
 type LensSource []Lens

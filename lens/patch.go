@@ -200,28 +200,35 @@ func applyLens(patchOp PatchOperation, lens Lens) PatchOperation {
 		}
 	}
 
-  var newLensSource LensSource
-  existingLensSource := patchOp.LensSource
+	var newLensSource LensSource
+	existingLensSource := patchOp.LensSource
+
+  var existingLensSourceAlreadyContainsLens bool
 
   if existingLensSource != nil {
-    newLensSource = append(*existingLensSource, lens)
-  } else {
-    newLensSource = LensSource{lens}
+    for _, l := range *existingLensSource {
+      if l == lens {
+        existingLensSourceAlreadyContainsLens = true
+      } else {
+        existingLensSourceAlreadyContainsLens = false
+      }
+    }
   }
 
-  patchOp.LensSource = &newLensSource
+  if !existingLensSourceAlreadyContainsLens {
+    if existingLensSource != nil {
+      newLensSource = append(*existingLensSource, lens)
+    } else {
+      newLensSource = LensSource{lens}
+    }
+  }
+
+
+  if newLensSource != nil {
+    patchOp.LensSource = &newLensSource
+  }
 	return patchOp
 }
-
-// func (p *PatchOperation) MarshalJSON() ([]byte, error) {
-// 	b, err := json.Marshal(p.JSON)
-//
-// 	return b, err
-// }
-
-// func NewPatchOperationFromJSON(c *gabs.Container) PatchOperation {
-// 	return PatchOperation{JSON: c}
-// }
 
 func NewPatchFromJSON(jsonData []byte) Patch {
 	var patch Patch
