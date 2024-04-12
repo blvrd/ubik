@@ -11,6 +11,7 @@ import (
 
 	"github.com/Jeffail/gabs/v2"
 	"github.com/google/go-cmp/cmp"
+	"github.com/charmbracelet/log"
 )
 
 func findFocusedFiles(dir string) ([]string, error) {
@@ -33,7 +34,8 @@ func findTestFiles(dir string) ([]string, error) {
 }
 
 func TestLensDoc(t *testing.T) {
-	pattern := "*_doc_test.json"
+  log.SetLevel(log.InfoLevel)
+	pattern := "./doc_tests/*_doc_test.json"
 
 	files, err := filepath.Glob(pattern)
 	if err != nil {

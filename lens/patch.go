@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
-  // "fmt"
+  "fmt"
 
+	"github.com/charmbracelet/log"
 	"github.com/Jeffail/gabs/v2"
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/wI2L/jsondiff"
-	// "github.com/charmbracelet/log"
 )
 
 func PatchToDoc(p Patch) *gabs.Container {
@@ -68,11 +68,6 @@ func DocToPatch(target []byte) Patch {
 	if err != nil {
 		panic(err)
 	}
-	// parsedJSON, err := gabs.ParseJSON(patchJSON)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
 	return NewPatchFromJSON(patchJSON)
 }
 
@@ -80,12 +75,13 @@ type PatchOperation struct {
 	Op         string      `json:"op"`
 	Path       string      `json:"path"`
 	Value      interface{} `json:"value,omitempty"`
-  LensSource *LensSource `json:"lens,omitempty"`
+	LensSource *LensSource `json:"lens,omitempty"`
 }
 
 type Patch []PatchOperation
 
 func InterpretLens(patches Patch, lenses LensSource) Patch {
+  log.Debug(patches)
 	var result Patch
 
 	for _, lens := range lenses {
@@ -93,6 +89,7 @@ func InterpretLens(patches Patch, lenses LensSource) Patch {
 
 		for _, patch := range patches {
 			transformedPatch := applyLens(patch, lens)
+
 			if transformedPatch.Op != "" {
 				transformedPatches = append(transformedPatches, transformedPatch)
 			}
@@ -142,6 +139,7 @@ func applyLens(patchOp PatchOperation, lens Lens) PatchOperation {
 		}
 	} else if lens.In != nil {
 		if strings.HasPrefix(patchOp.Path, "/"+lens.In.Name) {
+      fmt.Printf("lens IN : %#v\n", lens.In)
 			if arr, ok := patchOp.Value.([]interface{}); ok {
 				for i := range arr {
 					if obj, ok := arr[i].(map[string]interface{}); ok {
@@ -166,15 +164,35 @@ func applyLens(patchOp PatchOperation, lens Lens) PatchOperation {
 					panic(err)
 				}
 				nestedpatchOpes := DocToPatch(jsonBytes)
-				var appliedNestedpatchOpes Patch
+				var appliedNestedpatchOps Patch
 				for _, nestedpatchOp := range nestedpatchOpes {
 					for _, nestedLens := range lens.In.Lens {
 						nestedpatchOp = applyLens(nestedpatchOp, nestedLens)
-						appliedNestedpatchOpes = append(appliedNestedpatchOpes, nestedpatchOp)
+						appliedNestedpatchOps = append(appliedNestedpatchOps, nestedpatchOp)
 					}
 				}
-				patchOp.Value = PatchToDoc(appliedNestedpatchOpes).Data()
-			}
+				patchOp.Value = PatchToDoc(appliedNestedpatchOps).Data()
+			} else {
+        fmt.Printf("PATCHOP PATH: %#v\n", patchOp.Path)
+        fmt.Printf("NESTED LENS NAME%#v\n", lens.In.Name)
+        newPath := strings.Replace(patchOp.Path, "/"+lens.In.Name, "", 1)
+        nestedPatchOp := PatchOperation{
+          Op: patchOp.Op,
+          Path: newPath,
+          Value: patchOp.Value,
+        }
+
+				// var appliedNestedpatchOp PatchOperation
+        for _, nestedLens := range lens.In.Lens {
+          nestedPatchOp = applyLens(nestedPatchOp, nestedLens)
+          // appliedNestedpatchOp = nestedPatchOp
+        }
+
+        nestedPatchOp.Path = "/" + lens.In.Name + nestedPatchOp.Path
+        patchOp = nestedPatchOp
+        fmt.Printf("%#v\n", patchOp)
+
+      }
 		}
 	} else if lens.Hoist != nil {
 		if strings.HasPrefix(patchOp.Path, "/"+lens.Hoist.Host) {
@@ -200,6 +218,8 @@ func applyLens(patchOp PatchOperation, lens Lens) PatchOperation {
 	var newLensSource LensSource
 	existingLensSource := patchOp.LensSource
 
+  fmt.Printf("patchop : %#v\n", patchOp)
+
   var existingLensSourceAlreadyContainsLens bool
 
   if existingLensSource != nil {
@@ -214,6 +234,7 @@ func applyLens(patchOp PatchOperation, lens Lens) PatchOperation {
 
   if !existingLensSourceAlreadyContainsLens {
     if existingLensSource != nil {
+      fmt.Printf("lensssss : %#v\n", (*existingLensSource)[0].Rename)
       newLensSource = append(*existingLensSource, lens)
     } else {
       newLensSource = LensSource{lens}
