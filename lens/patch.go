@@ -85,7 +85,7 @@ type PatchOperation struct {
 
 type Patch []PatchOperation
 
-func InterpretLens(patches Patch, lenses []Lens) Patch {
+func InterpretLens(patches Patch, lenses LensSource) Patch {
 	var result Patch
 
 	for _, lens := range lenses {
