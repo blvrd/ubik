@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/Jeffail/gabs/v2"
-	"github.com/google/go-cmp/cmp"
 	"github.com/charmbracelet/log"
+	"github.com/google/go-cmp/cmp"
 )
 
 func findFocusedFiles(dir string) ([]string, error) {
@@ -34,7 +34,7 @@ func findTestFiles(dir string) ([]string, error) {
 }
 
 func TestLensDoc(t *testing.T) {
-  log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.InfoLevel)
 	pattern := "./doc_tests/*_doc_test.json"
 
 	files, err := filepath.Glob(pattern)
@@ -72,25 +72,25 @@ func TestLensDoc(t *testing.T) {
 }
 
 func TestLensPatch(t *testing.T) {
-  var files []string
-  testDir := "./patch_tests"
+	var files []string
+	testDir := "./patch_tests"
 
-  focusedFiles, err := findFocusedFiles(testDir)
-  if err != nil {
-    fmt.Println("Error:", err)
-    os.Exit(1)
-  }
+	focusedFiles, err := findFocusedFiles(testDir)
+	if err != nil {
+		fmt.Println("Error:", err)
+		os.Exit(1)
+	}
 
-  if len(focusedFiles) > 0 {
-    files = append(files, focusedFiles...)
-  } else {
-    testFiles, err := findTestFiles(testDir)
-    if err != nil {
-      fmt.Println("Error:", err)
-      os.Exit(1)
-    }
-    files = append(files, testFiles...)
-  }
+	if len(focusedFiles) > 0 {
+		files = append(files, focusedFiles...)
+	} else {
+		testFiles, err := findTestFiles(testDir)
+		if err != nil {
+			fmt.Println("Error:", err)
+			os.Exit(1)
+		}
+		files = append(files, testFiles...)
+	}
 
 	for _, file := range files {
 
