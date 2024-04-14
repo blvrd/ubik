@@ -1,6 +1,5 @@
 {
   "name": "Renaming a field in a nested object",
-  "focus": true,
   "original": [
     {
       "op": "replace",
