@@ -2,7 +2,6 @@ package lens
 
 import (
 	"encoding/json"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -139,7 +138,6 @@ func applyLens(patchOp PatchOperation, lens Lens, recursing bool) PatchOperation
 		}
 	} else if lens.In != nil {
 		if strings.HasPrefix(patchOp.Path, "/"+lens.In.Name) {
-			fmt.Printf("lens IN : %#v\n", lens.In)
 			if arr, ok := patchOp.Value.([]interface{}); ok {
 				for i := range arr {
 					if obj, ok := arr[i].(map[string]interface{}); ok {
@@ -173,8 +171,6 @@ func applyLens(patchOp PatchOperation, lens Lens, recursing bool) PatchOperation
 				}
 				patchOp.Value = PatchToDoc(appliedNestedpatchOps).Data()
 			} else {
-				fmt.Printf("PATCHOP PATH: %#v\n", patchOp.Path)
-				fmt.Printf("NESTED LENS NAME%#v\n", lens.In.Name)
 				newPath := strings.Replace(patchOp.Path, "/"+lens.In.Name, "", 1)
 				nestedPatchOp := PatchOperation{
 					Op:    patchOp.Op,
@@ -190,7 +186,6 @@ func applyLens(patchOp PatchOperation, lens Lens, recursing bool) PatchOperation
 
 				nestedPatchOp.Path = "/" + lens.In.Name + nestedPatchOp.Path
 				patchOp = nestedPatchOp
-				fmt.Printf("%#v\n", patchOp)
 
 			}
 		}
@@ -233,7 +228,6 @@ func applyLens(patchOp PatchOperation, lens Lens, recursing bool) PatchOperation
 
 		if !existingLensSourceAlreadyContainsLens {
 			if existingLensSource != nil {
-				fmt.Printf("lensssss : %#v\n", (*existingLensSource)[0].Rename)
 				newLensSource = append(*existingLensSource, lens)
 			} else {
 				newLensSource = LensSource{lens}
