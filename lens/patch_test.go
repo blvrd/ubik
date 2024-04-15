@@ -20,7 +20,6 @@ func findFocusedFiles(dir string) ([]string, error) {
 	output, err := cmd.Output()
 	if err != nil {
 		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
-			// grep returns exit code 1 if no matches are found
 			return []string{}, nil
 		}
 		return nil, err

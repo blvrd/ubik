@@ -162,17 +162,17 @@ func applyLens(patchOp PatchOperation, lens Lens, recursing bool) PatchOperation
 						appliedNestedpatchOps = append(appliedNestedpatchOps, nestedpatchOp)
 					}
 				}
-        var newValue map[string]any
-        newDoc := PatchToDoc(appliedNestedpatchOps)
+				var newValue map[string]any
+				newDoc := PatchToDoc(appliedNestedpatchOps)
 
-        err = json.Unmarshal(newDoc, &newValue)
-        if err != nil {
-          panic(err)
-        }
+				err = json.Unmarshal(newDoc, &newValue)
+				if err != nil {
+					panic(err)
+				}
 
 				patchOp.Value = newValue
 
-        log.Debugf("change patch after in lens: %#v", patchOp)
+				log.Debugf("change patch after in lens: %#v", patchOp)
 			} else {
 				newPath := strings.Replace(patchOp.Path, "/"+lens.In.Name, "", 1)
 				nestedPatchOp := PatchOperation{
