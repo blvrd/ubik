@@ -35,7 +35,7 @@ func findTestFiles(dir string) ([]string, error) {
 }
 
 func TestLensDoc(t *testing.T) {
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
 	pattern := "./doc_tests/*_doc_test.json"
 
 	files, err := filepath.Glob(pattern)
