@@ -5,13 +5,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Jeffail/gabs/v2"
 	"github.com/charmbracelet/log"
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/wI2L/jsondiff"
 )
 
-func PatchToDoc(p Patch) *gabs.Container {
+func PatchToDoc(p Patch) []byte {
 	var original []byte
 	var filtered Patch
 
@@ -25,7 +24,7 @@ func PatchToDoc(p Patch) *gabs.Container {
 	if err != nil {
 		panic(err)
 	}
-	var doc *gabs.Container
+
 	original = []byte(`{}`)
 	patch, err := jsonpatch.DecodePatch(patchJSON)
 	if err != nil {
@@ -37,19 +36,14 @@ func PatchToDoc(p Patch) *gabs.Container {
 		panic(err)
 	}
 
-	doc, err = gabs.ParseJSON(modified)
-	if err != nil {
-		panic(err)
-	}
-
-	return doc
+	return modified
 }
 
-func ApplyLensToDoc(ls LensSource, doc *gabs.Container) *gabs.Container {
+func ApplyLensToDoc(ls LensSource, doc []byte) []byte {
 	// Let's create a merge patch from these two documents...
 	// original := []byte(`{"name": "John", "age": 24, "height": 3.21}`)
 	// original := []byte(`{"name": "Jane", "age": 24}`)
-	original := doc.Bytes()
+	original := doc
 	patch := DocToPatch(original)
 	evolvedPatch := InterpretLens(patch, ls)
 	x := PatchToDoc(evolvedPatch)
@@ -80,7 +74,6 @@ type PatchOperation struct {
 type Patch []PatchOperation
 
 func InterpretLens(patches Patch, lenses LensSource) Patch {
-	log.Debug(patches)
 	var result Patch
 
 	for _, lens := range lenses {
@@ -169,7 +162,17 @@ func applyLens(patchOp PatchOperation, lens Lens, recursing bool) PatchOperation
 						appliedNestedpatchOps = append(appliedNestedpatchOps, nestedpatchOp)
 					}
 				}
-				patchOp.Value = PatchToDoc(appliedNestedpatchOps).Data()
+        var newValue map[string]any
+        newDoc := PatchToDoc(appliedNestedpatchOps)
+
+        err = json.Unmarshal(newDoc, &newValue)
+        if err != nil {
+          panic(err)
+        }
+
+				patchOp.Value = newValue
+
+        log.Debugf("change patch after in lens: %#v", patchOp)
 			} else {
 				newPath := strings.Replace(patchOp.Path, "/"+lens.In.Name, "", 1)
 				nestedPatchOp := PatchOperation{

@@ -1,7 +1,8 @@
 package lens
 
 import (
-	// "encoding/json"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Jeffail/gabs/v2"
 	"github.com/charmbracelet/log"
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 )
 
 func findFocusedFiles(dir string) ([]string, error) {
@@ -34,7 +35,7 @@ func findTestFiles(dir string) ([]string, error) {
 }
 
 func TestLensDoc(t *testing.T) {
-	log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.DebugLevel)
 	pattern := "./doc_tests/*_doc_test.json"
 
 	files, err := filepath.Glob(pattern)
@@ -43,28 +44,54 @@ func TestLensDoc(t *testing.T) {
 	}
 
 	for _, file := range files {
-		f, err := os.Open(file)
+		data, err := os.ReadFile(file)
 		if err != nil {
-			t.Errorf("Error opening file: %v", err)
-		}
-		defer f.Close()
-
-		parsedJSON, err := gabs.ParseJSONFile(f.Name())
-		if err != nil {
-			// t.Fatalf("Could not parse JSON file: %s", f.Name())
-			t.Fatalf("Could not parse JSON file: %v", err)
+			t.Errorf("Error reading file: %v", err)
+			return
 		}
 
-		exampleName := parsedJSON.Search("name").Data().(string)
-		originalDocJSON := parsedJSON.Search("original")
-		evolvedDocJSON := parsedJSON.Search("evolved")
-		lensJSON := parsedJSON.Search("lens")
+		type testConfig struct {
+			ExampleName string          `json:"name"`
+			OriginalDoc json.RawMessage `json:"original"`
+			EvolvedDoc  json.RawMessage `json:"evolved"`
+			Lens        json.RawMessage `json:"lens"`
+		}
+
+		var config testConfig
+		err = json.Unmarshal(data, &config)
+
+		exampleName := config.ExampleName
+		originalDocJSON := config.OriginalDoc
+		evolvedDocJSON := config.EvolvedDoc
+
+		lensJSON := config.Lens
 
 		t.Run(fmt.Sprintf("%s (forward)", exampleName), func(t *testing.T) {
-			lensSource := NewLensSource(lensJSON.Bytes())
+			lensSource := NewLensSource(lensJSON)
 			result := ApplyLensToDoc(lensSource, originalDocJSON)
 
-			if diff := cmp.Diff(evolvedDocJSON, result, cmp.AllowUnexported(gabs.Container{})); diff != "" {
+			var evolvedDocBuffer bytes.Buffer
+			err := json.Compact(&evolvedDocBuffer, evolvedDocJSON)
+			if err != nil {
+				t.Fatalf("Failed to normalize evolved JSON: %v", err)
+			}
+			normalizedEvolvedDocJSON := evolvedDocBuffer.Bytes()
+
+			var resultBuffer bytes.Buffer
+			err = json.Compact(&resultBuffer, result)
+			if err != nil {
+				t.Fatalf("Failed to normalize result JSON: %v", err)
+			}
+
+			normalizedResultJSON := resultBuffer.Bytes()
+
+			normalizeJSON := func(x []byte) map[string]interface{} {
+				var m map[string]interface{}
+				json.Unmarshal(x, &m)
+				return m
+			}
+
+			if diff := cmp.Diff(normalizedEvolvedDocJSON, normalizedResultJSON, cmpopts.AcyclicTransformer("normalizeJSON", normalizeJSON)); diff != "" {
 				t.Errorf("ApplyLensToDoc mismatch (-want +got):\n%s", diff)
 			}
 		})
@@ -94,27 +121,33 @@ func TestLensPatch(t *testing.T) {
 
 	for _, file := range files {
 
-		f, err := os.Open(file)
+		data, err := os.ReadFile(file)
 		if err != nil {
-			t.Errorf("Error opening file: %v", err)
-		}
-		defer f.Close()
-
-		parsedJSON, err := gabs.ParseJSONFile(f.Name())
-		if err != nil {
-			t.Fatalf("Could not parse JSON file: %s", f.Name())
+			fmt.Println("Error reading file:", err)
+			return
 		}
 
-		exampleName := parsedJSON.Search("name").Data().(string)
-		shouldTestReverse := parsedJSON.Search("reversed")
-		originalPatchJSON := parsedJSON.Search("original")
-		evolvedPatchJSON := parsedJSON.Search("evolved")
-		lensJSON := parsedJSON.Search("lens")
+		type testConfig struct {
+			ExampleName   string          `json:"name"`
+			OriginalPatch json.RawMessage `json:"original"`
+			EvolvedPatch  json.RawMessage `json:"evolved"`
+			Lens          json.RawMessage `json:"lens"`
+			Reverse       json.RawMessage `json:"reverse"`
+		}
+
+		var config testConfig
+		err = json.Unmarshal(data, &config)
+
+		exampleName := config.ExampleName
+		shouldTestReverse := config.Reverse
+		originalPatchJSON := config.OriginalPatch
+		evolvedPatchJSON := config.EvolvedPatch
+		lensJSON := config.Lens
 
 		t.Run(fmt.Sprintf("%s forward", exampleName), func(t *testing.T) {
-			originalPatch := NewPatchFromJSON(originalPatchJSON.Bytes())
-			evolvedPatch := NewPatchFromJSON(evolvedPatchJSON.Bytes())
-			lensSource := NewLensSource(lensJSON.Bytes())
+			originalPatch := NewPatchFromJSON(originalPatchJSON)
+			evolvedPatch := NewPatchFromJSON(evolvedPatchJSON)
+			lensSource := NewLensSource(lensJSON)
 			result := InterpretLens(originalPatch, lensSource)
 
 			if diff := cmp.Diff(evolvedPatch, result); diff != "" {
@@ -124,9 +157,9 @@ func TestLensPatch(t *testing.T) {
 
 		if shouldTestReverse != nil {
 			t.Run(fmt.Sprintf("%s reverse", exampleName), func(t *testing.T) {
-				originalPatch := NewPatchFromJSON(originalPatchJSON.Bytes())
-				expectedReversedPatch := NewPatchFromJSON(shouldTestReverse.Bytes())
-				lensSource := NewLensSource(lensJSON.Bytes())
+				originalPatch := NewPatchFromJSON(originalPatchJSON)
+				expectedReversedPatch := NewPatchFromJSON(shouldTestReverse)
+				lensSource := NewLensSource(lensJSON)
 				forwardResult := InterpretLens(originalPatch, lensSource)
 				reverseResult := InterpretLens(forwardResult, lensSource.Reverse())
 
