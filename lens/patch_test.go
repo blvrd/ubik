@@ -40,13 +40,13 @@ func TestLensDoc(t *testing.T) {
 
 	files, err := filepath.Glob(pattern)
 	if err != nil {
-		t.Errorf("Error finding files: %v", err)
+		t.Fatalf("Error finding files: %v", err)
 	}
 
 	for _, file := range files {
 		data, err := os.ReadFile(file)
 		if err != nil {
-			t.Errorf("Error reading file: %v", err)
+			t.Fatalf("Error reading file: %v", err)
 			return
 		}
 
@@ -104,8 +104,7 @@ func TestLensPatch(t *testing.T) {
 
 	focusedFiles, err := findFocusedFiles(testDir)
 	if err != nil {
-		fmt.Println("Error:", err)
-		os.Exit(1)
+		t.Fatalf("error: %v\n", err)
 	}
 
 	if len(focusedFiles) > 0 {
@@ -113,8 +112,7 @@ func TestLensPatch(t *testing.T) {
 	} else {
 		testFiles, err := findTestFiles(testDir)
 		if err != nil {
-			fmt.Println("Error:", err)
-			os.Exit(1)
+			t.Fatalf("error: %v\n", err)
 		}
 		files = append(files, testFiles...)
 	}
@@ -123,8 +121,7 @@ func TestLensPatch(t *testing.T) {
 
 		data, err := os.ReadFile(file)
 		if err != nil {
-			fmt.Println("Error reading file:", err)
-			return
+			t.Fatalf("error: %v\n", err)
 		}
 
 		type testConfig struct {
