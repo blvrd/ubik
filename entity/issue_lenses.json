@@ -1,0 +1,8 @@
+[
+  {
+    "rename": {
+      "source": "closed",
+      "destination": "closed_at"
+    }
+  }
+]

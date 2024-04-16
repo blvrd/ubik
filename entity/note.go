@@ -16,6 +16,7 @@ type Note struct {
   Ref string
   Stale bool
   Message string
+  Bytes []byte
 }
 
 func (n *Note) Read() (map[string]interface{}, error) {

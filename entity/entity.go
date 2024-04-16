@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/blvrd/ubik/lens"
 	"github.com/blvrd/ubik/shortcode"
 	"github.com/charmbracelet/log"
 	"github.com/google/uuid"
@@ -479,6 +480,8 @@ func GetRefsByPath(refPath string) []string {
 }
 
 func GetNotes(refPath string) ([]*Note, error) {
+	// This function is probably where we want to implement lenses
+
 	var notes []*Note
 	refs := GetRefsByPath(refPath)
 
@@ -515,6 +518,7 @@ func GetNotes(refPath string) ([]*Note, error) {
 				ObjectId: objectHash,
 				Ref:      refPath,
 				Message:  scanner.Text(),
+        Bytes: scanner.Bytes(),
 			})
 		}
 	}
@@ -532,8 +536,16 @@ func IssuesFromGitNotes(gitNotes []*Note) []*Issue {
 	for _, notePtr := range gitNotes {
 		note := *notePtr
 
+    b, err := os.ReadFile("entity/issue_lenses.json")
+    if err != nil {
+      panic(err)
+    }
+    lensSource := lens.NewLensSource(b)
+    newBytes := lens.ApplyLensToDoc(lensSource, note.Bytes)
+    log.Debugf("new doc: %#v", string(newBytes))
+
 		data := make(map[string]Issue)
-		err := json.Unmarshal([]byte(note.Message), &data)
+		err = json.Unmarshal(note.Bytes, &data)
 		if err != nil {
 			log.Info("note message: %s", note.Message)
 			log.Fatalf("Failed to unmarshal data: %v\n", err)
