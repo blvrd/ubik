@@ -511,7 +511,6 @@ func GetNotes(refPath string) ([]*Note, error) {
 		objectHash := objectInfo[0]
 		scanner.Scan()
 		if scanner.Text() != "" {
-			// log.Infof("scanner text: %+v", scanner.Text())
 			notes = append(notes, &Note{
 				ObjectId: objectHash,
 				Ref:      refPath,
