@@ -24,6 +24,7 @@ func main() {
 
 	// Set the global logger output to the file
 	log.SetOutput(logFile)
+  log.SetLevel(log.DebugLevel)
   log.SetReportCaller(true)
 
 	// ========================
