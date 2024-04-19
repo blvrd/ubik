@@ -30,10 +30,12 @@ func (m Model) View() string {
 
   var closed string
 
-  if entMap["closed"] == "false" {
+  closedAt := entMap["closed_at"].(time.Time)
+
+  if closedAt.IsZero() {
 		closed = lipgloss.NewStyle().Foreground(lipgloss.Color("#838383")).Render("[·] Open")
   } else {
-    closed = lipgloss.NewStyle().Foreground(lipgloss.Color("#5db158")).Render("[✓] Closed")
+    closed = lipgloss.NewStyle().Foreground(lipgloss.Color("#5db158")).Render(fmt.Sprintf("[✓] Closed %s", closedAt.Format(time.RFC822)))
   }
 
   title := lipgloss.NewStyle().Bold(true).Render(fmt.Sprintf("%s", entMap["title"]))

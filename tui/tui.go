@@ -45,8 +45,8 @@ type li struct {
 	author    string
 	title     string
 	desc      string
-	closed    string
 	shortcode string
+	closedAt  time.Time
 	createdAt time.Time
 }
 
@@ -54,10 +54,10 @@ func (i li) Id() string { return i.id }
 func (i li) Title() string {
 	var closed string
 
-	if i.closed == "true" {
-		closed = lipgloss.NewStyle().Foreground(lipgloss.Color("#5db158")).Render("[✓]")
-	} else {
+	if i.closedAt.IsZero() {
 		closed = lipgloss.NewStyle().Foreground(lipgloss.Color("#838383")).Render("[·]")
+	} else {
+		closed = lipgloss.NewStyle().Foreground(lipgloss.Color("#5db158")).Render("[✓]")
 	}
 	return fmt.Sprintf("%s %s", closed, i.title)
 }
@@ -86,6 +86,8 @@ type issuesLoadedMsg []*entity.Issue
 func GetIssues() tea.Msg {
 	refPath := entity.IssuesPath
 	notes, err := entity.GetNotes(refPath)
+
+	log.Infof("%#v", notes)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -117,10 +119,10 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 				m.form = form.New(m.currentIssue)
 				m.form.Init()
 			case " ":
-				if m.currentIssue.Closed == "true" {
-					m.currentIssue.Open()
-				} else {
+				if m.currentIssue.ClosedAt.IsZero() {
 					m.currentIssue.Close()
+				} else {
+					m.currentIssue.Open()
 				}
 
 				cmds = append(cmds, GetIssues)
@@ -146,13 +148,12 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			m.issues = msg
 
 			for _, issue := range msg {
-				log.Infof("%s created_at: %s", issue.Id, issue.CreatedAt)
 				item := li{
 					id:        issue.Id,
 					author:    issue.Author,
 					title:     issue.Title,
 					desc:      issue.Description,
-					closed:    issue.Closed,
+					closedAt:  issue.ClosedAt,
 					shortcode: issue.Shortcode(),
 					createdAt: issue.CreatedAt,
 				}

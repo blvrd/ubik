@@ -1,7 +1,7 @@
 package entity
 
 import (
-	"bufio"
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -53,11 +53,11 @@ type Issue struct {
 	Author      string
 	Title       string
 	Description string
-	Closed      string
 	ParentType  string
 	ParentId    string
 	RefPath     string
 	shortcode   string
+	ClosedAt    time.Time
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   time.Time
@@ -69,7 +69,6 @@ func NewIssue() Issue {
 		Author:      author,
 		Title:       "",
 		Description: "",
-		Closed:      "false",
 		ParentType:  "",
 		ParentId:    "",
 		RefPath:     IssuesPath,
@@ -98,11 +97,11 @@ func (i Issue) MarshalJSON() ([]byte, error) {
 		Author      string    `json:"author"`
 		Title       string    `json:"title"`
 		Description string    `json:"description"`
-		Closed      string    `json:"closed"`
 		ParentType  string    `json:"parent_type"`
 		ParentId    string    `json:"parent_id"`
 		RefPath     string    `json:"refpath"`
 		Shortcode   string    `json:"shortcode"`
+		ClosedAt    time.Time `json:"closed_at"`
 		CreatedAt   time.Time `json:"created_at"`
 		UpdatedAt   time.Time `json:"updated_at"`
 		DeletedAt   time.Time `json:"deleted_at"`
@@ -114,7 +113,7 @@ func (i Issue) MarshalJSON() ([]byte, error) {
 		Author:      i.Author,
 		Title:       i.Title,
 		Description: i.Description,
-		Closed:      i.Closed,
+		ClosedAt:    i.ClosedAt,
 		ParentType:  i.ParentType,
 		ParentId:    i.ParentId,
 		RefPath:     i.RefPath,
@@ -133,11 +132,11 @@ func (i *Issue) UnmarshalJSON(data []byte) error {
 		Author      string `json:"author"`
 		Title       string `json:"title"`
 		Description string `json:"description"`
-		Closed      string `json:"closed"`
 		ParentType  string `json:"parent_type"`
 		ParentId    string `json:"parent_id"`
 		RefPath     string `json:"refpath"`
 		Shortcode   string `json:"shortcode"`
+		ClosedAt    string `json:"closed_at"`
 		CreatedAt   string `json:"created_at"`
 		UpdatedAt   string `json:"updated_at"`
 		DeletedAt   string `json:"deleted_at"`
@@ -154,12 +153,15 @@ func (i *Issue) UnmarshalJSON(data []byte) error {
 	i.Author = issueJSON.Author
 	i.Title = issueJSON.Title
 	i.Description = issueJSON.Description
-	i.Closed = issueJSON.Closed
 	i.ParentType = issueJSON.ParentType
 	i.ParentId = issueJSON.ParentId
 	i.RefPath = issueJSON.RefPath
 	i.shortcode = issueJSON.Shortcode
 
+	closedAt, err := time.Parse(time.RFC3339, issueJSON.ClosedAt)
+	if err != nil {
+		closedAt = time.Time{}
+	}
 	createdAt, err := time.Parse(time.RFC3339, issueJSON.CreatedAt)
 	if err != nil {
 		createdAt = time.Time{}
@@ -176,6 +178,7 @@ func (i *Issue) UnmarshalJSON(data []byte) error {
 	i.CreatedAt = createdAt
 	i.UpdatedAt = updatedAt
 	i.DeletedAt = deletedAt
+	i.ClosedAt = closedAt
 
 	return nil
 }
@@ -209,7 +212,7 @@ func (i *Issue) Restore() error {
 }
 
 func (i *Issue) Open() error {
-	i.Closed = "false"
+	i.ClosedAt = time.Time{}
 	err := Update(i)
 	if err != nil {
 		return err
@@ -219,7 +222,7 @@ func (i *Issue) Open() error {
 }
 
 func (i *Issue) Close() error {
-	i.Closed = "true"
+	i.ClosedAt = time.Now().UTC()
 	err := Update(i)
 	if err != nil {
 		return err
@@ -234,7 +237,7 @@ func (i Issue) ToMap() map[string]interface{} {
 		"author":      i.Author,
 		"title":       i.Title,
 		"description": i.Description,
-		"closed":      i.Closed,
+		"closed_at":   i.ClosedAt,
 		"parent_type": i.ParentType,
 		"parent_id":   i.ParentId,
 		"refpath":     i.RefPath,
@@ -268,8 +271,6 @@ func GetFirstCommit() string {
 
 	str := string(bytes)
 	trimmed := strings.TrimSpace(str)
-	log.Infof("str: %s", str)
-	log.Infof("trimmed: %s", trimmed)
 	return trimmed
 }
 
@@ -283,7 +284,7 @@ func ListIssues() {
 		fmt.Println(uNote.Id)
 		fmt.Println(uNote.Title)
 		fmt.Println(uNote.Description)
-		fmt.Println(uNote.Closed)
+		fmt.Println(uNote.ClosedAt)
 		fmt.Println(uNote.ParentId)
 		fmt.Println()
 	}
@@ -475,89 +476,87 @@ func GetRefsByPath(refPath string) []string {
 		}
 	}
 
-	log.Info(len(noteIds))
 	return noteIds
 }
 
-func GetNotes(refPath string) ([]*Note, error) {
-	// This function is probably where we want to implement lenses
+func startsWithLinefeed(data []byte) bool {
+	if len(data) > 0 && data[0] == '\n' {
+		return true
+	}
+	return false
+}
 
-	var notes []*Note
+func GetNotes(refPath string) ([]Note, error) {
 	refs := GetRefsByPath(refPath)
 
-	cmd := exec.Command("git", "cat-file", "--batch")
-
-	stdin, err := cmd.StdinPipe()
-	if err != nil {
-		return nil, err
-	}
-	defer stdin.Close()
-
-	stdout, err := cmd.StdoutPipe()
-	if err != nil {
-		return nil, err
-	}
-
-	if err := cmd.Start(); err != nil {
-		return nil, err
-	}
-
-	for _, object := range refs {
-		fmt.Fprintln(stdin, object)
-	}
-	stdin.Close()
-
-	scanner := bufio.NewScanner(stdout)
-
-	for scanner.Scan() {
-		objectInfo := strings.SplitN(scanner.Text(), " ", 3)
-		objectHash := objectInfo[0]
-		scanner.Scan()
-		if scanner.Text() != "" {
-			notes = append(notes, &Note{
-				ObjectId: objectHash,
-				Ref:      refPath,
-				Message:  scanner.Text(),
-        Bytes: scanner.Bytes(),
-			})
+	var notes []Note
+	for _, ref := range refs {
+		// Execute `git cat-file -p` command for each ref
+		cmd := exec.Command("git", "cat-file", "-p", ref)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		err := cmd.Run()
+		if err != nil {
+			// Handle the error according to your needs
+			continue
 		}
-	}
 
-	if err := cmd.Wait(); err != nil {
-		return nil, err
+		// Assuming the output is a JSON blob
+		note := Note{
+			ObjectId: ref,
+			Ref:      refPath,
+			Message:  out.String(),
+			Bytes:    out.Bytes(),
+		}
+		log.Infof("%#v", note)
+		notes = append(notes, note)
 	}
 
 	return notes, nil
 }
 
-func IssuesFromGitNotes(gitNotes []*Note) []*Issue {
+func IssuesFromGitNotes(gitNotes []Note) []*Issue {
 	var issues []*Issue
 	var closedIssues []*Issue
-	for _, notePtr := range gitNotes {
-		note := *notePtr
+	for _, note := range gitNotes {
+		b, err := os.ReadFile("entity/issue_lenses.json")
+		if err != nil {
+			panic(err)
+		}
+		lensSource := lens.NewLensSource(b)
 
-    b, err := os.ReadFile("entity/issue_lenses.json")
-    if err != nil {
-      panic(err)
-    }
-    lensSource := lens.NewLensSource(b)
-    newBytes := lens.ApplyLensToDoc(lensSource, note.Bytes)
-    log.Debugf("new doc: %#v", string(newBytes))
-
-		data := make(map[string]Issue)
+		data := make(map[string]json.RawMessage)
+		// noteBytesSHA := sha1.Sum(note.Bytes)
+		// log.Info(noteBytesSHA)
 		err = json.Unmarshal(note.Bytes, &data)
 		if err != nil {
-			log.Info("note message: %s", note.Message)
-			log.Fatalf("Failed to unmarshal data: %v\n", err)
+			// log.Info(note.Bytes[0])
+			log.Fatalf("Failed to unmarshal data: %#v\n", err)
 		}
 
-		for _, issue := range data {
-			issue := issue
+		for _, issueBytes := range data {
+			// TODO We should not have to re-marshal the issue JSON here
+			// this is a consequence of using a single note to store all the issues
+			// if we stored one issue per note, we could directly take the bytes
+			// and pass them to ApplyLensToDoc
+			// issueJSON, err := issue.MarshalJSON()
+			// if err != nil {
+			// 	panic(err)
+			// }
+			newBytes := lens.ApplyLensToDoc(lensSource, issueBytes)
+			// log.Debugf("new doc: %s", string(newBytes))
+
+			var issue Issue
+			err := json.Unmarshal(newBytes, &issue)
+			if err != nil {
+				panic(err)
+			}
+
 			if !issue.DeletedAt.IsZero() {
 				continue
 			}
 
-			if issue.Closed == "true" {
+			if !issue.ClosedAt.IsZero() {
 				closedIssues = append(closedIssues, &issue)
 				continue
 			}

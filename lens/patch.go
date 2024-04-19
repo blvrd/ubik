@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/log"
+	// "github.com/charmbracelet/log"
 	jsonpatch "github.com/evanphx/json-patch"
 	"github.com/wI2L/jsondiff"
 )
@@ -40,9 +40,7 @@ func PatchToDoc(p Patch) []byte {
 }
 
 func ApplyLensToDoc(ls LensSource, doc []byte) []byte {
-	// Let's create a merge patch from these two documents...
-	// original := []byte(`{"name": "John", "age": 24, "height": 3.21}`)
-	// original := []byte(`{"name": "Jane", "age": 24}`)
+  // log.Debug(string(doc))
 	original := doc
 	patch := DocToPatch(original)
 	evolvedPatch := InterpretLens(patch, ls)
@@ -171,8 +169,6 @@ func applyLens(patchOp PatchOperation, lens Lens, recursing bool) PatchOperation
 				}
 
 				patchOp.Value = newValue
-
-				log.Debugf("change patch after in lens: %#v", patchOp)
 			} else {
 				newPath := strings.Replace(patchOp.Path, "/"+lens.In.Name, "", 1)
 				nestedPatchOp := PatchOperation{

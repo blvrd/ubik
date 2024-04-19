@@ -24,8 +24,8 @@ func main() {
 
 	// Set the global logger output to the file
 	log.SetOutput(logFile)
-  log.SetLevel(log.DebugLevel)
-  log.SetReportCaller(true)
+	log.SetLevel(log.DebugLevel)
+	log.SetReportCaller(true)
 
 	// ========================
 	// CLI Commands
@@ -34,12 +34,12 @@ func main() {
 	// rootCmd represents the base command when called without any subcommands
 	var rootCmd = &cobra.Command{
 		Use:   "ubik",
-  	Short: "Use Ubik from the handy Terminal UI",
+		Short: "Use Ubik from the handy Terminal UI",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := tui.Run(); err != nil {
 				log.Fatal(err)
 			}
-    },
+		},
 	}
 
 	var pushCmd = &cobra.Command{
@@ -64,7 +64,7 @@ func main() {
 				log.Fatalf("error pulling refs: %v", err)
 			}
 
-      err = repo.MergeRefs()
+			err = repo.MergeRefs()
 			if err != nil {
 				log.Fatalf("error merging refs: %v", err)
 			}
@@ -107,15 +107,16 @@ func main() {
 				v := v.(map[string]interface{})
 				createdAt, _ := time.Parse(time.RFC3339, v["created_at"].(string))
 				updatedAt, _ := time.Parse(time.RFC3339, v["updated_at"].(string))
+				closedAt, _ := time.Parse(time.RFC3339, v["closed_at"].(string))
 				issue = entity.Issue{
 					Id:          v["id"].(string),
 					Author:      v["author"].(string),
 					Title:       v["title"].(string),
 					Description: v["description"].(string),
-					Closed:      v["closed"].(string),
 					ParentType:  v["parent_type"].(string),
 					ParentId:    v["parent_id"].(string),
 					RefPath:     v["refpath"].(string),
+					ClosedAt:    closedAt,
 					CreatedAt:   createdAt,
 					UpdatedAt:   updatedAt,
 				}
@@ -149,7 +150,7 @@ func main() {
 				Author:      entity.GetAuthorEmail(), // Make sure you define this
 				Title:       titleFlag,
 				Description: descriptionFlag,
-				Closed:      "false",
+				ClosedAt:    time.Time{},
 				ParentId:    parentIdFlag,
 				ParentType:  parentTypeFlag,
 				RefPath:     entity.IssuesPath,
@@ -201,7 +202,7 @@ func main() {
 					Author:      entity.GetAuthorEmail(), // Make sure you define this
 					Title:       titleFlag,
 					Description: descriptionFlag,
-					Closed:      "false",
+					ClosedAt:    time.Time{},
 					ParentId:    parentIdFlag,
 					ParentType:  parentTypeFlag,
 					RefPath:     entity.IssuesPath,
@@ -249,7 +250,7 @@ func main() {
 		loadTestDataCmd,
 	)
 
-  issuesCmd.AddCommand(issuesListCmd)
+	issuesCmd.AddCommand(issuesListCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
