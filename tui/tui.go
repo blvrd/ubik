@@ -69,7 +69,8 @@ func (i li) FilterValue() string { return i.title }
 func NewModel() tea.Model {
 	issue := entity.NewIssue()
 	d := detail.New(&issue)
-	f := form.New(&issue)
+  formMode := form.FormMode{Mode: "new"}
+	f := form.New(&issue, formMode)
 	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	l.Title = "Issues"
 
@@ -112,17 +113,21 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			switch msg.String() {
 			case "ctrl+n":
 				m.focusState = formView
-				m.form = form.New(&newIssue)
+        formMode := form.FormMode{Mode: "new"}
+				m.form = form.New(&newIssue, formMode)
 				m.form.Init()
       case "ctrl+d":
 				m.focusState = formView
         newIssue.Title = m.currentIssue.Title
         newIssue.Description = m.currentIssue.Description
-				m.form = form.New(&newIssue)
+        currentShortcode := m.currentIssue.Shortcode()
+        formMode := form.FormMode{Mode: "duplicating", Shortcode: &currentShortcode}
+				m.form = form.New(&newIssue, formMode)
 				m.form.Init()
 			case "enter", "ctrl+e":
 				m.focusState = formView
-				m.form = form.New(m.currentIssue)
+        formMode := form.FormMode{Mode: "editing"}
+				m.form = form.New(m.currentIssue, formMode)
 				m.form.Init()
 			case " ":
 				if m.currentIssue.ClosedAt.IsZero() {

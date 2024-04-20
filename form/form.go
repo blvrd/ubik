@@ -12,13 +12,19 @@ import (
 	"github.com/charmbracelet/huh"
 )
 
+type FormMode struct {
+  Mode string
+  Shortcode *string
+}
+
 type Model struct {
 	issue     *entity.Issue
+	mode      FormMode
 	form      *huh.Form
 	persisted bool
 }
 
-func New(issue *entity.Issue) Model {
+func New(issue *entity.Issue, mode FormMode) Model {
 	title := issue.Title
 	description := issue.Description
 
@@ -76,6 +82,7 @@ func New(issue *entity.Issue) Model {
 	return Model{
 		issue: issue,
 		form:  f,
+		mode:  mode,
 	}
 }
 
@@ -124,9 +131,23 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+func (m Model) headerView() string {
+	var header string
+	switch m.mode.Mode {
+	case "new":
+		header = "New Issue"
+	case "editing":
+    header = fmt.Sprintf("Editing issue: #%s", m.issue.Shortcode())
+	case "duplicating":
+    header = fmt.Sprintf("Duplicating issue: #%s", *m.mode.Shortcode)
+	}
+	return fmt.Sprintf("%s\n\n", header)
+}
+
 func (m Model) View() string {
 	var s strings.Builder
 
+	s.WriteString(m.headerView())
 	s.WriteString(m.form.View())
 
 	return s.String()
