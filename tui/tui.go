@@ -13,8 +13,8 @@ import (
 )
 
 var baseStyle = lipgloss.NewStyle().
-	BorderStyle(lipgloss.RoundedBorder()).
-	BorderForeground(lipgloss.Color("105")).
+	// BorderStyle(lipgloss.RoundedBorder()).
+	// BorderForeground(lipgloss.Color("105")).
 	Margin(2, 2)
 
 var borderStyle = lipgloss.NewStyle().
@@ -260,7 +260,7 @@ func (m model) View() string {
 		sidebarView = m.form.View()
 	}
 
-	view := lipgloss.JoinHorizontal(lipgloss.Top, list, sidebarView)
+	view := baseStyle.Render(lipgloss.JoinHorizontal(lipgloss.Top, list, sidebarView))
 
 	return view
 }
