@@ -9,6 +9,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
+	"io"
+	"strings"
 	"time"
 )
 
@@ -66,12 +68,47 @@ func (i li) Description() string {
 }
 func (i li) FilterValue() string { return i.title }
 
+var (
+	titleStyle        = lipgloss.NewStyle().MarginLeft(2)
+	itemStyle         = lipgloss.NewStyle()
+	selectedItemStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("170"))
+	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
+	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
+	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+)
+
+type itemDelegate struct{}
+
+func (d itemDelegate) Height() int                             { return 2 }
+func (d itemDelegate) Spacing() int                            { return 1 }
+func (d itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	i, ok := listItem.(li)
+	if !ok {
+		return
+	}
+
+	str := i.Title()
+	str += "\n"
+	str += i.Description()
+
+	fn := itemStyle.Render
+	if index == m.Index() {
+		fn = func(s ...string) string {
+			return selectedItemStyle.Render(strings.Join(s, " "))
+		}
+	}
+
+	fmt.Fprint(w, fn(str))
+}
+
 func NewModel() tea.Model {
 	issue := entity.NewIssue()
 	d := detail.New(&issue)
-  formMode := form.FormMode{Mode: "new"}
+	formMode := form.FormMode{Mode: "new"}
 	f := form.New(&issue, formMode)
-	l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	// l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
+	l := list.New([]list.Item{}, itemDelegate{}, 0, 0)
 	l.Title = "Issues"
 
 	return model{
@@ -113,20 +150,20 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			switch msg.String() {
 			case "ctrl+n":
 				m.focusState = formView
-        formMode := form.FormMode{Mode: "new"}
+				formMode := form.FormMode{Mode: "new"}
 				m.form = form.New(&newIssue, formMode)
 				m.form.Init()
-      case "ctrl+d":
+			case "ctrl+d":
 				m.focusState = formView
-        newIssue.Title = m.currentIssue.Title
-        newIssue.Description = m.currentIssue.Description
-        currentShortcode := m.currentIssue.Shortcode()
-        formMode := form.FormMode{Mode: "duplicating", Shortcode: &currentShortcode}
+				newIssue.Title = m.currentIssue.Title
+				newIssue.Description = m.currentIssue.Description
+				currentShortcode := m.currentIssue.Shortcode()
+				formMode := form.FormMode{Mode: "duplicating", Shortcode: &currentShortcode}
 				m.form = form.New(&newIssue, formMode)
 				m.form.Init()
 			case "enter", "ctrl+e":
 				m.focusState = formView
-        formMode := form.FormMode{Mode: "editing"}
+				formMode := form.FormMode{Mode: "editing"}
 				m.form = form.New(m.currentIssue, formMode)
 				m.form.Init()
 			case " ":
