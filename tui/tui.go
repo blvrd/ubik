@@ -14,10 +14,7 @@ import (
 	"time"
 )
 
-var baseStyle = lipgloss.NewStyle().
-	// BorderStyle(lipgloss.RoundedBorder()).
-	// BorderForeground(lipgloss.Color("105")).
-	Margin(2, 2)
+var baseStyle = lipgloss.NewStyle().Margin(2, 2)
 
 var borderStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
@@ -70,8 +67,8 @@ func (i li) FilterValue() string { return i.title }
 
 var (
 	titleStyle        = lipgloss.NewStyle().MarginLeft(2)
-	itemStyle         = lipgloss.NewStyle()
-	selectedItemStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("170"))
+	itemStyle         = lipgloss.NewStyle().MarginLeft(2)
+	selectedItemStyle = lipgloss.NewStyle().MarginLeft(2).Foreground(lipgloss.Color("170"))
 	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
 	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
 	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
@@ -107,7 +104,6 @@ func NewModel() tea.Model {
 	d := detail.New(&issue)
 	formMode := form.FormMode{Mode: "new"}
 	f := form.New(&issue, formMode)
-	// l := list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 	l := list.New([]list.Item{}, itemDelegate{}, 0, 0)
 	l.Title = "Issues"
 
