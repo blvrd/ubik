@@ -46,15 +46,9 @@ func New(issue *entity.Issue, mode FormMode) Model {
 			descriptionField,
 			huh.NewConfirm().
 				Key("done").
-				Title("All done?").
-				Validate(func(v bool) error {
-					if !v {
-						return fmt.Errorf("Welp, finish up then")
-					}
-					return nil
-				}).
+				Title("").
 				Affirmative("Save").
-				Negative("Wait, no"),
+				Negative("Cancel"),
 		),
 	).
 		WithWidth(60).
@@ -97,6 +91,10 @@ type FormCompletedMsg string
 
 func CompleteForm(m Model) tea.Cmd {
 	return func() tea.Msg {
+    if !m.form.GetBool("done") {
+      return FormCompletedMsg("canceled")
+    }
+
 		title := m.form.GetString("title")
 		description := m.form.GetString("description")
 
@@ -109,7 +107,7 @@ func CompleteForm(m Model) tea.Cmd {
 			entity.Add(m.issue)
 		}
 
-		return FormCompletedMsg("Form is complete")
+		return FormCompletedMsg("completed")
 	}
 }
 
