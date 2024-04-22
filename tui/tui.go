@@ -12,6 +12,7 @@ import (
 	"io"
 	"strings"
 	"time"
+  "os/exec"
 )
 
 var baseStyle = lipgloss.NewStyle().Margin(2, 2)
@@ -129,8 +130,40 @@ func GetIssues() tea.Msg {
 	return issuesLoadedMsg(issues)
 }
 
+func CheckIssueClosuresFromCommits() tea.Msg {
+	refPath := entity.IssuesPath
+	notes, err := entity.GetNotes(refPath)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	issues := entity.IssuesFromGitNotes(notes)
+
+  cmdArgs := []string{"log"}
+
+  for _, issue := range issues {
+    closes := fmt.Sprintf("closes %s", issue.Shortcode())
+    cmdArgs = append(cmdArgs, "--grep", closes)
+  }
+
+  cmdArgs = append(cmdArgs, "-i", "--pretty=format:'%h'")
+
+  cmd := exec.Command(
+    "git",
+    cmdArgs...,
+  )
+	bytes, err := cmd.Output()
+	if err != nil {
+		panic(err)
+	}
+
+  log.Debug(string(bytes))
+
+	return issuesLoadedMsg(issues)
+}
+
 func (m model) Init() tea.Cmd {
-	return GetIssues
+	return tea.Batch(GetIssues, CheckIssueClosuresFromCommits)
 }
 
 func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
