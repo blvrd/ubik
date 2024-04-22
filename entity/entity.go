@@ -231,6 +231,18 @@ func (i *Issue) Close() error {
 	return nil
 }
 
+func (i *Issue) CloseWithComment(message string) error {
+	i.ClosedAt = time.Now().UTC()
+	// TODO add a first class comment when closing an issue
+	i.Description = fmt.Sprintf("%s\n\n%s", i.Description, message)
+	err := Update(i)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (i Issue) ToMap() map[string]interface{} {
 	return map[string]interface{}{
 		"id":          i.Id,
