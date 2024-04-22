@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"strings"
 
-	// "time"
-
 	"github.com/blvrd/ubik/entity"
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
+	// "github.com/charmbracelet/log"
 )
 
 type FormMode struct {
@@ -28,19 +27,23 @@ func New(issue *entity.Issue, mode FormMode) Model {
 	title := issue.Title
 	description := issue.Description
 
-	f := huh.NewForm(
-		huh.NewGroup(
-			huh.NewInput().
+  titleField := huh.NewInput().
 				Key("title").
 				Title("Title").
 				Value(&title).
-				CharLimit(100),
-			huh.NewText().
+				CharLimit(100)
+
+  descriptionField := huh.NewText().
 				Key("description").
 				Value(&description).
 				Title("Description").
 				CharLimit(600).
-				Lines(15),
+				Lines(15)
+
+	f := huh.NewForm(
+		huh.NewGroup(
+			titleField,
+			descriptionField,
 			huh.NewConfirm().
 				Key("done").
 				Title("All done?").
