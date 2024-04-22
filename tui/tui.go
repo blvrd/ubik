@@ -10,9 +10,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"io"
+	"os/exec"
 	"strings"
 	"time"
-  "os/exec"
 )
 
 var baseStyle = lipgloss.NewStyle().Margin(2, 2)
@@ -137,28 +137,41 @@ func CheckIssueClosuresFromCommits() tea.Msg {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	issues := entity.IssuesFromGitNotes(notes)
 
-  cmdArgs := []string{"log"}
+	for _, issue := range issues {
+		if issue.Shortcode() == "" || !issue.ClosedAt.IsZero() {
+			continue
+		}
+		closes := fmt.Sprintf("closes #%s", issue.Shortcode())
 
-  for _, issue := range issues {
-    closes := fmt.Sprintf("closes %s", issue.Shortcode())
-    cmdArgs = append(cmdArgs, "--grep", closes)
-  }
+		cmd := exec.Command(
+			"git",
+			"log",
+			"--grep",
+			closes,
+			"-i",
+			"--pretty=format:%h",
+		)
 
-  cmdArgs = append(cmdArgs, "-i", "--pretty=format:'%h'")
+		bytes, err := cmd.Output()
+		if err != nil {
+			panic(err)
+		}
 
-  cmd := exec.Command(
-    "git",
-    cmdArgs...,
-  )
-	bytes, err := cmd.Output()
-	if err != nil {
-		panic(err)
+		if len(bytes) != 0 {
+			issue.CloseWithComment(fmt.Sprintf("closed by: %s", string(bytes)))
+		}
 	}
 
-  log.Debug(string(bytes))
+	notes, err = entity.GetNotes(refPath)
 
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	issues = entity.IssuesFromGitNotes(notes)
 	return issuesLoadedMsg(issues)
 }
 
@@ -178,7 +191,7 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			switch msg.String() {
 			case "ctrl+n":
 				m.focusState = formView
-        log.Debug("hi")
+				log.Debug("hi")
 				formMode := form.FormMode{Mode: "new"}
 				m.form = form.New(&newIssue, formMode)
 				m.form.Init()
