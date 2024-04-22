@@ -121,7 +121,6 @@ func GetIssues() tea.Msg {
 	refPath := entity.IssuesPath
 	notes, err := entity.GetNotes(refPath)
 
-	log.Infof("%#v", notes)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -146,6 +145,7 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			switch msg.String() {
 			case "ctrl+n":
 				m.focusState = formView
+        log.Debug("hi")
 				formMode := form.FormMode{Mode: "new"}
 				m.form = form.New(&newIssue, formMode)
 				m.form.Init()
@@ -185,7 +185,6 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			}
 		case tea.WindowSizeMsg:
 			_, y := baseStyle.GetFrameSize()
-			log.Infof("received window message: %+v", msg)
 			m.list.SetSize(90, msg.Height-y)
 		case issuesLoadedMsg:
 			var items []list.Item

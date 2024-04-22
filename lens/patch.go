@@ -40,7 +40,6 @@ func PatchToDoc(p Patch) []byte {
 }
 
 func ApplyLensToDoc(ls LensSource, doc []byte) []byte {
-  // log.Debug(string(doc))
 	original := doc
 	patch := DocToPatch(original)
 	evolvedPatch := InterpretLens(patch, ls)

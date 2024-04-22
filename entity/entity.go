@@ -331,9 +331,6 @@ func Add(issue *Issue) error {
 	var newContent string
 	cmd := exec.Command("git", "notes", "--ref", IssuesPath, "show", firstCommit)
 	note, err := cmd.CombinedOutput()
-	log.Infof("output: %s", note)
-	log.Infof("cmd: %s", cmd.String())
-	log.Errorf("error: %v", err)
 	id := uuid.NewString()
 	shortcodeCache := make(map[string]bool)
 	shortcode := shortcode.GenerateShortcode(id, &shortcodeCache)
@@ -508,7 +505,6 @@ func GetNotes(refPath string) ([]Note, error) {
 			Message:  out.String(),
 			Bytes:    out.Bytes(),
 		}
-		log.Infof("%#v", note)
 		notes = append(notes, note)
 	}
 
@@ -526,11 +522,8 @@ func IssuesFromGitNotes(gitNotes []Note) []*Issue {
 		lensSource := lens.NewLensSource(b)
 
 		data := make(map[string]json.RawMessage)
-		// noteBytesSHA := sha1.Sum(note.Bytes)
-		// log.Info(noteBytesSHA)
 		err = json.Unmarshal(note.Bytes, &data)
 		if err != nil {
-			// log.Info(note.Bytes[0])
 			log.Fatalf("Failed to unmarshal data: %#v\n", err)
 		}
 
@@ -544,7 +537,6 @@ func IssuesFromGitNotes(gitNotes []Note) []*Issue {
 			// 	panic(err)
 			// }
 			newBytes := lens.ApplyLensToDoc(lensSource, issueBytes)
-			// log.Debugf("new doc: %s", string(newBytes))
 
 			var issue Issue
 			err := json.Unmarshal(newBytes, &issue)
