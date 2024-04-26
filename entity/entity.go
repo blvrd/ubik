@@ -470,7 +470,6 @@ func Remove(entity Entity) error {
 
 func GetRefsByPath(refPath string) []string {
 	cmd := exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik")
-	// cmd := exec.Command("git", "notes", "--ref", refPath, "list")
 	bytes, err := cmd.Output()
 	if err != nil {
 		panic(err)
@@ -500,17 +499,14 @@ func GetNotes(refPath string) ([]Note, error) {
 
 	var notes []Note
 	for _, ref := range refs {
-		// Execute `git cat-file -p` command for each ref
 		cmd := exec.Command("git", "cat-file", "-p", ref)
 		var out bytes.Buffer
 		cmd.Stdout = &out
 		err := cmd.Run()
 		if err != nil {
-			// Handle the error according to your needs
 			continue
 		}
 
-		// Assuming the output is a JSON blob
 		note := Note{
 			ObjectId: ref,
 			Ref:      refPath,
@@ -527,14 +523,6 @@ func IssuesFromGitNotes(gitNotes []Note) []*Issue {
 	var issues []*Issue
 	var closedIssues []*Issue
 	for _, note := range gitNotes {
-    log.Debugf("🪚 note: %#v", note)
-		// b, err := os.ReadFile("entity/issue_lenses.json")
-		// if err != nil {
-		// 	panic(err)
-		// }
-		// lensSource := lens.NewLensSource(b)
-
-
     var issue Issue
     err := json.Unmarshal(note.Bytes, &issue)
 		if err != nil {
@@ -551,25 +539,6 @@ func IssuesFromGitNotes(gitNotes []Note) []*Issue {
     }
 
     issues = append(issues, &issue)
-
-		// for _, issueBytes := range issue {
-		// 	// TODO We should not have to re-marshal the issue JSON here
-		// 	// this is a consequence of using a single note to store all the issues
-		// 	// if we stored one issue per note, we could directly take the bytes
-		// 	// and pass them to ApplyLensToDoc
-		// 	// issueJSON, err := issue.MarshalJSON()
-		// 	// if err != nil {
-		// 	// 	panic(err)
-		// 	// }
-		// 	// newBytes := lens.ApplyLensToDoc(lensSource, issueBytes)
-		//
-		// 	var issue Issue
-		// 	err := json.Unmarshal(issueBytes, &issue)
-		// 	if err != nil {
-		// 		panic(err)
-		// 	}
-		//
-		// }
 	}
 
 	sort.Sort(ByUpdatedAtDescending(issues))
