@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/blvrd/ubik/lens"
+	// "github.com/blvrd/ubik/lens"
 	"github.com/blvrd/ubik/shortcode"
 	"github.com/charmbracelet/log"
 	"github.com/google/uuid"
@@ -469,8 +469,8 @@ func Remove(entity Entity) error {
 }
 
 func GetRefsByPath(refPath string) []string {
-	// cmd := exec.Command("git", "for-each-ref", "--format='%(objectname)'", "refs/notes/ubik")
-	cmd := exec.Command("git", "notes", "--ref", refPath, "list")
+	cmd := exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik")
+	// cmd := exec.Command("git", "notes", "--ref", refPath, "list")
 	bytes, err := cmd.Output()
 	if err != nil {
 		panic(err)
@@ -527,46 +527,49 @@ func IssuesFromGitNotes(gitNotes []Note) []*Issue {
 	var issues []*Issue
 	var closedIssues []*Issue
 	for _, note := range gitNotes {
-		b, err := os.ReadFile("entity/issue_lenses.json")
-		if err != nil {
-			panic(err)
-		}
-		lensSource := lens.NewLensSource(b)
+    log.Debugf("🪚 note: %#v", note)
+		// b, err := os.ReadFile("entity/issue_lenses.json")
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// lensSource := lens.NewLensSource(b)
 
-		data := make(map[string]json.RawMessage)
-		err = json.Unmarshal(note.Bytes, &data)
+
+    var issue Issue
+    err := json.Unmarshal(note.Bytes, &issue)
 		if err != nil {
 			log.Fatalf("Failed to unmarshal data: %#v\n", err)
 		}
 
-		for _, issueBytes := range data {
-			// TODO We should not have to re-marshal the issue JSON here
-			// this is a consequence of using a single note to store all the issues
-			// if we stored one issue per note, we could directly take the bytes
-			// and pass them to ApplyLensToDoc
-			// issueJSON, err := issue.MarshalJSON()
-			// if err != nil {
-			// 	panic(err)
-			// }
-			newBytes := lens.ApplyLensToDoc(lensSource, issueBytes)
+    if !issue.DeletedAt.IsZero() {
+      continue
+    }
 
-			var issue Issue
-			err := json.Unmarshal(newBytes, &issue)
-			if err != nil {
-				panic(err)
-			}
+    if !issue.ClosedAt.IsZero() {
+      closedIssues = append(closedIssues, &issue)
+      continue
+    }
 
-			if !issue.DeletedAt.IsZero() {
-				continue
-			}
+    issues = append(issues, &issue)
 
-			if !issue.ClosedAt.IsZero() {
-				closedIssues = append(closedIssues, &issue)
-				continue
-			}
-
-			issues = append(issues, &issue)
-		}
+		// for _, issueBytes := range issue {
+		// 	// TODO We should not have to re-marshal the issue JSON here
+		// 	// this is a consequence of using a single note to store all the issues
+		// 	// if we stored one issue per note, we could directly take the bytes
+		// 	// and pass them to ApplyLensToDoc
+		// 	// issueJSON, err := issue.MarshalJSON()
+		// 	// if err != nil {
+		// 	// 	panic(err)
+		// 	// }
+		// 	// newBytes := lens.ApplyLensToDoc(lensSource, issueBytes)
+		//
+		// 	var issue Issue
+		// 	err := json.Unmarshal(issueBytes, &issue)
+		// 	if err != nil {
+		// 		panic(err)
+		// 	}
+		//
+		// }
 	}
 
 	sort.Sort(ByUpdatedAtDescending(issues))
