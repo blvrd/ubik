@@ -370,48 +370,29 @@ func Add(issue *Issue) error {
 	return nil
 }
 
-func Update(entity Entity) error {
-	firstCommit := GetFirstCommit()
-
-	var newContent string
-	cmd := exec.Command("git", "notes", "--ref", "refs/notes/ubik/issues", "show", firstCommit)
-	note, err := cmd.Output()
-
+func Update(issue *Issue) error {
+	jsonData, err := json.Marshal(issue)
 	if err != nil {
-		data := make(map[string]interface{})
-		entity.Touch()
-		data[entity.GetId()] = entity
-		newJSON, err := json.Marshal(data)
-		if err != nil {
-			log.Fatalf("Failed to marshal entity: %v\n", err)
-		}
-
-		newContent = string(newJSON)
-	} else if err == nil {
-		data := make(map[string]interface{})
-		err := json.Unmarshal([]byte(note), &data)
-		if err != nil {
-			log.Fatalf("Failed to unmarshal data: %v\n", err)
-		}
-		entity.Touch()
-		data[entity.GetId()] = entity
-
-		newJSON, err := json.Marshal(data)
-
-		if err != nil {
-			log.Fatalf("Failed to marshal project: %v\n", err)
-		}
-
-		newContent = string(newJSON)
-	} else {
 		return err
 	}
 
-	cmd = exec.Command("git", "notes", "--ref", "refs/notes/ubik/issues", "add", "-m", newContent, "-f", firstCommit)
-	err = cmd.Run()
+	cmd := exec.Command("git", "hash-object", "--stdin", "-w")
+	cmd.Stdin = bytes.NewReader(jsonData)
+
+	b, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("Failed to add note to tree: %v", err)
+		return err
 	}
+
+  hash := strings.TrimSpace(string(b))
+
+  cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash)
+  err = cmd.Run()
+
+  if err != nil {
+    log.Fatalf("%#v", err.Error())
+    return err
+  }
 
 	return nil
 }
