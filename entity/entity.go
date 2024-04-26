@@ -338,51 +338,34 @@ func Add(issue *Issue) error {
 		log.Fatal("issue has already been persisted")
 	}
 
-	firstCommit := GetFirstCommit()
-
-	var newContent string
-	cmd := exec.Command("git", "notes", "--ref", IssuesPath, "show", firstCommit)
-	note, err := cmd.CombinedOutput()
 	id := uuid.NewString()
 	shortcodeCache := make(map[string]bool)
 	shortcode := shortcode.GenerateShortcode(id, &shortcodeCache)
 	issue.Id = id
 	issue.shortcode = shortcode
 
+	jsonData, err := json.Marshal(issue)
 	if err != nil {
-		data := make(map[string]interface{})
-
-		data[id] = issue
-		newJSON, err := json.Marshal(data)
-		if err != nil {
-			log.Fatalf("Failed to marshal entity: %v\n", err)
-		}
-
-		issue.Touch()
-		newContent = string(newJSON)
-	} else if err == nil {
-		data := make(map[string]interface{})
-		err := json.Unmarshal(note, &data)
-		if err != nil {
-			log.Fatalf("Failed to unmarshal data: %v\n", err)
-		}
-		issue.Touch()
-		data[id] = issue
-
-		newJSON, err := json.Marshal(data)
-
-		if err != nil {
-			log.Fatalf("Failed to marshal project: %v\n", err)
-		}
-
-		newContent = string(newJSON)
+		return err
 	}
 
-	cmd = exec.Command("git", "notes", "--ref", IssuesPath, "add", "-m", newContent, "-f", firstCommit)
-	err = cmd.Run()
+	cmd := exec.Command("git", "hash-object", "--stdin", "-w")
+	cmd.Stdin = bytes.NewReader(jsonData)
+
+	b, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("Failed to add note to tree: %v", err)
+		return err
 	}
+
+  hash := strings.TrimSpace(string(b))
+
+  cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash)
+  err = cmd.Run()
+
+  if err != nil {
+    log.Fatalf("%#v", err.Error())
+    return err
+  }
 
 	return nil
 }
@@ -523,22 +506,22 @@ func IssuesFromGitNotes(gitNotes []Note) []*Issue {
 	var issues []*Issue
 	var closedIssues []*Issue
 	for _, note := range gitNotes {
-    var issue Issue
-    err := json.Unmarshal(note.Bytes, &issue)
+		var issue Issue
+		err := json.Unmarshal(note.Bytes, &issue)
 		if err != nil {
 			log.Fatalf("Failed to unmarshal data: %#v\n", err)
 		}
 
-    if !issue.DeletedAt.IsZero() {
-      continue
-    }
+		if !issue.DeletedAt.IsZero() {
+			continue
+		}
 
-    if !issue.ClosedAt.IsZero() {
-      closedIssues = append(closedIssues, &issue)
-      continue
-    }
+		if !issue.ClosedAt.IsZero() {
+			closedIssues = append(closedIssues, &issue)
+			continue
+		}
 
-    issues = append(issues, &issue)
+		issues = append(issues, &issue)
 	}
 
 	sort.Sort(ByUpdatedAtDescending(issues))
