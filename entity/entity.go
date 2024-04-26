@@ -397,39 +397,14 @@ func Update(issue *Issue) error {
 	return nil
 }
 
-func Remove(entity Entity) error {
-	firstCommit := GetFirstCommit()
+func Remove(issue *Issue) error {
+  err := issue.Delete()
 
-	var newContent string
-	cmd := exec.Command("git", "notes", "--ref", "refs/notes/ubik/issues", "show", firstCommit)
-	note, err := cmd.Output()
+  if err != nil {
+    return err
+  }
 
-	if err != nil {
-		log.Fatalf("%v", err)
-	} else if err == nil {
-		data := make(map[string]interface{})
-		err := json.Unmarshal([]byte(note), &data)
-		if err != nil {
-			log.Fatalf("Failed to unmarshal data: %v\n", err)
-		}
-		delete(data, entity.GetId())
-
-		newJSON, err := json.Marshal(data)
-
-		if err != nil {
-			log.Fatalf("Failed to marshal project: %v\n", err)
-		}
-
-		newContent = string(newJSON)
-	}
-
-	cmd = exec.Command("git", "notes", "--ref", "refs/notes/ubik/issues", "add", "-m", newContent, "-f", firstCommit)
-	err = cmd.Run()
-	if err != nil {
-		return fmt.Errorf("Failed to add note to tree: %v", err)
-	}
-
-	return nil
+  return nil
 }
 
 func GetRefsByPath(refPath string) []string {
