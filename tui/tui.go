@@ -191,7 +191,6 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			switch msg.String() {
 			case "ctrl+n":
 				m.focusState = formView
-				log.Debug("hi")
 				formMode := form.FormMode{Mode: "new"}
 				m.form = form.New(&newIssue, formMode)
 				m.form.Init()
