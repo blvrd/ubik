@@ -417,7 +417,7 @@ func GetRefsByPath(refPath string) []string {
 	var noteIds []string
 	str := string(bytes)
 	for _, s := range strings.Split(str, "\n") {
-		noteId := strings.Split(s, " ")[0]
+		noteId := s
 		if noteId != "" {
 			noteIds = append(noteIds, noteId)
 		}
@@ -476,7 +476,6 @@ func IssuesFromGitNotes(gitNotes []Note) []*Issue {
 			closedIssues = append(closedIssues, &issue)
 			continue
 		}
-
 		issues = append(issues, &issue)
 	}
 
