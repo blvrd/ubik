@@ -343,6 +343,7 @@ func Add(issue *Issue) error {
 	shortcode := shortcode.GenerateShortcode(id, &shortcodeCache)
 	issue.Id = id
 	issue.shortcode = shortcode
+  issue.Touch()
 
 	jsonData, err := json.Marshal(issue)
 	if err != nil {
@@ -371,6 +372,7 @@ func Add(issue *Issue) error {
 }
 
 func Update(issue *Issue) error {
+  issue.Touch()
 	jsonData, err := json.Marshal(issue)
 	if err != nil {
 		return err
