@@ -87,12 +87,13 @@ func (m Model) Init() tea.Cmd {
 	return m.form.Init()
 }
 
-type FormCompletedMsg string
+type FormCompletedMsg *entity.Issue
+type FormCancelledMsg string
 
 func CompleteForm(m Model) tea.Cmd {
 	return func() tea.Msg {
     if !m.form.GetBool("done") {
-      return FormCompletedMsg("canceled")
+      return FormCancelledMsg("canceled")
     }
 
 		title := m.form.GetString("title")
@@ -107,7 +108,7 @@ func CompleteForm(m Model) tea.Cmd {
 			entity.Add(m.issue)
 		}
 
-		return FormCompletedMsg("completed")
+		return FormCompletedMsg(m.issue)
 	}
 }
 
