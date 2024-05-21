@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"io"
+	"math"
 	"os/exec"
 	"strings"
 	"time"
@@ -219,6 +220,13 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			case "backspace":
 				m.currentIssue.Delete()
 				cmds = append(cmds, GetIssues)
+				// deleting the last issue
+				if len(m.issues) == 1 {
+					cmds = append(cmds, GetIssues(nil))
+					return m, cmds
+				}
+				prevIndex := float64((m.list.Index() - 1))
+				prevIssue := m.issues[int(math.Max(0, prevIndex))]
 				return m, cmds
 			case "ctrl+q", "ctrl+c":
 				cmds = append(cmds, tea.Quit)
