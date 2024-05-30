@@ -12,8 +12,8 @@ import (
 )
 
 type FormMode struct {
-  Mode string
-  Shortcode *string
+	Mode      string
+	Shortcode *string
 }
 
 type Model struct {
@@ -27,18 +27,18 @@ func New(issue *entity.Issue, mode FormMode) Model {
 	title := issue.Title
 	description := issue.Description
 
-  titleField := huh.NewInput().
-				Key("title").
-				Title("Title").
-				Value(&title).
-				CharLimit(100)
+	titleField := huh.NewInput().
+		Key("title").
+		Title("Title").
+		Value(&title).
+		CharLimit(100)
 
-  descriptionField := huh.NewText().
-				Key("description").
-				Value(&description).
-				Title("Description").
-				CharLimit(600).
-				Lines(15)
+	descriptionField := huh.NewText().
+		Key("description").
+		Value(&description).
+		Title("Description").
+		CharLimit(600).
+		Lines(15)
 
 	f := huh.NewForm(
 		huh.NewGroup(
@@ -92,9 +92,9 @@ type FormCancelledMsg string
 
 func CompleteForm(m Model) tea.Cmd {
 	return func() tea.Msg {
-    if !m.form.GetBool("done") {
-      return FormCancelledMsg("canceled")
-    }
+		if !m.form.GetBool("done") {
+			return FormCancelledMsg("canceled")
+		}
 
 		title := m.form.GetString("title")
 		description := m.form.GetString("description")
@@ -139,9 +139,9 @@ func (m Model) headerView() string {
 	case "new":
 		header = "New Issue"
 	case "editing":
-    header = fmt.Sprintf("Editing issue: #%s", m.issue.Shortcode())
+		header = fmt.Sprintf("Editing issue: #%s", m.issue.Shortcode())
 	case "duplicating":
-    header = fmt.Sprintf("Duplicating issue: #%s", *m.mode.Shortcode)
+		header = fmt.Sprintf("Duplicating issue: #%s", *m.mode.Shortcode)
 	}
 	return fmt.Sprintf("%s\n\n", header)
 }
