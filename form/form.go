@@ -8,7 +8,6 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
-	// "github.com/charmbracelet/log"
 )
 
 type FormMode struct {
@@ -31,13 +30,13 @@ func New(issue *entity.Issue, mode FormMode) Model {
 		Key("title").
 		Title("Title").
 		Value(&title).
-		CharLimit(100)
+		CharLimit(180)
 
 	descriptionField := huh.NewText().
 		Key("description").
-		Value(&description).
+		CharLimit(2500).
 		Title("Description").
-		CharLimit(600).
+		Value(&description).
 		Lines(15)
 
 	f := huh.NewForm(
