@@ -27,15 +27,19 @@ var borderStyle = lipgloss.NewStyle().
 type focusedView int
 
 const (
-	listView focusedView = 1
-	formView focusedView = 2
+	issuesListView   focusedView = 1
+	issuesFormView   focusedView = 2
+	memosListView    focusedView = 3
+	projectsListView focusedView = 4
 )
 
 type model struct {
 	focusState   focusedView
-	list         list.Model
+	issuesList   list.Model
 	issues       []*entity.Issue
 	currentIssue *entity.Issue
+	memosList    list.Model
+	memos        []string
 	detail       detail.Model
 	form         form.Model
 	loading      bool
@@ -110,25 +114,45 @@ func NewModel() tea.Model {
 	l.Title = "Issues"
 
 	return model{
-		list:       l,
+		issuesList: l,
+    memosList: list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0),
 		detail:     d,
 		form:       f,
-		focusState: listView,
+		focusState: issuesListView,
 	}
 }
 
-type issuesLoadedMsg []*entity.Issue
+type issuesLoadedMsg struct {
+	Issues            []*entity.Issue
+	FocusedIssueIndex int
+}
 
-func GetIssues() tea.Msg {
-	refPath := entity.IssuesPath
-	notes, err := entity.GetNotes(refPath)
+func GetIssues(focusedIssueId *string) tea.Cmd {
+	return func() tea.Msg {
+		refPath := entity.IssuesPath
+		notes, err := entity.GetNotes(refPath)
 
-	if err != nil {
-		log.Fatal(err)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		issues := entity.IssuesFromGitNotes(notes)
+		var focusedIssueIndex int
+		for i, issue := range issues {
+			if focusedIssueId != nil && issue.Id == *focusedIssueId {
+				focusedIssueIndex = i
+			}
+
+			if focusedIssueId == nil {
+				focusedIssueIndex = 0
+			}
+		}
+
+		return issuesLoadedMsg{
+			Issues:            issues,
+			FocusedIssueIndex: focusedIssueIndex,
+		}
 	}
-	issues := entity.IssuesFromGitNotes(notes)
-
-	return issuesLoadedMsg(issues)
 }
 
 func CheckIssueClosuresFromCommits() tea.Msg {
@@ -173,11 +197,14 @@ func CheckIssueClosuresFromCommits() tea.Msg {
 	}
 
 	issues = entity.IssuesFromGitNotes(notes)
-	return issuesLoadedMsg(issues)
+	return issuesLoadedMsg{
+		Issues:            issues,
+		FocusedIssueIndex: 0,
+	}
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(GetIssues, CheckIssueClosuresFromCommits)
+	return tea.Batch(GetIssues(nil), CheckIssueClosuresFromCommits)
 }
 
 func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
@@ -186,17 +213,20 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 
 	newIssue := entity.NewIssue()
 
-	if !m.list.SettingFilter() {
+	if !m.issuesList.SettingFilter() {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "ctrl+n":
-				m.focusState = formView
+				m.focusState = issuesFormView
 				formMode := form.FormMode{Mode: "new"}
 				m.form = form.New(&newIssue, formMode)
 				m.form.Init()
+			case "m":
+				m.focusState = memosListView
+				return m, cmds
 			case "ctrl+d":
-				m.focusState = formView
+				m.focusState = issuesFormView
 				newIssue.Title = m.currentIssue.Title
 				newIssue.Description = m.currentIssue.Description
 				currentShortcode := m.currentIssue.Shortcode()
@@ -204,10 +234,11 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 				m.form = form.New(&newIssue, formMode)
 				m.form.Init()
 			case "enter", "ctrl+e":
-				m.focusState = formView
+				m.focusState = issuesFormView
 				formMode := form.FormMode{Mode: "editing"}
 				m.form = form.New(m.currentIssue, formMode)
 				m.form.Init()
+        return m, cmds
 			case " ":
 				if m.currentIssue.ClosedAt.IsZero() {
 					m.currentIssue.Close()
@@ -215,35 +246,38 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 					m.currentIssue.Open()
 				}
 
-				cmds = append(cmds, GetIssues)
+				cmds = append(cmds, GetIssues(&m.currentIssue.Id))
 				return m, cmds
 			case "backspace":
 				m.currentIssue.Delete()
-				cmds = append(cmds, GetIssues)
+
 				// deleting the last issue
 				if len(m.issues) == 1 {
 					cmds = append(cmds, GetIssues(nil))
 					return m, cmds
 				}
-				prevIndex := float64((m.list.Index() - 1))
+
+				prevIndex := float64((m.issuesList.Index() - 1))
 				prevIssue := m.issues[int(math.Max(0, prevIndex))]
+				cmds = append(cmds, GetIssues(&prevIssue.Id))
 				return m, cmds
 			case "ctrl+q", "ctrl+c":
 				cmds = append(cmds, tea.Quit)
 				return m, cmds
 			case "ctrl+r":
 				m.currentIssue.Restore()
-				cmds = append(cmds, GetIssues)
+				cmds = append(cmds, GetIssues(&m.currentIssue.Id))
 				return m, cmds
 			}
 		case tea.WindowSizeMsg:
 			_, y := baseStyle.GetFrameSize()
-			m.list.SetSize(90, msg.Height-y)
+			m.issuesList.SetSize(90, msg.Height-y)
+			m.memosList.SetSize(90, msg.Height-y)
 		case issuesLoadedMsg:
 			var items []list.Item
-			m.issues = msg
+			m.issues = msg.Issues
 
-			for _, issue := range msg {
+			for _, issue := range m.issues {
 				item := li{
 					id:        issue.Id,
 					author:    issue.Author,
@@ -256,11 +290,12 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 				items = append(items, item)
 			}
 
-			m.list, cmd = m.list.Update(items)
+			m.issuesList, cmd = m.issuesList.Update(items)
 
 			if len(m.issues) > 0 {
-				m.currentIssue = m.issues[m.list.Index()]
-				m.list.SetItems(items)
+				m.currentIssue = m.issues[msg.FocusedIssueIndex]
+				m.issuesList.Select(msg.FocusedIssueIndex)
+				m.issuesList.SetItems(items)
 				d := detail.New(m.currentIssue)
 				m.detail = d
 			}
@@ -270,9 +305,9 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 		}
 	}
 
-	m.list, cmd = m.list.Update(msg)
-	if len(m.issues) > 0 && m.list.SelectedItem() != nil {
-		selectedItem := m.list.SelectedItem().(li)
+	m.issuesList, cmd = m.issuesList.Update(msg)
+	if len(m.issues) > 0 && m.issuesList.SelectedItem() != nil {
+		selectedItem := m.issuesList.SelectedItem().(li)
 		currentIssue := entity.NewIssue()
 
 		// This would be simpler/faster as a map access
@@ -301,14 +336,17 @@ func handleFormViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc":
-			m.focusState = listView
+			m.focusState = issuesListView
 		case "ctrl+c":
 			cmds = append(cmds, tea.Quit)
 		}
 	case form.FormCompletedMsg:
-		m.focusState = listView
-		cmds = append(cmds, GetIssues)
+		m.focusState = issuesListView
+		cmds = append(cmds, GetIssues(&msg.Id))
 		return m, cmds
+	case form.FormCancelledMsg:
+		m.focusState = issuesListView
+		return m, nil
 	}
 
 	m.form, cmd = m.form.Update(msg)
@@ -320,9 +358,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch m.focusState {
-	case listView:
+	case issuesListView:
 		m, cmds = handleListViewMsg(m, msg)
-	case formView:
+	case issuesFormView:
 		m, cmds = handleFormViewMsg(m, msg)
 	}
 
@@ -330,7 +368,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	list := borderStyle.Width(m.list.Width()).Render(m.list.View())
+	list := borderStyle.Width(m.issuesList.Width()).Render(m.issuesList.View())
 	currentIssue := m.currentIssue
 
 	if currentIssue == nil {
@@ -339,10 +377,15 @@ func (m model) View() string {
 
 	var sidebarView string
 
-	if m.focusState == listView {
+	switch m.focusState {
+	case issuesListView:
 		sidebarView = lipgloss.NewStyle().Width(60).Render(m.detail.View())
-	} else {
+	case issuesFormView:
 		sidebarView = m.form.View()
+	case memosListView:
+		sidebarView = ""
+	  list = borderStyle.Width(m.memosList.Width()).Render(m.memosList.View())
+  default:
 	}
 
 	view := baseStyle.Render(lipgloss.JoinHorizontal(lipgloss.Top, list, sidebarView))
