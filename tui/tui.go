@@ -34,15 +34,16 @@ const (
 )
 
 type model struct {
-	focusState   focusedView
-	issuesList   list.Model
-	issues       []*entity.Issue
-	currentIssue *entity.Issue
-	memosList    list.Model
-	memos        []string
-	detail       detail.Model
-	form         form.Model
-	loading      bool
+	focusState    focusedView
+	issuesList    list.Model
+	issues        []*entity.Issue
+	currentIssue  *entity.Issue
+	memosList     list.Model
+	memos         []string
+	details       map[string]*detail.Model
+	currentDetail *detail.Model
+	form          form.Model
+	loading       bool
 }
 
 type li struct {
@@ -108,17 +109,21 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 func NewModel() tea.Model {
 	issue := entity.NewIssue()
 	d := detail.New(&issue)
+	d.Init()
+	details := make(map[string]*detail.Model)
+	details[issue.Id] = &d
 	formMode := form.FormMode{Mode: "new"}
 	f := form.New(&issue, formMode)
 	l := list.New([]list.Item{}, itemDelegate{}, 0, 0)
 	l.Title = "Issues"
 
 	return model{
-		issuesList: l,
-    memosList: list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0),
-		detail:     d,
-		form:       f,
-		focusState: issuesListView,
+		issuesList:    l,
+		memosList:     list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0),
+		currentDetail: &d,
+		details:       details,
+		form:          f,
+		focusState:    issuesListView,
 	}
 }
 
@@ -238,7 +243,7 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 				formMode := form.FormMode{Mode: "editing"}
 				m.form = form.New(m.currentIssue, formMode)
 				m.form.Init()
-        return m, cmds
+				return m, cmds
 			case " ":
 				if m.currentIssue.ClosedAt.IsZero() {
 					m.currentIssue.Close()
@@ -297,7 +302,9 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 				m.issuesList.Select(msg.FocusedIssueIndex)
 				m.issuesList.SetItems(items)
 				d := detail.New(m.currentIssue)
-				m.detail = d
+				d.Init()
+				m.details[m.currentIssue.Id] = &d
+				m.currentDetail = &d
 			}
 
 			cmds = append(cmds, cmd)
@@ -319,8 +326,14 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 		}
 
 		m.currentIssue = &currentIssue
-		d := detail.New(m.currentIssue)
-		m.detail = d
+		d := m.details[m.currentIssue.Id]
+		if d == nil {
+			newDetail := detail.New(m.currentIssue)
+			d = &newDetail
+			d.Init()
+			m.details[m.currentIssue.Id] = d
+		}
+		m.currentDetail = d
 	}
 
 	cmds = append(cmds, cmd)
@@ -356,6 +369,7 @@ func handleFormViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
+	var cmd []tea.Cmd
 
 	switch m.focusState {
 	case issuesListView:
@@ -363,6 +377,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case issuesFormView:
 		m, cmds = handleFormViewMsg(m, msg)
 	}
+
+	*m.currentDetail, cmd = m.currentDetail.Update(msg)
+
+	cmds = append(cmds, cmd...)
 
 	return m, tea.Batch(cmds...)
 }
@@ -379,13 +397,13 @@ func (m model) View() string {
 
 	switch m.focusState {
 	case issuesListView:
-		sidebarView = lipgloss.NewStyle().Width(60).Render(m.detail.View())
+		sidebarView = lipgloss.NewStyle().Width(60).Render(m.currentDetail.View())
 	case issuesFormView:
 		sidebarView = m.form.View()
 	case memosListView:
 		sidebarView = ""
-	  list = borderStyle.Width(m.memosList.Width()).Render(m.memosList.View())
-  default:
+		list = borderStyle.Width(m.memosList.Width()).Render(m.memosList.View())
+	default:
 	}
 
 	view := baseStyle.Render(lipgloss.JoinHorizontal(lipgloss.Top, list, sidebarView))
