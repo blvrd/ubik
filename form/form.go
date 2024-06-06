@@ -34,10 +34,10 @@ func New(issue *entity.Issue, mode FormMode) Model {
 
 	descriptionField := huh.NewText().
 		Key("description").
-		CharLimit(2500).
+		CharLimit(0).
 		Title("Description").
-		Value(&description).
-		Lines(15)
+		Lines(15).
+		Value(&description)
 
 	f := huh.NewForm(
 		huh.NewGroup(
