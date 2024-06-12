@@ -49,7 +49,7 @@ func DefaultKeyMap() viewport.KeyMap {
 }
 
 type Model struct {
-	ent      entity.Entity
+	ent      *entity.Issue
 	viewport viewport.Model
 }
 
@@ -63,7 +63,7 @@ var commentHeaderStyle = lipgloss.NewStyle().
 	BorderForeground(lipgloss.Color("#838383")).
 	Width(58)
 
-func New(ent entity.Entity) Model {
+func New(ent *entity.Issue) Model {
 	m := Model{
 		ent:      ent,
 		viewport: viewport.New(60, viewportHeight),

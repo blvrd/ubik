@@ -20,18 +20,6 @@ const (
 	IssuesPath = "refs/notes/ubik/issues"
 )
 
-type Entity interface {
-	GetRefPath() string
-	GetId() string
-	ToMap() map[string]interface{}
-	Touch()
-	Delete() error
-	Restore() error
-	IsPersisted() bool
-	json.Marshaler
-	json.Unmarshaler
-}
-
 type Listable interface {
 	FilterValue() string
 }
@@ -47,6 +35,35 @@ type ByUpdatedAtAscending []*Issue
 func (n ByUpdatedAtAscending) Len() int           { return len(n) }
 func (n ByUpdatedAtAscending) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
 func (n ByUpdatedAtAscending) Less(i, j int) bool { return n[i].UpdatedAt.Before(n[j].UpdatedAt) }
+
+type Project struct {
+	id          string
+	Author      string
+	Description string
+	Progress    int
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	DeletedAt   time.Time
+}
+
+type ProjectParams struct {
+	Author      string
+	Description string
+}
+
+type Memo struct {
+	id        string
+	Author    string
+	Body      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt time.Time
+}
+
+type MemoParams struct {
+	Author string
+	Body   string
+}
 
 type Comment struct {
 	id        string
