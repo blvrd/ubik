@@ -10,12 +10,12 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/charmbracelet/log"
+	// "github.com/charmbracelet/log"
 )
 
 const (
-	viewportHeight int = 20
-  spacebar = " "
+	viewportHeight int = 30
+	spacebar           = " "
 )
 
 // DefaultKeyMap returns a set of pager-like default keybindings.
@@ -53,16 +53,31 @@ type Model struct {
 	viewport viewport.Model
 }
 
+var commentStyle = lipgloss.NewStyle().
+	BorderStyle(lipgloss.RoundedBorder()).
+	BorderForeground(lipgloss.Color("#838383")).
+	Width(58)
+
+var commentHeaderStyle = lipgloss.NewStyle().
+	Border(lipgloss.NormalBorder(), false, false, true, false).
+	BorderForeground(lipgloss.Color("#838383")).
+	Width(58)
+
 func New(ent entity.Entity) Model {
 	m := Model{
 		ent:      ent,
-		viewport: viewport.New(50, viewportHeight),
+		viewport: viewport.New(60, viewportHeight),
+	}
+	entMap := ent.ToMap()
+	content := []string{entMap["description"].(string)}
+	content = append(content, "\nComments:\n")
+	for _, comment := range entMap["comments"].([]entity.Comment) {
+		commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.Author, comment.CreatedAt.Format(time.RFC822)))
+		content = append(content, commentStyle.Render(fmt.Sprintf("%s\n\n %s\n", commentHeader, comment.Body)))
 	}
 
-  log.Debug("🪚yooooooooooooooooooooooooooooooo")
-	m.viewport.SetContent(ent.ToMap()["description"].(string))
-  m.viewport.KeyMap = DefaultKeyMap()
-	// m.viewport.GotoTop()
+	m.viewport.SetContent(strings.Join(content, "\n"))
+	m.viewport.KeyMap = DefaultKeyMap()
 
 	return m
 }

@@ -48,6 +48,27 @@ func (n ByUpdatedAtAscending) Len() int           { return len(n) }
 func (n ByUpdatedAtAscending) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
 func (n ByUpdatedAtAscending) Less(i, j int) bool { return n[i].UpdatedAt.Before(n[j].UpdatedAt) }
 
+type Comment struct {
+	id        string
+	Author    string
+	Body      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt time.Time
+}
+
+type CommentParams struct {
+	Author string
+	Body   string
+}
+
+func NewComment(params CommentParams) Comment {
+	return Comment{
+		Author: params.Author,
+		Body:   params.Body,
+	}
+}
+
 type Issue struct {
 	Id          string
 	Author      string
@@ -61,6 +82,7 @@ type Issue struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   time.Time
+	Comments    []Comment
 }
 
 func NewIssue() Issue {
@@ -257,6 +279,7 @@ func (i Issue) ToMap() map[string]interface{} {
 		"created_at":  i.CreatedAt,
 		"updated_at":  i.UpdatedAt,
 		"deleted_at":  i.DeletedAt,
+		"comments":    i.Comments,
 	}
 }
 
@@ -343,7 +366,7 @@ func Add(issue *Issue) error {
 	shortcode := shortcode.GenerateShortcode(id, &shortcodeCache)
 	issue.Id = id
 	issue.shortcode = shortcode
-  issue.Touch()
+	issue.Touch()
 
 	jsonData, err := json.Marshal(issue)
 	if err != nil {
@@ -358,21 +381,21 @@ func Add(issue *Issue) error {
 		return err
 	}
 
-  hash := strings.TrimSpace(string(b))
+	hash := strings.TrimSpace(string(b))
 
-  cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash)
-  err = cmd.Run()
+	cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash)
+	err = cmd.Run()
 
-  if err != nil {
-    log.Fatalf("%#v", err.Error())
-    return err
-  }
+	if err != nil {
+		log.Fatalf("%#v", err.Error())
+		return err
+	}
 
 	return nil
 }
 
 func Update(issue *Issue) error {
-  issue.Touch()
+	issue.Touch()
 	jsonData, err := json.Marshal(issue)
 	if err != nil {
 		return err
@@ -386,27 +409,27 @@ func Update(issue *Issue) error {
 		return err
 	}
 
-  hash := strings.TrimSpace(string(b))
+	hash := strings.TrimSpace(string(b))
 
-  cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash)
-  err = cmd.Run()
+	cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash)
+	err = cmd.Run()
 
-  if err != nil {
-    log.Fatalf("%#v", err.Error())
-    return err
-  }
+	if err != nil {
+		log.Fatalf("%#v", err.Error())
+		return err
+	}
 
 	return nil
 }
 
 func Remove(issue *Issue) error {
-  err := issue.Delete()
+	err := issue.Delete()
 
-  if err != nil {
-    return err
-  }
+	if err != nil {
+		return err
+	}
 
-  return nil
+	return nil
 }
 
 func GetRefsByPath(refPath string) []string {
@@ -478,6 +501,15 @@ func IssuesFromGitNotes(gitNotes []Note) []*Issue {
 			closedIssues = append(closedIssues, &issue)
 			continue
 		}
+		var comments []Comment
+
+		comment1 := NewComment(CommentParams{Author: "garrett@blvrd.co", Body: "This is a comment"})
+		comment2 := NewComment(CommentParams{Author: "harsha@example.com", Body: "Another comment"})
+		comment3 := NewComment(CommentParams{Author: "Code Bot", Body: "ATTENTION: I've detected a code smell"})
+		comments = append(comments, comment1)
+		comments = append(comments, comment2)
+		comments = append(comments, comment3)
+		issue.Comments = comments
 		issues = append(issues, &issue)
 	}
 
