@@ -36,6 +36,13 @@ func (n ByUpdatedAtAscending) Len() int           { return len(n) }
 func (n ByUpdatedAtAscending) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
 func (n ByUpdatedAtAscending) Less(i, j int) bool { return n[i].UpdatedAt.Before(n[j].UpdatedAt) }
 
+type Check struct {
+	id        string
+	Command   string
+	Status    string
+	CommitSHA string
+}
+
 type Project struct {
 	id          string
 	Author      string
