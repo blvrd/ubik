@@ -46,8 +46,10 @@ type Check struct {
 type Project struct {
 	id          string
 	Author      string
+	Title       string
 	Description string
 	Progress    int
+	Issues      []*Issue
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   time.Time
@@ -65,7 +67,7 @@ type Memo struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt time.Time
-	Comments    []Comment
+	Comments  []Comment
 }
 
 type MemoParams struct {
@@ -74,17 +76,21 @@ type MemoParams struct {
 }
 
 type Comment struct {
-	id        string
-	Author    string
-	Body      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt time.Time
+	id         string
+	Author     string
+	Body       string
+	ParentType string
+	ParentId   string
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	DeletedAt  time.Time
 }
 
 type CommentParams struct {
-	Author string
-	Body   string
+	Author     string
+	Body       string
+	ParentType string
+	ParentId   string
 }
 
 func NewComment(params CommentParams) Comment {
