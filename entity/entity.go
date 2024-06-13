@@ -58,6 +58,7 @@ type Memo struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt time.Time
+	Comments    []Comment
 }
 
 type MemoParams struct {
