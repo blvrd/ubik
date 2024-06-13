@@ -39,7 +39,9 @@ type model struct {
 	issues        []*entity.Issue
 	currentIssue  *entity.Issue
 	memosList     list.Model
-	memos         []string
+	memos         []*entity.Memo
+	projects      []*entity.Project
+	checks        []*entity.Check
 	details       map[string]*detail.Model
 	currentDetail *detail.Model
 	form          form.Model
