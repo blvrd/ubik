@@ -517,13 +517,9 @@ func GetNotes(refPath string) ([]Note, error) {
 func IssuesFromGitNotes(gitNotes []Note) []*Issue {
 	var issues []*Issue
 	var closedIssues []*Issue
-	for _, note := range gitNotes {
-		var issue Issue
-		err := json.Unmarshal(note.Bytes, &issue)
-		if err != nil {
-			log.Fatalf("Failed to unmarshal data: %#v\n", err)
-		}
+	seedIssues := Seed()["issues"].([]Issue)
 
+	for _, issue := range seedIssues {
 		if !issue.DeletedAt.IsZero() {
 			continue
 		}
@@ -532,15 +528,7 @@ func IssuesFromGitNotes(gitNotes []Note) []*Issue {
 			closedIssues = append(closedIssues, &issue)
 			continue
 		}
-		var comments []Comment
 
-		comment1 := NewComment(CommentParams{Author: "garrett@blvrd.co", Body: "This is a comment"})
-		comment2 := NewComment(CommentParams{Author: "harsha@example.com", Body: "Another comment"})
-		comment3 := NewComment(CommentParams{Author: "Code Bot", Body: "ATTENTION: I've detected a code smell"})
-		comments = append(comments, comment1)
-		comments = append(comments, comment2)
-		comments = append(comments, comment3)
-		issue.Comments = comments
 		issues = append(issues, &issue)
 	}
 
