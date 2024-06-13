@@ -1,6 +1,6 @@
 module github.com/blvrd/ubik
 
-go 1.21
+go 1.22
 
 require (
 	github.com/charmbracelet/bubbles v0.18.1-0.20240406053746-48dffdd97e4f
