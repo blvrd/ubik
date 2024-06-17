@@ -2,6 +2,12 @@ package tui
 
 import (
 	"fmt"
+	"io"
+	"math"
+	"os/exec"
+	"strings"
+	"time"
+
 	"github.com/blvrd/ubik/detail"
 	"github.com/blvrd/ubik/entity"
 	"github.com/blvrd/ubik/form"
@@ -9,11 +15,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
-	"io"
-	"math"
-	"os/exec"
-	"strings"
-	"time"
 )
 
 var baseStyle = lipgloss.NewStyle().Margin(2, 2)
@@ -46,6 +47,12 @@ type model struct {
 	currentDetail *detail.Model
 	form          form.Model
 	loading       bool
+  totalWidth    int
+  totalHeight   int
+}
+
+func (m model) WidthByPercentage(percentage float64) int {
+  return int(float64(m.totalWidth) * percentage)
 }
 
 type li struct {
@@ -277,9 +284,14 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 				return m, cmds
 			}
 		case tea.WindowSizeMsg:
-			_, y := baseStyle.GetFrameSize()
-			m.issuesList.SetSize(90, msg.Height-y)
-			m.memosList.SetSize(90, msg.Height-y)
+			x, y := baseStyle.GetFrameSize()
+      m.totalWidth = msg.Width
+      m.totalHeight = msg.Width
+
+      log.Debugf("🪚 framesize: %#v %#v", x, y)
+      m.issuesList.SetHeight(msg.Height - y)
+			// m.issuesList.SetSize(90, msg.Height-y)
+			// m.memosList.SetSize(90, msg.Height-y)
 		case issuesLoadedMsg:
 			var items []list.Item
 			m.issues = msg.Issues
@@ -388,7 +400,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	list := borderStyle.Width(m.issuesList.Width()).Render(m.issuesList.View())
+	list := borderStyle.Width(m.WidthByPercentage(0.5)).Render(m.issuesList.View())
 	currentIssue := m.currentIssue
 
 	if currentIssue == nil {
@@ -399,7 +411,7 @@ func (m model) View() string {
 
 	switch m.focusState {
 	case issuesListView:
-		sidebarView = lipgloss.NewStyle().Width(60).Render(m.currentDetail.View())
+		sidebarView = lipgloss.NewStyle().Render(m.currentDetail.View())
 	case issuesFormView:
 		sidebarView = m.form.View()
 	case memosListView:
@@ -408,7 +420,7 @@ func (m model) View() string {
 	default:
 	}
 
-	view := baseStyle.Render(lipgloss.JoinHorizontal(lipgloss.Top, list, sidebarView))
+  view := baseStyle.Render(lipgloss.JoinHorizontal(lipgloss.Top, list, sidebarView))
 
 	return view
 }

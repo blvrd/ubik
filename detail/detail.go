@@ -55,13 +55,11 @@ type Model struct {
 
 var commentStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.RoundedBorder()).
-	BorderForeground(lipgloss.Color("#838383")).
-	Width(58)
+	BorderForeground(lipgloss.Color("#838383"))
 
 var commentHeaderStyle = lipgloss.NewStyle().
 	Border(lipgloss.NormalBorder(), false, false, true, false).
-	BorderForeground(lipgloss.Color("#838383")).
-	Width(58)
+	BorderForeground(lipgloss.Color("#838383"))
 
 func New(ent *entity.Issue) Model {
 	m := Model{
