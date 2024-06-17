@@ -399,56 +399,56 @@ func Add(issue *Issue) error {
 	issue.shortcode = shortcode
 	issue.Touch()
 
-	jsonData, err := json.Marshal(issue)
-	if err != nil {
-		return err
-	}
+	// jsonData, err := json.Marshal(issue)
+	// if err != nil {
+	// 	return err
+	// }
 
-	cmd := exec.Command("git", "hash-object", "--stdin", "-w")
-	cmd.Stdin = bytes.NewReader(jsonData)
-
-	b, err := cmd.Output()
-	if err != nil {
-		return err
-	}
-
-	hash := strings.TrimSpace(string(b))
-
-	cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash)
-	err = cmd.Run()
-
-	if err != nil {
-		log.Fatalf("%#v", err.Error())
-		return err
-	}
+	// cmd := exec.Command("git", "hash-object", "--stdin", "-w")
+	// cmd.Stdin = bytes.NewReader(jsonData)
+	//
+	// b, err := cmd.Output()
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// hash := strings.TrimSpace(string(b))
+	//
+	// cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash)
+	// err = cmd.Run()
+	//
+	// if err != nil {
+	// 	log.Fatalf("%#v", err.Error())
+	// 	return err
+	// }
 
 	return nil
 }
 
 func Update(issue *Issue) error {
 	issue.Touch()
-	jsonData, err := json.Marshal(issue)
-	if err != nil {
-		return err
-	}
-
-	cmd := exec.Command("git", "hash-object", "--stdin", "-w")
-	cmd.Stdin = bytes.NewReader(jsonData)
-
-	b, err := cmd.Output()
-	if err != nil {
-		return err
-	}
-
-	hash := strings.TrimSpace(string(b))
-
-	cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash)
-	err = cmd.Run()
-
-	if err != nil {
-		log.Fatalf("%#v", err.Error())
-		return err
-	}
+	// jsonData, err := json.Marshal(issue)
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// cmd := exec.Command("git", "hash-object", "--stdin", "-w")
+	// cmd.Stdin = bytes.NewReader(jsonData)
+	//
+	// b, err := cmd.Output()
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// hash := strings.TrimSpace(string(b))
+	//
+	// cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash)
+	// err = cmd.Run()
+	//
+	// if err != nil {
+	// 	log.Fatalf("%#v", err.Error())
+	// 	return err
+	// }
 
 	return nil
 }
