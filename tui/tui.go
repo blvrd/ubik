@@ -47,12 +47,12 @@ type model struct {
 	currentDetail *detail.Model
 	form          form.Model
 	loading       bool
-  totalWidth    int
-  totalHeight   int
+	totalWidth    int
+	totalHeight   int
 }
 
 func (m model) WidthByPercentage(percentage float64) int {
-  return int(float64(m.totalWidth) * percentage)
+	return int(float64(m.totalWidth) * percentage)
 }
 
 type li struct {
@@ -141,17 +141,32 @@ type issuesLoadedMsg struct {
 	FocusedIssueIndex int
 }
 
-func GetIssues(focusedIssueId *string) tea.Cmd {
+func LoadIssues(focusedIssueId *string, issues []*entity.Issue) tea.Cmd {
 	return func() tea.Msg {
-		refPath := entity.IssuesPath
-		notes, err := entity.GetNotes(refPath)
+		var focusedIssueIndex int
+		for i, issue := range issues {
+			if focusedIssueId != nil && issue.Id == *focusedIssueId {
+				focusedIssueIndex = i
+			}
 
-		if err != nil {
-			log.Fatal(err)
+			if focusedIssueId == nil {
+				focusedIssueIndex = 0
+			}
 		}
 
-		issues := entity.IssuesFromGitNotes(notes)
+		return issuesLoadedMsg{
+			Issues:            issues,
+			FocusedIssueIndex: focusedIssueIndex,
+		}
+	}
+}
+
+func GetIssues(focusedIssueId *string) tea.Cmd {
+	return func() tea.Msg {
+		var issues []*entity.Issue
 		var focusedIssueIndex int
+		// do IO
+		log.Debug("🪚 getting issues")
 		for i, issue := range issues {
 			if focusedIssueId != nil && issue.Id == *focusedIssueId {
 				focusedIssueIndex = i
@@ -285,11 +300,11 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			}
 		case tea.WindowSizeMsg:
 			x, y := baseStyle.GetFrameSize()
-      m.totalWidth = msg.Width
-      m.totalHeight = msg.Width
+			m.totalWidth = msg.Width
+			m.totalHeight = msg.Width
 
-      log.Debugf("🪚 framesize: %#v %#v", x, y)
-      m.issuesList.SetHeight(msg.Height - y)
+			log.Debugf("🪚 framesize: %#v %#v", x, y)
+			m.issuesList.SetHeight(msg.Height - y)
 			// m.issuesList.SetSize(90, msg.Height-y)
 			// m.memosList.SetSize(90, msg.Height-y)
 		case issuesLoadedMsg:
@@ -369,7 +384,9 @@ func handleFormViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 		}
 	case form.FormCompletedMsg:
 		m.focusState = issuesListView
-		cmds = append(cmds, GetIssues(&msg.Id))
+		issues := append([]*entity.Issue{msg}, m.issues...)
+		cmd := LoadIssues(&msg.Id, issues)
+		cmds = append(cmds, cmd)
 		return m, cmds
 	case form.FormCancelledMsg:
 		m.focusState = issuesListView
@@ -420,7 +437,7 @@ func (m model) View() string {
 	default:
 	}
 
-  view := baseStyle.Render(lipgloss.JoinHorizontal(lipgloss.Top, list, sidebarView))
+	view := baseStyle.Render(lipgloss.JoinHorizontal(lipgloss.Top, list, sidebarView))
 
 	return view
 }
