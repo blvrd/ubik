@@ -92,7 +92,7 @@ type FormCancelledMsg string
 func CompleteForm(m Model) tea.Cmd {
 	return func() tea.Msg {
 		if !m.form.GetBool("done") {
-			return FormCancelledMsg("canceled")
+			return FormCancelledMsg("cancelled")
 		}
 
 		title := m.form.GetString("title")
