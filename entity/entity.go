@@ -20,10 +20,6 @@ const (
 	IssuesPath = "refs/notes/ubik/issues"
 )
 
-type Listable interface {
-	FilterValue() string
-}
-
 type ByUpdatedAtDescending []*Issue
 
 func (n ByUpdatedAtDescending) Len() int           { return len(n) }
