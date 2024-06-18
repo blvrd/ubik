@@ -33,22 +33,26 @@ const (
 	issuesFormView focusedView = 2
 )
 
+type programContext struct {
+	totalWidth  int
+	totalHeight int
+}
+
 type model struct {
-	focusState    focusedView
-	issuesList    list.Model
-	issues        []entity.Issue
-	currentIssue  *entity.Issue
-	memosList     list.Model
-	details       map[string]*detail.Model
-	currentDetail *detail.Model
-	form          form.Model
-	loading       bool
-	totalWidth    int
-	totalHeight   int
+	focusState     focusedView
+	issuesList     list.Model
+	issues         []entity.Issue
+	currentIssue   *entity.Issue
+	memosList      list.Model
+	details        map[string]*detail.Model
+	currentDetail  *detail.Model
+	form           form.Model
+	loading        bool
+	programContext programContext
 }
 
 func (m model) WidthByPercentage(percentage float64) int {
-	return int(float64(m.totalWidth) * percentage)
+	return int(float64(m.programContext.totalWidth) * percentage)
 }
 
 type li struct {
@@ -300,8 +304,8 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			}
 		case tea.WindowSizeMsg:
 			_, y := baseStyle.GetFrameSize()
-			m.totalWidth = msg.Width
-			m.totalHeight = msg.Width
+			m.programContext.totalWidth = msg.Width
+			m.programContext.totalHeight = msg.Width
 
 			m.issuesList.SetHeight(msg.Height - y)
 		case issuesLoadedMsg:
