@@ -29,10 +29,8 @@ var borderStyle = lipgloss.NewStyle().
 type focusedView int
 
 const (
-	issuesListView   focusedView = 1
-	issuesFormView   focusedView = 2
-	memosListView    focusedView = 3
-	projectsListView focusedView = 4
+	issuesListView focusedView = 1
+	issuesFormView focusedView = 2
 )
 
 type model struct {
@@ -241,9 +239,6 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 				formMode := form.FormMode{Mode: "new"}
 				m.form = form.New(newIssue, formMode)
 				m.form.Init()
-			case "m":
-				m.focusState = memosListView
-				return m, cmds
 			case "ctrl+d":
 				m.focusState = issuesFormView
 				newIssue.Title = m.currentIssue.Title
@@ -470,9 +465,6 @@ func (m model) View() string {
 		sidebarView = lipgloss.NewStyle().Render(m.currentDetail.View())
 	case issuesFormView:
 		sidebarView = m.form.View()
-	case memosListView:
-		sidebarView = ""
-		list = borderStyle.Width(m.memosList.Width()).Render(m.memosList.View())
 	default:
 	}
 
