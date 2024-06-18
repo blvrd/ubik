@@ -5,6 +5,7 @@ import (
 	"io"
 	"math"
 	"os/exec"
+	"sort"
 	"strings"
 	"time"
 
@@ -37,12 +38,9 @@ const (
 type model struct {
 	focusState    focusedView
 	issuesList    list.Model
-	issues        map[string]*entity.Issue
+	issues        []entity.Issue
 	currentIssue  *entity.Issue
 	memosList     list.Model
-	memos         []*entity.Memo
-	projects      []*entity.Project
-	checks        []*entity.Check
 	details       map[string]*detail.Model
 	currentDetail *detail.Model
 	form          form.Model
@@ -122,7 +120,7 @@ func NewModel() tea.Model {
 	details := make(map[string]*detail.Model)
 	details[issue.Id] = &d
 	formMode := form.FormMode{Mode: "new"}
-	f := form.New(&issue, formMode)
+	f := form.New(issue, formMode)
 	l := list.New([]list.Item{}, itemDelegate{}, 0, 0)
 	l.Title = "Issues"
 
@@ -137,14 +135,35 @@ func NewModel() tea.Model {
 }
 
 type issuesLoadedMsg struct {
-	Issues         map[string]*entity.Issue
+	Issues         []entity.Issue
 	FocusedIssueId *string
 }
 
-func LoadIssues(focusedIssueId *string, issues map[string]*entity.Issue) tea.Cmd {
+func LoadIssues(focusedIssueId *string, issues []entity.Issue) tea.Cmd {
+	var openIssues []entity.Issue
+	var closedIssues []entity.Issue
+
+	for _, issue := range issues {
+		if !issue.DeletedAt.IsZero() {
+			continue
+		}
+
+		if !issue.ClosedAt.IsZero() {
+			closedIssues = append(closedIssues, issue)
+			continue
+		}
+
+		openIssues = append(openIssues, issue)
+	}
+
+	sort.Sort(entity.ByUpdatedAtDescending(openIssues))
+	sort.Sort(entity.ByUpdatedAtDescending(closedIssues))
+
+	openIssues = append(openIssues, closedIssues...)
+
 	return func() tea.Msg {
 		return issuesLoadedMsg{
-			Issues:         issues,
+			Issues:         openIssues,
 			FocusedIssueId: focusedIssueId,
 		}
 	}
@@ -152,7 +171,7 @@ func LoadIssues(focusedIssueId *string, issues map[string]*entity.Issue) tea.Cmd
 
 func GetIssues(focusedIssueId *string) tea.Cmd {
 	return func() tea.Msg {
-		var issues map[string]*entity.Issue
+		var issues []entity.Issue
 		// do IO
 		log.Debug("🪚 getting issues")
 
@@ -198,12 +217,8 @@ func CheckIssueClosuresFromCommits() tea.Msg {
 		}
 	}
 
-	issueMap := make(map[string]*entity.Issue)
-	for _, issue := range issues {
-		issueMap[issue.Id] = issue
-	}
 	return issuesLoadedMsg{
-		Issues:         issueMap,
+		Issues:         issues,
 		FocusedIssueId: nil,
 	}
 }
@@ -225,7 +240,7 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			case "ctrl+n":
 				m.focusState = issuesFormView
 				formMode := form.FormMode{Mode: "new"}
-				m.form = form.New(&newIssue, formMode)
+				m.form = form.New(newIssue, formMode)
 				m.form.Init()
 			case "m":
 				m.focusState = memosListView
@@ -236,12 +251,12 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 				newIssue.Description = m.currentIssue.Description
 				currentShortcode := m.currentIssue.Shortcode()
 				formMode := form.FormMode{Mode: "duplicating", Shortcode: &currentShortcode}
-				m.form = form.New(&newIssue, formMode)
+				m.form = form.New(newIssue, formMode)
 				m.form.Init()
 			case "enter", "ctrl+e":
 				m.focusState = issuesFormView
 				formMode := form.FormMode{Mode: "editing"}
-				m.form = form.New(m.currentIssue, formMode)
+				m.form = form.New(*m.currentIssue, formMode)
 				m.form.Init()
 				return m, cmds
 			case " ":
@@ -303,17 +318,17 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			m.issuesList, cmd = m.issuesList.Update(items)
 
 			if len(m.issues) > 0 {
-				// var focusedIssueIndex int
-				// for i, issue := range m.issues {
-				//   if issue.Id == *msg.FocusedIssueId {
-				//     focusedIssueIndex = i
-				//   }
-				// }
+				var focusedIssueIndex int
+				for i, issue := range m.issues {
+					if msg.FocusedIssueId != nil && issue.Id == *msg.FocusedIssueId {
+						focusedIssueIndex = i
+					}
+				}
 
 				if msg.FocusedIssueId == nil {
-					m.currentIssue = m.issues[items[0].(li).Id()]
+					m.currentIssue = &m.issues[0]
 				} else {
-					m.currentIssue = m.issues[*msg.FocusedIssueId]
+					m.currentIssue = &m.issues[focusedIssueIndex]
 				}
 				var idx int
 				for i, item := range m.issuesList.Items() {
@@ -342,7 +357,7 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 		// This would be simpler/faster as a map access
 		for _, issue := range m.issues {
 			if issue.Id == selectedItem.Id() {
-				currentIssue = *issue
+				currentIssue = issue
 				break
 			}
 		}
@@ -377,15 +392,15 @@ func handleFormViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 		}
 	case form.FormCompletedMsg:
 		m.focusState = issuesListView
-		var issues map[string]*entity.Issue
+		var issues []entity.Issue
 		issues = m.issues
-		issue := (*entity.Issue)(msg)
+		issue := entity.Issue(msg)
 		if issue.IsPersisted() {
-			entity.Update(issue)
+			entity.Update(&issue)
 		} else {
-			entity.Add(issue)
+			entity.Add(&issue)
 		}
-		issues[issue.Id] = issue
+		issues = append(issues, issue)
 		cmd := LoadIssues(&msg.Id, issues)
 		cmds = append(cmds, cmd)
 		return m, cmds

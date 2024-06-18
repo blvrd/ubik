@@ -20,13 +20,13 @@ const (
 	IssuesPath = "refs/notes/ubik/issues"
 )
 
-type ByUpdatedAtDescending []*Issue
+type ByUpdatedAtDescending []Issue
 
 func (n ByUpdatedAtDescending) Len() int           { return len(n) }
 func (n ByUpdatedAtDescending) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
 func (n ByUpdatedAtDescending) Less(i, j int) bool { return n[i].UpdatedAt.After(n[j].UpdatedAt) }
 
-type ByUpdatedAtAscending []*Issue
+type ByUpdatedAtAscending []Issue
 
 func (n ByUpdatedAtAscending) Len() int           { return len(n) }
 func (n ByUpdatedAtAscending) Swap(i, j int)      { n[i], n[j] = n[j], n[i] }
@@ -352,12 +352,12 @@ func ListIssues() {
 	}
 }
 
-func GetIssuesForProject(parentId string) []*Issue {
+func GetIssuesForProject(parentId string) []Issue {
 	refPath := IssuesPath
 	notes, _ := GetNotes(refPath)
 	uNotes := IssuesFromGitNotes(notes)
 
-	var filteredIssues []*Issue
+	var filteredIssues []Issue
 
 	for _, issue := range uNotes {
 		if issue.ParentId == parentId {
@@ -510,9 +510,9 @@ func GetNotes(refPath string) ([]Note, error) {
 	return notes, nil
 }
 
-func IssuesFromGitNotes(gitNotes []Note) []*Issue {
-	var issues []*Issue
-	var closedIssues []*Issue
+func IssuesFromGitNotes(gitNotes []Note) []Issue {
+	var issues []Issue
+	var closedIssues []Issue
 	seedIssues := Seed()["issues"].([]Issue)
 
 	for _, issue := range seedIssues {
@@ -521,11 +521,11 @@ func IssuesFromGitNotes(gitNotes []Note) []*Issue {
 		}
 
 		if !issue.ClosedAt.IsZero() {
-			closedIssues = append(closedIssues, &issue)
+			closedIssues = append(closedIssues, issue)
 			continue
 		}
 
-		issues = append(issues, &issue)
+		issues = append(issues, issue)
 	}
 
 	sort.Sort(ByUpdatedAtDescending(issues))

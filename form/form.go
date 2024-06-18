@@ -16,13 +16,13 @@ type FormMode struct {
 }
 
 type Model struct {
-	issue     *entity.Issue
+	issue     entity.Issue
 	mode      FormMode
 	form      *huh.Form
 	persisted bool
 }
 
-func New(issue *entity.Issue, mode FormMode) Model {
+func New(issue entity.Issue, mode FormMode) Model {
 	title := issue.Title
 	description := issue.Description
 
@@ -86,7 +86,7 @@ func (m Model) Init() tea.Cmd {
 	return m.form.Init()
 }
 
-type FormCompletedMsg *entity.Issue
+type FormCompletedMsg entity.Issue
 type FormCancelledMsg string
 
 func CompleteForm(m Model) tea.Cmd {
