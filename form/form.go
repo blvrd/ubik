@@ -101,11 +101,11 @@ func CompleteForm(m Model) tea.Cmd {
 		m.issue.Title = title
 		m.issue.Description = description
 
-		if m.issue.IsPersisted() {
-			entity.Update(m.issue)
-		} else {
-			entity.Add(m.issue)
-		}
+		// if m.issue.IsPersisted() {
+		// 	entity.Update(m.issue)
+		// } else {
+		// 	entity.Add(m.issue)
+		// }
 
 		return FormCompletedMsg(m.issue)
 	}
