@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/blvrd/ubik/entity"
-	"github.com/blvrd/ubik/tui"
+	"github.com/blvrd/ubik/ui"
 	"github.com/charmbracelet/log"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -36,7 +36,7 @@ func main() {
 		Use:   "ubik",
 		Short: "Use Ubik from the handy Terminal UI",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := tui.Run(); err != nil {
+			if err := ui.Run(); err != nil {
 				log.Fatal(err)
 			}
 		},

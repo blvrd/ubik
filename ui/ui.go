@@ -1,4 +1,4 @@
-package tui
+package ui
 
 import (
 	"fmt"
@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/blvrd/ubik/tui/detail"
+	"github.com/blvrd/ubik/ui/detail"
 	"github.com/blvrd/ubik/entity"
-	"github.com/blvrd/ubik/tui/form"
+	"github.com/blvrd/ubik/ui/form"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
