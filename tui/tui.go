@@ -173,7 +173,6 @@ func GetIssues(focusedIssueId *string) tea.Cmd {
 	return func() tea.Msg {
 		var issues []entity.Issue
 		// do IO
-		log.Debug("🪚 getting issues")
 
 		return issuesLoadedMsg{
 			Issues:         issues,
@@ -290,11 +289,10 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 				return m, cmds
 			}
 		case tea.WindowSizeMsg:
-			x, y := baseStyle.GetFrameSize()
+			_, y := baseStyle.GetFrameSize()
 			m.totalWidth = msg.Width
 			m.totalHeight = msg.Width
 
-			log.Debugf("🪚 framesize: %#v %#v", x, y)
 			m.issuesList.SetHeight(msg.Height - y)
 			// m.issuesList.SetSize(90, msg.Height-y)
 			// m.memosList.SetSize(90, msg.Height-y)
