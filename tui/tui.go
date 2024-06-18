@@ -395,10 +395,17 @@ func handleFormViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 		issue := entity.Issue(msg)
 		if issue.IsPersisted() {
 			entity.Update(&issue)
+      var idx int
+      for i, iss := range issues {
+        if iss.Id == issue.Id {
+          idx = i
+        }
+      }
+      issues[idx] = issue
 		} else {
 			entity.Add(&issue)
+      issues = append(issues, issue)
 		}
-		issues = append(issues, issue)
 		cmd := LoadIssues(&msg.Id, issues)
 		cmds = append(cmds, cmd)
 		return m, cmds
