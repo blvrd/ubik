@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/blvrd/ubik/detail"
+	"github.com/blvrd/ubik/tui/detail"
 	"github.com/blvrd/ubik/entity"
-	"github.com/blvrd/ubik/form"
+	"github.com/blvrd/ubik/tui/form"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
