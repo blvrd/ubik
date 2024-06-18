@@ -205,10 +205,10 @@ func CheckIssueClosuresFromCommits() tea.Msg {
 	}
 
 	issues = entity.IssuesFromGitNotes(notes)
-  issueMap := make(map[string]*entity.Issue)
-  for _, issue := range issues {
-    issueMap[issue.Id] = issue
-  }
+	issueMap := make(map[string]*entity.Issue)
+	for _, issue := range issues {
+		issueMap[issue.Id] = issue
+	}
 	return issuesLoadedMsg{
 		Issues:         issueMap,
 		FocusedIssueId: nil,
@@ -310,24 +310,24 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			m.issuesList, cmd = m.issuesList.Update(items)
 
 			if len(m.issues) > 0 {
-        // var focusedIssueIndex int
-        // for i, issue := range m.issues {
-        //   if issue.Id == *msg.FocusedIssueId {
-        //     focusedIssueIndex = i
-        //   }
-        // }
+				// var focusedIssueIndex int
+				// for i, issue := range m.issues {
+				//   if issue.Id == *msg.FocusedIssueId {
+				//     focusedIssueIndex = i
+				//   }
+				// }
 
-        if msg.FocusedIssueId == nil {
-          m.currentIssue = m.issues[items[0].(li).Id()]
-        } else {
-          m.currentIssue = m.issues[*msg.FocusedIssueId]
-        }
-        var idx int
-        for i, item := range m.issuesList.Items() {
-          if item.(li).Id() == *msg.FocusedIssueId {
-            idx = i
-          }
-        }
+				if msg.FocusedIssueId == nil {
+					m.currentIssue = m.issues[items[0].(li).Id()]
+				} else {
+					m.currentIssue = m.issues[*msg.FocusedIssueId]
+				}
+				var idx int
+				for i, item := range m.issuesList.Items() {
+					if item.(li).Id() == *msg.FocusedIssueId {
+						idx = i
+					}
+				}
 				m.issuesList.Select(idx)
 				m.issuesList.SetItems(items)
 				d := detail.New(m.currentIssue)
@@ -386,7 +386,9 @@ func handleFormViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 		m.focusState = issuesListView
 		var issues map[string]*entity.Issue
 		issues = m.issues
-		issues[msg.Id] = msg
+		issue := (*entity.Issue)(msg)
+		issue.Touch()
+		issues[issue.Id] = issue
 		cmd := LoadIssues(&msg.Id, issues)
 		cmds = append(cmds, cmd)
 		return m, cmds
