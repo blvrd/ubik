@@ -268,17 +268,32 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 				cmds = append(cmds, GetIssues(&m.currentIssue.Id))
 				return m, cmds
 			case "backspace":
-				m.currentIssue.Delete()
+				issues := m.issues
+				issue := *m.currentIssue
+				issue.Delete()
+
+				var idx int
+				for i, iss := range issues {
+					if iss.Id == issue.Id {
+						idx = i
+					} else {
+						idx = 0
+					}
+				}
+
+				if m.currentIssue != nil && len(issues) > 0 {
+					issues[idx] = issue
+				}
 
 				// deleting the last issue
-				if len(m.issues) == 1 {
-					cmds = append(cmds, GetIssues(nil))
+				if len(issues) <= 1 {
+					cmds = append(cmds, LoadIssues(nil, issues))
 					return m, cmds
 				}
 
 				prevIndex := float64((m.issuesList.Index() - 1))
 				prevIssue := m.issuesList.Items()[int(math.Max(0, prevIndex))].(li).Id()
-				cmds = append(cmds, GetIssues(&prevIssue))
+				cmds = append(cmds, LoadIssues(&prevIssue, issues))
 				return m, cmds
 			case "ctrl+q", "ctrl+c":
 				cmds = append(cmds, tea.Quit)
@@ -313,7 +328,8 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 				items = append(items, item)
 			}
 
-			m.issuesList, cmd = m.issuesList.Update(items)
+			m.issuesList, cmd = m.issuesList.Update(msg)
+			log.Debugf("🪚 items: %#v", items)
 
 			if len(m.issues) > 0 {
 				var focusedIssueIndex int
@@ -340,6 +356,10 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 				d.Init()
 				m.details[m.currentIssue.Id] = &d
 				m.currentDetail = &d
+			} else {
+				m.issuesList.SetItems(items)
+				m.currentIssue = nil
+				m.currentDetail = &detail.Model{}
 			}
 
 			cmds = append(cmds, cmd)
@@ -395,16 +415,16 @@ func handleFormViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 		issue := entity.Issue(msg)
 		if issue.IsPersisted() {
 			entity.Update(&issue)
-      var idx int
-      for i, iss := range issues {
-        if iss.Id == issue.Id {
-          idx = i
-        }
-      }
-      issues[idx] = issue
+			var idx int
+			for i, iss := range issues {
+				if iss.Id == issue.Id {
+					idx = i
+				}
+			}
+			issues[idx] = issue
 		} else {
 			entity.Add(&issue)
-      issues = append(issues, issue)
+			issues = append(issues, issue)
 		}
 		cmd := LoadIssues(&msg.Id, issues)
 		cmds = append(cmds, cmd)

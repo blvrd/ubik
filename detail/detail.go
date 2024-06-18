@@ -97,6 +97,12 @@ func (m Model) Update(msg tea.Msg) (Model, []tea.Cmd) {
 
 func (m Model) View() string {
 	var s strings.Builder
+
+	if m.ent == nil {
+		s.WriteString("Nothing selected")
+		return s.String()
+	}
+
 	entMap := m.ent.ToMap()
 
 	var closed string
