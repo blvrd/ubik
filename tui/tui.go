@@ -387,7 +387,11 @@ func handleFormViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 		var issues map[string]*entity.Issue
 		issues = m.issues
 		issue := (*entity.Issue)(msg)
-		issue.Touch()
+		if issue.IsPersisted() {
+			entity.Update(issue)
+		} else {
+			entity.Add(issue)
+		}
 		issues[issue.Id] = issue
 		cmd := LoadIssues(&msg.Id, issues)
 		cmds = append(cmds, cmd)
