@@ -309,8 +309,6 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			m.totalHeight = msg.Width
 
 			m.issuesList.SetHeight(msg.Height - y)
-			// m.issuesList.SetSize(90, msg.Height-y)
-			// m.memosList.SetSize(90, msg.Height-y)
 		case issuesLoadedMsg:
 			var items []list.Item
 			m.issues = msg.Issues
