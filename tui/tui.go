@@ -198,13 +198,6 @@ func CheckIssueClosuresFromCommits() tea.Msg {
 		}
 	}
 
-	notes, err = entity.GetNotes(refPath)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	issues = entity.IssuesFromGitNotes(notes)
 	issueMap := make(map[string]*entity.Issue)
 	for _, issue := range issues {
 		issueMap[issue.Id] = issue
