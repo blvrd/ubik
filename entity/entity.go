@@ -72,7 +72,7 @@ type MemoParams struct {
 }
 
 type Comment struct {
-	id         string
+	Id         string
 	Author     string
 	Body       string
 	ParentType string
