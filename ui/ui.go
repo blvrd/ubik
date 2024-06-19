@@ -326,7 +326,6 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			}
 
 			m.issuesList, cmd = m.issuesList.Update(msg)
-			log.Debugf("🪚 items: %#v", items)
 
 			if len(m.issues) > 0 {
 				var focusedIssueIndex int
