@@ -16,14 +16,17 @@ func Seed() map[string]any {
       UpdatedAt: time.Now().UTC(),
       Comments: []Comment{
         {
+          Id: "12345",
           Author: "garrett@blvrd.co",
           Body: "Lorem ipsum dolor sit amet",
         },
         {
+          Id: "54321",
           Author: "harsha@example.com",
           Body: "Lorem ipsum dolor sit amet",
         },
         {
+          Id: "abc123",
           Author: "codestyle@bot",
           Body: "I smell a code smell.",
         },
@@ -39,14 +42,17 @@ func Seed() map[string]any {
       UpdatedAt: time.Now().UTC(),
       Comments: []Comment{
         {
+          Id: "12345",
           Author: "garrett@blvrd.co",
           Body: "Lorem ipsum dolor sit amet",
         },
         {
+          Id: "54321",
           Author: "harsha@example.com",
           Body: "Lorem ipsum dolor sit amet",
         },
         {
+          Id: "abc123",
           Author: "codestyle@bot",
           Body: "I smell a code smell.",
         },
