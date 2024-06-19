@@ -9,9 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/blvrd/ubik/ui/detail"
 	"github.com/blvrd/ubik/entity"
-	"github.com/blvrd/ubik/ui/form"
+	"github.com/blvrd/ubik/ui/detail"
+	"github.com/blvrd/ubik/ui/issueform"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -29,8 +29,9 @@ var borderStyle = lipgloss.NewStyle().
 type focusedView int
 
 const (
-	issuesListView focusedView = 1
-	issuesFormView focusedView = 2
+	issuesListView   focusedView = 1
+	issuesFormView   focusedView = 2
+	issuesDetailView focusedView = 3
 )
 
 type programContext struct {
@@ -46,7 +47,7 @@ type model struct {
 	memosList      list.Model
 	details        map[string]*detail.Model
 	currentDetail  *detail.Model
-	form           form.Model
+	form           issueform.Model
 	loading        bool
 	programContext programContext
 }
@@ -121,8 +122,8 @@ func NewModel() tea.Model {
 	d.Init()
 	details := make(map[string]*detail.Model)
 	details[issue.Id] = &d
-	formMode := form.FormMode{Mode: "new"}
-	f := form.New(issue, formMode)
+	formMode := issueform.FormMode{Mode: "new"}
+	f := issueform.New(issue, formMode)
 	l := list.New([]list.Item{}, itemDelegate{}, 0, 0)
 	l.Title = "Issues"
 
@@ -240,21 +241,21 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 			switch msg.String() {
 			case "ctrl+n":
 				m.focusState = issuesFormView
-				formMode := form.FormMode{Mode: "new"}
-				m.form = form.New(newIssue, formMode)
+				formMode := issueform.FormMode{Mode: "new"}
+				m.form = issueform.New(newIssue, formMode)
 				m.form.Init()
 			case "ctrl+d":
 				m.focusState = issuesFormView
 				newIssue.Title = m.currentIssue.Title
 				newIssue.Description = m.currentIssue.Description
 				currentShortcode := m.currentIssue.Shortcode()
-				formMode := form.FormMode{Mode: "duplicating", Shortcode: &currentShortcode}
-				m.form = form.New(newIssue, formMode)
+				formMode := issueform.FormMode{Mode: "duplicating", Shortcode: &currentShortcode}
+				m.form = issueform.New(newIssue, formMode)
 				m.form.Init()
 			case "enter", "ctrl+e":
 				m.focusState = issuesFormView
-				formMode := form.FormMode{Mode: "editing"}
-				m.form = form.New(*m.currentIssue, formMode)
+				formMode := issueform.FormMode{Mode: "editing"}
+				m.form = issueform.New(*m.currentIssue, formMode)
 				m.form.Init()
 				return m, cmds
 			case " ":
@@ -387,6 +388,7 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 		m.currentDetail = d
 	}
 
+	log.Debug("🪚 hi")
 	cmds = append(cmds, cmd)
 
 	return m, cmds
@@ -404,7 +406,7 @@ func handleFormViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 		case "ctrl+c":
 			cmds = append(cmds, tea.Quit)
 		}
-	case form.FormCompletedMsg:
+	case issueform.FormCompletedMsg:
 		m.focusState = issuesListView
 		var issues []entity.Issue
 		issues = m.issues
@@ -425,7 +427,7 @@ func handleFormViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 		cmd := LoadIssues(&msg.Id, issues)
 		cmds = append(cmds, cmd)
 		return m, cmds
-	case form.FormCancelledMsg:
+	case issueform.FormCancelledMsg:
 		m.focusState = issuesListView
 		return m, nil
 	}
@@ -440,13 +442,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd []tea.Cmd
 
 	switch m.focusState {
+	case issuesDetailView:
+    *m.currentDetail, cmd = m.currentDetail.Update(msg)
 	case issuesListView:
 		m, cmds = handleListViewMsg(m, msg)
 	case issuesFormView:
 		m, cmds = handleFormViewMsg(m, msg)
 	}
-
-	*m.currentDetail, cmd = m.currentDetail.Update(msg)
 
 	cmds = append(cmds, cmd...)
 
