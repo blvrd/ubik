@@ -49,7 +49,11 @@ func DefaultKeyMap() viewport.KeyMap {
 }
 
 type Model struct {
-	ent      *entity.Issue
+	ent            *entity.Issue
+	open           bool
+	comments       []entity.Comment
+	currentComment *int
+
 	viewport viewport.Model
 }
 
@@ -70,14 +74,25 @@ func New(ent *entity.Issue) Model {
 	content := []string{entMap["description"].(string)}
 	content = append(content, "\nComments:\n")
 	for _, comment := range entMap["comments"].([]entity.Comment) {
-		commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.Author, comment.CreatedAt.Format(time.RFC822)))
-		content = append(content, commentStyle.Render(fmt.Sprintf("%s\n\n %s\n", commentHeader, comment.Body)))
+		m.comments = append(m.comments, comment)
 	}
 
-	m.viewport.SetContent(strings.Join(content, "\n"))
 	m.viewport.KeyMap = DefaultKeyMap()
 
 	return m
+}
+
+type openDetailMsg *entity.Issue
+
+func OpenDetail(issue *entity.Issue) tea.Cmd {
+	return func() tea.Msg {
+		return openDetailMsg(issue)
+	}
+}
+
+
+func (m *Model) Open() {
+  m.open = true
 }
 
 func (m Model) Init() tea.Cmd {
@@ -87,6 +102,24 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (Model, []tea.Cmd) {
 	var cmds []tea.Cmd
 	var cmd tea.Cmd
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "c":
+			if len(m.comments) > 0 {
+				index := 0
+				m.currentComment = &index
+			}
+		case "j":
+			if m.currentComment != nil {
+				index := *m.currentComment + 1
+				m.currentComment = &index
+			}
+		}
+  case openDetailMsg:
+    m.Open()
+  default:
+	}
 
 	m.viewport, cmd = m.viewport.Update(msg)
 
@@ -97,6 +130,10 @@ func (m Model) Update(msg tea.Msg) (Model, []tea.Cmd) {
 
 func (m Model) View() string {
 	var s strings.Builder
+
+  if m.open == false {
+    return ""
+  }
 
 	if m.ent == nil {
 		s.WriteString("Nothing selected")
@@ -127,6 +164,25 @@ func (m Model) View() string {
 	s.WriteString(fmt.Sprintf("%s - 3 comments\n", closed))
 	s.WriteString(fmt.Sprintf("opened by %s on %s\n\n", author, createdAt))
 
+	content := []string{entMap["description"].(string)}
+	content = append(content, "\nComments:\n")
+	for _, comment := range entMap["comments"].([]entity.Comment) {
+		commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.Author, comment.CreatedAt.Format(time.RFC822)))
+		var currentlySelectedIndicator string
+		if m.currentComment != nil && m.comments[*m.currentComment].Id == comment.Id {
+			currentlySelectedIndicator = "<-"
+		} else {
+			currentlySelectedIndicator = ""
+		}
+		comm := lipgloss.JoinHorizontal(
+			lipgloss.Center,
+			commentStyle.Render(fmt.Sprintf("%s\n\n %s\n", commentHeader, comment.Body)),
+			currentlySelectedIndicator,
+		)
+		content = append(content, comm)
+	}
+
+	m.viewport.SetContent(strings.Join(content, "\n"))
 	s.WriteString(m.viewport.View())
 
 	if m.viewport.TotalLineCount() > m.viewport.VisibleLineCount() {

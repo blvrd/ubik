@@ -229,6 +229,25 @@ func (m model) Init() tea.Cmd {
 	return tea.Batch(GetIssues(nil), CheckIssueClosuresFromCommits)
 }
 
+func handleDetailViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
+	// var cmd tea.Cmd
+	var cmds []tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+    case "esc":
+			m.focusState = issuesListView
+		}
+  // case OpenDetailMsg:
+  //
+  //   m.details[m.currentIssue.Id] = m.currentDetail
+	}
+  // m.currentDetail.Open()
+	*m.currentDetail, cmds = m.currentDetail.Update(msg)
+	return m, cmds
+}
+
 func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
@@ -252,11 +271,14 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 				formMode := issueform.FormMode{Mode: "duplicating", Shortcode: &currentShortcode}
 				m.form = issueform.New(newIssue, formMode)
 				m.form.Init()
-			case "enter", "ctrl+e":
-				m.focusState = issuesFormView
-				formMode := issueform.FormMode{Mode: "editing"}
-				m.form = issueform.New(*m.currentIssue, formMode)
-				m.form.Init()
+			case "enter":
+				m.focusState = issuesDetailView
+        cmd = detail.OpenDetail(m.currentIssue)
+        cmds = append(cmds, cmd)
+        // *m.currentDetail, cmds = m.currentDetail.Update(msg)
+				// formMode := issueform.FormMode{Mode: "editing"}
+				// m.form = issueform.New(*m.currentIssue, formMode)
+				// m.form.Init()
 				return m, cmds
 			case " ":
 				if m.currentIssue.ClosedAt.IsZero() {
@@ -388,7 +410,6 @@ func handleListViewMsg(m model, msg tea.Msg) (model, []tea.Cmd) {
 		m.currentDetail = d
 	}
 
-	log.Debug("🪚 hi")
 	cmds = append(cmds, cmd)
 
 	return m, cmds
@@ -443,7 +464,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch m.focusState {
 	case issuesDetailView:
-    *m.currentDetail, cmd = m.currentDetail.Update(msg)
+		m, cmds = handleDetailViewMsg(m, msg)
 	case issuesListView:
 		m, cmds = handleListViewMsg(m, msg)
 	case issuesFormView:
@@ -466,6 +487,8 @@ func (m model) View() string {
 	var sidebarView string
 
 	switch m.focusState {
+  case issuesDetailView:
+    sidebarView = m.currentDetail.View()
 	case issuesListView:
 		sidebarView = lipgloss.NewStyle().Render(m.currentDetail.View())
 	case issuesFormView:
