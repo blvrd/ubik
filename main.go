@@ -70,6 +70,7 @@ func (m Model) View() string {
 
 func (m *Model) initList(width, height int) {
   m.list = list.New([]list.Item{}, list.NewDefaultDelegate(), width, height)
+  m.list.SetShowHelp(false)
   m.list.Title = "Issues"
   m.list.SetItems([]list.Item{
     Issue{
