@@ -30,7 +30,6 @@
           packages = with pkgs; [
             go
             gotools # Go tools like goimports, godoc, and others
-            gum
           ];
         };
       });
