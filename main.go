@@ -20,6 +20,13 @@ const (
 	wontDo     status = 4
 )
 
+type focusState int
+
+const (
+	issueListFocused   focusState = 1
+	issueDetailFocused focusState = 2
+)
+
 var (
 	helpStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("241"))
@@ -49,13 +56,16 @@ func (i Issue) Description() string {
 
 type Model struct {
 	loaded      bool
+	focusState  focusState
 	issueList   list.Model
 	issueDetail issueDetailModel
 	err         error
 }
 
 func InitialModel() *Model {
-	return &Model{}
+	return &Model{
+		focusState: issueListFocused,
+	}
 }
 
 func (m Model) Init() tea.Cmd {
@@ -65,28 +75,52 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		if !m.loaded {
-			m.loaded = true
+	if m.focusState == issueListFocused {
+		switch msg := msg.(type) {
+		case tea.WindowSizeMsg:
+			if !m.loaded {
+				m.loaded = true
+			}
+			m.initIssueList(msg.Width, msg.Height)
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "j":
+				m.issueList, cmd = m.issueList.Update(msg)
+				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue), viewport: viewport.New(30, 40)}
+				return m, cmd
+			case "k":
+				m.issueList, cmd = m.issueList.Update(msg)
+				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue), viewport: viewport.New(30, 40)}
+				return m, cmd
+			case "enter":
+				m.issueDetail.visible = true
+				m.focusState = issueDetailFocused
+				return m, cmd
+			}
 		}
-		m.initIssueList(msg.Width, msg.Height)
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "j":
-			m.issueList, cmd = m.issueList.Update(msg)
-			m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue), viewport: viewport.New(30, 40)}
-			return m, cmd
-		case "k":
-			m.issueList, cmd = m.issueList.Update(msg)
-			m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue), viewport: viewport.New(30, 40)}
-			return m, cmd
-		case "enter":
-			m.issueDetail.visible = true
-		}
-	}
 
-	m.issueList, cmd = m.issueList.Update(msg)
+		m.issueList, cmd = m.issueList.Update(msg)
+	} else if m.focusState == issueDetailFocused {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "j":
+				m.issueDetail, cmd = m.issueDetail.Update(msg)
+				return m, cmd
+			case "k":
+				m.issueDetail, cmd = m.issueDetail.Update(msg)
+				return m, cmd
+			case "enter":
+				// m.issueDetail.visible = true
+			case "esc":
+				m.focusState = issueListFocused
+				m.issueDetail.visible = false
+				return m, cmd
+			}
+		}
+
+		m.issueList, cmd = m.issueList.Update(msg)
+	}
 
 	return m, cmd
 }
@@ -265,12 +299,22 @@ type issueDetailModel struct {
 	viewport viewport.Model
 }
 
+func (id issueDetailModel) Init() tea.Cmd {
+	return nil
+}
+
 func (id issueDetailModel) View() string {
 	if !id.visible {
 		return ""
 	}
 	id.viewport.SetContent(id.issue.description)
 	return id.viewport.View()
+}
+
+func (id issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
+	var cmd tea.Cmd
+	id.viewport, cmd = id.viewport.Update(msg)
+	return id, cmd
 }
 
 func main() {
