@@ -1,9 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
-  "fmt"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -81,6 +81,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueList, cmd = m.issueList.Update(msg)
 			m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue), viewport: viewport.New(30, 40)}
 			return m, cmd
+		case "enter":
+			m.issueDetail.visible = true
 		}
 	}
 
@@ -259,10 +261,14 @@ Ruby version: 3
 
 type issueDetailModel struct {
 	issue    Issue
+	visible  bool
 	viewport viewport.Model
 }
 
 func (id issueDetailModel) View() string {
+	if !id.visible {
+		return ""
+	}
 	id.viewport.SetContent(id.issue.description)
 	return id.viewport.View()
 }
@@ -272,7 +278,7 @@ func main() {
 	f, err := os.OpenFile("debug.log", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600) //nolint:gomnd
 	if err != nil {
 		fmt.Printf("error opening file for logging: %s", err)
-    os.Exit(1)
+		os.Exit(1)
 	}
 	log.SetOutput(f)
 
