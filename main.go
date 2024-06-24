@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/textarea"
+	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -25,6 +28,7 @@ type focusState int
 const (
 	issueListFocused   focusState = 1
 	issueDetailFocused focusState = 2
+	issueFormFocused   focusState = 3
 )
 
 var (
@@ -59,6 +63,7 @@ type Model struct {
 	focusState  focusState
 	issueList   list.Model
 	issueDetail issueDetailModel
+	issueForm   issueFormModel
 	err         error
 }
 
@@ -93,8 +98,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue), viewport: viewport.New(30, 40)}
 				return m, cmd
 			case "enter":
-				m.issueDetail.visible = true
 				m.focusState = issueDetailFocused
+				m.issueDetail.visible = true
 				return m, cmd
 			}
 		}
@@ -111,7 +116,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.issueDetail, cmd = m.issueDetail.Update(msg)
 				return m, cmd
 			case "enter":
-				// m.issueDetail.visible = true
+				m.focusState = issueFormFocused
+				m.issueForm = issueFormModel{}
+				selectedIssue := m.issueList.SelectedItem().(Issue)
+				m.issueDetail.visible = false
+				m.issueForm.SetTitle(selectedIssue.title)
+				m.issueForm.SetDescription(selectedIssue.description)
+				m.issueForm.titleInput.Focus()
+				m.issueForm.visible = true
+
+				return m, cmd
 			case "esc":
 				m.focusState = issueListFocused
 				m.issueDetail.visible = false
@@ -120,6 +134,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.issueList, cmd = m.issueList.Update(msg)
+	} else if m.focusState == issueFormFocused {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "esc":
+				m.focusState = issueDetailFocused
+				m.issueForm.visible = false
+				m.issueDetail.visible = true
+				return m, cmd
+			}
+		}
+
+		m.issueForm, cmd = m.issueForm.Update(msg)
 	}
 
 	return m, cmd
@@ -130,7 +157,7 @@ func (m Model) View() string {
 		return "Loading..."
 	}
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, m.issueList.View(), m.issueDetail.View())
+	return lipgloss.JoinHorizontal(lipgloss.Top, m.issueList.View(), m.issueDetail.View(), m.issueForm.View())
 }
 
 func (m *Model) initIssueList(width, height int) {
@@ -303,6 +330,12 @@ func (id issueDetailModel) Init() tea.Cmd {
 	return nil
 }
 
+func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
+	var cmd tea.Cmd
+	m.viewport, cmd = m.viewport.Update(msg)
+	return m, cmd
+}
+
 func (id issueDetailModel) View() string {
 	if !id.visible {
 		return ""
@@ -311,10 +344,47 @@ func (id issueDetailModel) View() string {
 	return id.viewport.View()
 }
 
-func (id issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
+type issueFormModel struct {
+	titleInput       textinput.Model
+	descriptionInput textarea.Model
+	visible          bool
+}
+
+func (m issueFormModel) Init() tea.Cmd {
+	return textinput.Blink
+}
+
+func (m issueFormModel) Update(msg tea.Msg) (issueFormModel, tea.Cmd) {
 	var cmd tea.Cmd
-	id.viewport, cmd = id.viewport.Update(msg)
-	return id, cmd
+
+	m.titleInput, cmd = m.titleInput.Update(msg)
+	m.descriptionInput, cmd = m.descriptionInput.Update(msg)
+
+	return m, cmd
+}
+
+func (m issueFormModel) View() string {
+	if !m.visible {
+		return ""
+	}
+
+	var s strings.Builder
+
+	s.WriteString(m.titleInput.View())
+	s.WriteString("\n")
+	s.WriteString(m.descriptionInput.View())
+
+	return s.String()
+}
+
+func (m *issueFormModel) SetTitle(title string) {
+	m.titleInput = textinput.New()
+	m.titleInput.SetValue(title)
+}
+
+func (m *issueFormModel) SetDescription(description string) {
+	m.descriptionInput = textarea.New()
+	m.descriptionInput.SetValue(description)
 }
 
 func main() {
