@@ -122,7 +122,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.issueDetail.visible = false
 				m.issueForm.SetTitle(selectedIssue.title)
 				m.issueForm.SetDescription(selectedIssue.description)
-				m.issueForm.titleInput.Focus()
+				m.issueForm.focusState = titleFocused
+				cmd = m.issueForm.titleInput.Focus()
 				m.issueForm.visible = true
 
 				return m, cmd
@@ -344,9 +345,17 @@ func (id issueDetailModel) View() string {
 	return id.viewport.View()
 }
 
+type formFocusState int
+
+const (
+	titleFocused       formFocusState = 1
+	descriptionFocused formFocusState = 2
+)
+
 type issueFormModel struct {
 	titleInput       textinput.Model
 	descriptionInput textarea.Model
+	focusState       formFocusState
 	visible          bool
 }
 
@@ -357,8 +366,23 @@ func (m issueFormModel) Init() tea.Cmd {
 func (m issueFormModel) Update(msg tea.Msg) (issueFormModel, tea.Cmd) {
 	var cmd tea.Cmd
 
-	m.titleInput, cmd = m.titleInput.Update(msg)
-	m.descriptionInput, cmd = m.descriptionInput.Update(msg)
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "tab":
+			m.focusState = descriptionFocused
+			m.titleInput.Blur()
+			cmd = m.descriptionInput.Focus()
+			return m, cmd
+		}
+	}
+
+	switch m.focusState {
+	case titleFocused:
+		m.titleInput, cmd = m.titleInput.Update(msg)
+	case descriptionFocused:
+		m.descriptionInput, cmd = m.descriptionInput.Update(msg)
+	}
 
 	return m, cmd
 }
