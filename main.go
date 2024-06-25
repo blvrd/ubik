@@ -65,6 +65,8 @@ type Model struct {
 	issueDetail issueDetailModel
 	issueForm   issueFormModel
 	err         error
+	totalWidth  int
+	totalHeight int
 }
 
 func InitialModel() *Model {
@@ -86,6 +88,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if !m.loaded {
 				m.loaded = true
 			}
+			m.totalWidth = msg.Width
+			m.totalHeight = msg.Height
 			m.initIssueList(msg.Width, msg.Height)
 		case tea.KeyMsg:
 			switch msg.String() {
@@ -99,7 +103,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			case "enter":
 				m.focusState = issueDetailFocused
-				m.issueDetail.visible = true
 				return m, cmd
 			}
 		}
@@ -119,17 +122,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focusState = issueFormFocused
 				m.issueForm = issueFormModel{}
 				selectedIssue := m.issueList.SelectedItem().(Issue)
-				m.issueDetail.visible = false
 				m.issueForm.SetTitle(selectedIssue.title)
 				m.issueForm.SetDescription(selectedIssue.description)
 				m.issueForm.focusState = titleFocused
 				cmd = m.issueForm.titleInput.Focus()
-				m.issueForm.visible = true
 
 				return m, cmd
 			case "esc":
 				m.focusState = issueListFocused
-				m.issueDetail.visible = false
 				return m, cmd
 			}
 		}
@@ -141,8 +141,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "esc":
 				m.focusState = issueDetailFocused
-				m.issueForm.visible = false
-				m.issueDetail.visible = true
 				return m, cmd
 			}
 		case issueFormModel:
@@ -152,9 +150,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			currentIssue.title = msg.titleInput.Value()
 			currentIssue.description = msg.descriptionInput.Value()
 			m.issueList.SetItem(currentIndex, currentIssue)
-			m.issueForm.visible = false
-			m.issueDetail.visible = true
-			log.Printf("%#v", msg)
 		}
 
 		m.issueForm, cmd = m.issueForm.Update(msg)
@@ -168,7 +163,17 @@ func (m Model) View() string {
 		return "Loading..."
 	}
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, m.issueList.View(), m.issueDetail.View(), m.issueForm.View())
+	issueListView := lipgloss.NewStyle().Width(50).Render(m.issueList.View())
+	var sidebarView string
+
+	switch m.focusState {
+	case issueDetailFocused:
+		sidebarView = lipgloss.NewStyle().Width(50).Render(m.issueDetail.View())
+	case issueFormFocused:
+		sidebarView = lipgloss.NewStyle().Width(50).Render(m.issueForm.View())
+	}
+
+	return lipgloss.JoinHorizontal(lipgloss.Top, issueListView, sidebarView)
 }
 
 func (m *Model) initIssueList(width, height int) {
@@ -333,7 +338,6 @@ Ruby version: 3
 
 type issueDetailModel struct {
 	issue    Issue
-	visible  bool
 	viewport viewport.Model
 }
 
@@ -348,9 +352,6 @@ func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 }
 
 func (id issueDetailModel) View() string {
-	if !id.visible {
-		return ""
-	}
 	id.viewport.SetContent(id.issue.description)
 	return id.viewport.View()
 }
@@ -367,7 +368,6 @@ type issueFormModel struct {
 	titleInput       textinput.Model
 	descriptionInput textarea.Model
 	focusState       formFocusState
-	visible          bool
 }
 
 func (m issueFormModel) Submit() tea.Msg {
@@ -414,10 +414,6 @@ func (m issueFormModel) Update(msg tea.Msg) (issueFormModel, tea.Cmd) {
 }
 
 func (m issueFormModel) View() string {
-	if !m.visible {
-		return ""
-	}
-
 	var s strings.Builder
 
 	s.WriteString(m.titleInput.View())
