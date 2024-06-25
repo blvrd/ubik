@@ -403,11 +403,14 @@ func (m issueFormModel) View() string {
 
 func (m *issueFormModel) SetTitle(title string) {
 	m.titleInput = textinput.New()
+	m.titleInput.CharLimit = 120
 	m.titleInput.SetValue(title)
 }
 
 func (m *issueFormModel) SetDescription(description string) {
 	m.descriptionInput = textarea.New()
+	m.descriptionInput.CharLimit = 0 // unlimited
+	m.descriptionInput.MaxHeight = 0 // unlimited
 	m.descriptionInput.SetValue(description)
 }
 
