@@ -145,6 +145,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.issueDetail.visible = true
 				return m, cmd
 			}
+		case issueFormModel:
+			m.focusState = issueDetailFocused
+			currentIndex := m.issueList.Index()
+			currentIssue := m.issueList.SelectedItem().(Issue)
+			currentIssue.title = msg.titleInput.Value()
+			currentIssue.description = msg.descriptionInput.Value()
+			m.issueList.SetItem(currentIndex, currentIssue)
+			m.issueForm.visible = false
+			m.issueDetail.visible = true
+			log.Printf("%#v", msg)
 		}
 
 		m.issueForm, cmd = m.issueForm.Update(msg)
@@ -348,8 +358,9 @@ func (id issueDetailModel) View() string {
 type formFocusState int
 
 const (
-	titleFocused       formFocusState = 1
-	descriptionFocused formFocusState = 2
+	titleFocused        formFocusState = 1
+	descriptionFocused  formFocusState = 2
+	confirmationFocused formFocusState = 3
 )
 
 type issueFormModel struct {
@@ -357,6 +368,10 @@ type issueFormModel struct {
 	descriptionInput textarea.Model
 	focusState       formFocusState
 	visible          bool
+}
+
+func (m issueFormModel) Submit() tea.Msg {
+	return m
 }
 
 func (m issueFormModel) Init() tea.Cmd {
@@ -370,10 +385,21 @@ func (m issueFormModel) Update(msg tea.Msg) (issueFormModel, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "tab":
-			m.focusState = descriptionFocused
-			m.titleInput.Blur()
-			cmd = m.descriptionInput.Focus()
+			switch m.focusState {
+			case titleFocused:
+				m.focusState = descriptionFocused
+				m.titleInput.Blur()
+				cmd = m.descriptionInput.Focus()
+			case descriptionFocused:
+				m.focusState = confirmationFocused
+				m.descriptionInput.Blur()
+			}
+
 			return m, cmd
+		case "enter":
+			if m.focusState == confirmationFocused {
+				return m, m.Submit
+			}
 		}
 	}
 
@@ -397,6 +423,13 @@ func (m issueFormModel) View() string {
 	s.WriteString(m.titleInput.View())
 	s.WriteString("\n")
 	s.WriteString(m.descriptionInput.View())
+	s.WriteString("\n")
+	if m.focusState == confirmationFocused {
+		style := lipgloss.NewStyle().Foreground(lipgloss.Color("#0000FF"))
+		s.WriteString(style.Render("Save"))
+	} else {
+		s.WriteString("Save")
+	}
 
 	return s.String()
 }
