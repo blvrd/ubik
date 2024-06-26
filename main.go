@@ -90,19 +90,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.totalWidth = msg.Width
 			m.totalHeight = msg.Height
-			m.initIssueList(msg.Width, msg.Height - 4)
+			m.initIssueList(msg.Width, msg.Height-4)
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "j":
 				m.issueList, cmd = m.issueList.Update(msg)
-				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue), viewport: viewport.New(30, 40)}
 				return m, cmd
 			case "k":
 				m.issueList, cmd = m.issueList.Update(msg)
-				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue), viewport: viewport.New(30, 40)}
 				return m, cmd
 			case "enter":
 				m.focusState = issueDetailFocused
+				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
+				m.issueDetail.Init()
 				return m, cmd
 			}
 		}
@@ -329,11 +329,6 @@ Ruby version: 3
 			status: 1,
 		},
 	})
-
-	m.issueDetail = issueDetailModel{
-		issue:    m.issueList.SelectedItem().(Issue),
-		viewport: viewport.New(30, 40),
-	}
 }
 
 type issueDetailModel struct {
@@ -341,18 +336,20 @@ type issueDetailModel struct {
 	viewport viewport.Model
 }
 
-func (id issueDetailModel) Init() tea.Cmd {
+func (m *issueDetailModel) Init() tea.Cmd {
+	m.viewport = viewport.New(30, 40)
+	m.viewport.SetContent(m.issue.description)
 	return nil
 }
 
 func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 	var cmd tea.Cmd
+	log.Printf("%#v", m.viewport)
 	m.viewport, cmd = m.viewport.Update(msg)
 	return m, cmd
 }
 
 func (id issueDetailModel) View() string {
-	id.viewport.SetContent(id.issue.description)
 	return id.viewport.View()
 }
 
