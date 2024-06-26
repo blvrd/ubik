@@ -90,7 +90,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.totalWidth = msg.Width
 			m.totalHeight = msg.Height
-			m.initIssueList(msg.Width, msg.Height)
+			m.initIssueList(msg.Width, msg.Height - 4)
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "j":
@@ -163,7 +163,7 @@ func (m Model) View() string {
 		return "Loading..."
 	}
 
-	issueListView := lipgloss.NewStyle().Width(50).Render(m.issueList.View())
+	issueListView := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("238")).Width(50).Render(m.issueList.View())
 	var sidebarView string
 
 	switch m.focusState {
