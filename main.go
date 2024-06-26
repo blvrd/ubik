@@ -82,6 +82,11 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
+	if m.issueList.SettingFilter() {
+		m.issueList, cmd = m.issueList.Update(msg)
+		return m, cmd
+	}
+
 	if m.focusState == issueListFocused {
 		switch msg := msg.(type) {
 		case tea.WindowSizeMsg:
