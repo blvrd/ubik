@@ -93,6 +93,7 @@ func (m Model) Init() tea.Cmd {
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -140,22 +141,45 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.issueDetail, cmd = m.issueDetail.Update(msg)
 				return m, cmd
 			case "enter":
-				m.focusState = issueFormFocused
-				m.issueForm = issueFormModel{}
-				selectedIssue := m.issueList.SelectedItem().(Issue)
-				m.issueForm.SetTitle(selectedIssue.title)
-				m.issueForm.SetDescription(selectedIssue.description)
-				m.issueForm.focusState = titleFocused
-				cmd = m.issueForm.titleInput.Focus()
+				if m.issueDetail.focus == issueDetailCommentFocused {
+					m.issueDetail, cmd = m.issueDetail.Update(msg)
+				} else {
+					m.focusState = issueFormFocused
+					m.issueForm = issueFormModel{}
+					selectedIssue := m.issueList.SelectedItem().(Issue)
+					m.issueForm.SetTitle(selectedIssue.title)
+					m.issueForm.SetDescription(selectedIssue.description)
+					m.issueForm.focusState = issueTitleFocused
+					cmd = m.issueForm.titleInput.Focus()
+				}
 
+				return m, cmd
+			case "c":
+				m.issueDetail, cmd = m.issueDetail.Update(msg)
 				return m, cmd
 			case "esc":
-				m.focusState = issueListFocused
+				if m.issueDetail.focus == issueDetailViewportFocused {
+					m.focusState = issueListFocused
+				} else {
+					m.issueDetail, cmd = m.issueDetail.Update(msg)
+				}
 				return m, cmd
 			}
+		case commentFormModel:
+			currentIndex := m.issueList.Index()
+			currentIssue := m.issueList.SelectedItem().(Issue)
+			currentIssue.comments = append(currentIssue.comments, Comment{author: "garrett@blvrd.co", content: msg.contentInput.Value()})
+			cmds = append(cmds, m.issueList.SetItem(currentIndex, currentIssue))
+			m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
+			m.issueDetail.Init()
+			m.issueDetail.viewport.GotoBottom()
+
+			// m.issueDetail, cmd = m.issueDetail.Update(msg)
+			// cmds = append(cmds, cmd)
+			return m, tea.Batch(cmds...)
 		}
 
-		m.issueList, cmd = m.issueList.Update(msg)
+		m.issueDetail, cmd = m.issueDetail.Update(msg)
 	} else if m.focusState == issueFormFocused {
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -390,13 +414,23 @@ Maybe destination should use the after fork hook like https://github.com/rails/r
 	})
 }
 
+type issueDetailFocusState int
+
+const (
+	issueDetailViewportFocused issueDetailFocusState = 1
+	issueDetailCommentFocused  issueDetailFocusState = 2
+)
+
 type issueDetailModel struct {
-	issue    Issue
-	viewport viewport.Model
+	issue       Issue
+	viewport    viewport.Model
+	focus       issueDetailFocusState
+	commentForm commentFormModel
 }
 
 func (m *issueDetailModel) Init() tea.Cmd {
 	m.viewport = viewport.New(90, 40)
+	m.focus = issueDetailViewportFocused
 	content := m.issue.description
 
 	commentStyle := lipgloss.NewStyle().
@@ -414,32 +448,59 @@ func (m *issueDetailModel) Init() tea.Cmd {
 		content += commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content))
 	}
 	m.viewport.SetContent(content)
-	m.viewport.GotoBottom()
 	return nil
 }
 
 func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 	var cmd tea.Cmd
-	m.viewport, cmd = m.viewport.Update(msg)
+	if m.focus == issueDetailViewportFocused {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "c":
+				m.focus = issueDetailCommentFocused
+				m.commentForm = NewCommentFormModel()
+				m.commentForm.Init()
+			}
+		}
+		m.viewport, cmd = m.viewport.Update(msg)
+	} else if m.focus == issueDetailCommentFocused {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.String() {
+			case "esc":
+				m.focus = issueDetailViewportFocused
+			}
+		}
+		m.commentForm, cmd = m.commentForm.Update(msg)
+	}
 	return m, cmd
 }
 
-func (id issueDetailModel) View() string {
-	return id.viewport.View()
+func (m issueDetailModel) View() string {
+	var content string
+	content = m.viewport.View()
+
+	if m.focus == issueDetailCommentFocused {
+		content += "\n"
+		content += m.commentForm.View()
+	}
+
+	return content
 }
 
-type formFocusState int
+type issueFormFocusState int
 
 const (
-	titleFocused        formFocusState = 1
-	descriptionFocused  formFocusState = 2
-	confirmationFocused formFocusState = 3
+	issueTitleFocused        issueFormFocusState = 1
+	issueDescriptionFocused  issueFormFocusState = 2
+	issueConfirmationFocused issueFormFocusState = 3
 )
 
 type issueFormModel struct {
 	titleInput       textinput.Model
 	descriptionInput textarea.Model
-	focusState       formFocusState
+	focusState       issueFormFocusState
 }
 
 func (m issueFormModel) Submit() tea.Msg {
@@ -458,27 +519,27 @@ func (m issueFormModel) Update(msg tea.Msg) (issueFormModel, tea.Cmd) {
 		switch msg.String() {
 		case "tab":
 			switch m.focusState {
-			case titleFocused:
-				m.focusState = descriptionFocused
+			case issueTitleFocused:
+				m.focusState = issueDescriptionFocused
 				m.titleInput.Blur()
 				cmd = m.descriptionInput.Focus()
-			case descriptionFocused:
-				m.focusState = confirmationFocused
+			case issueDescriptionFocused:
+				m.focusState = issueConfirmationFocused
 				m.descriptionInput.Blur()
 			}
 
 			return m, cmd
 		case "enter":
-			if m.focusState == confirmationFocused {
+			if m.focusState == issueConfirmationFocused {
 				return m, m.Submit
 			}
 		}
 	}
 
 	switch m.focusState {
-	case titleFocused:
+	case issueTitleFocused:
 		m.titleInput, cmd = m.titleInput.Update(msg)
-	case descriptionFocused:
+	case issueDescriptionFocused:
 		m.descriptionInput, cmd = m.descriptionInput.Update(msg)
 	}
 
@@ -492,7 +553,7 @@ func (m issueFormModel) View() string {
 	s.WriteString("\n")
 	s.WriteString(m.descriptionInput.View())
 	s.WriteString("\n")
-	if m.focusState == confirmationFocused {
+	if m.focusState == issueConfirmationFocused {
 		style := lipgloss.NewStyle().Foreground(lipgloss.Color("#0000FF"))
 		s.WriteString(style.Render("Save"))
 	} else {
@@ -513,6 +574,78 @@ func (m *issueFormModel) SetDescription(description string) {
 	m.descriptionInput.CharLimit = 0 // unlimited
 	m.descriptionInput.MaxHeight = 0 // unlimited
 	m.descriptionInput.SetValue(description)
+}
+
+type commentFormFocusState int
+
+const (
+	commentContentFocused      commentFormFocusState = 1
+	commentConfirmationFocused commentFormFocusState = 2
+)
+
+type commentFormModel struct {
+	contentInput textarea.Model
+	focusState   commentFormFocusState
+}
+
+func NewCommentFormModel() commentFormModel {
+	return commentFormModel{
+		contentInput: textarea.New(),
+		focusState:   commentContentFocused,
+	}
+}
+
+func (m commentFormModel) Submit() tea.Msg {
+	return m
+}
+
+func (m *commentFormModel) Init() tea.Cmd {
+	m.focusState = commentContentFocused
+	m.contentInput.Focus()
+	return textinput.Blink
+}
+
+func (m commentFormModel) Update(msg tea.Msg) (commentFormModel, tea.Cmd) {
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "tab":
+			switch m.focusState {
+			case commentContentFocused:
+				m.focusState = commentConfirmationFocused
+				m.contentInput.Blur()
+			case commentConfirmationFocused:
+				m.focusState = commentContentFocused
+			}
+
+			return m, cmd
+		case "enter":
+			if m.focusState == commentConfirmationFocused {
+				return m, m.Submit
+			}
+		}
+	}
+
+	switch m.focusState {
+	case commentContentFocused:
+		m.contentInput, cmd = m.contentInput.Update(msg)
+	}
+
+	return m, cmd
+}
+
+func (m commentFormModel) View() string {
+	var s strings.Builder
+	s.WriteString(m.contentInput.View())
+	s.WriteString("\n")
+	if m.focusState == commentContentFocused {
+		s.WriteString("Save")
+	} else {
+		s.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("200")).Render("Save"))
+	}
+	return s.String()
 }
 
 func main() {
