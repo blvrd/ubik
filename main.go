@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	// "log"
 	"os"
 	"strings"
 	"time"
@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/log"
 )
 
 type status int
@@ -95,7 +96,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
   switch msg := msg.(type) {
   case tea.WindowSizeMsg:
-    log.Println("window size msg")
+    log.Print("window size msg")
     if !m.loaded {
       m.loaded = true
     }
@@ -522,14 +523,15 @@ func main() {
 		os.Exit(1)
 	}
 	log.SetOutput(f)
+  log.SetLevel(log.DebugLevel)
 
 	if err != nil {
-		log.Println("fatal:", err)
+		log.Print("fatal:", err)
 		os.Exit(1)
 	}
 	defer f.Close()
 	if _, err := p.Run(); err != nil {
-		log.Println(err)
+		log.Print(err)
 		os.Exit(1)
 	}
 }
