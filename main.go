@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -42,6 +43,9 @@ type Issue struct {
 	title       string
 	description string
 	status      status
+	comments    []Comment
+	createdAt   time.Time
+	updatedAt   time.Time
 }
 
 func (i Issue) FilterValue() string {
@@ -54,6 +58,13 @@ func (i Issue) Title() string {
 
 func (i Issue) Description() string {
 	return i.description
+}
+
+type Comment struct {
+	author    string
+	content   string
+	createdAt time.Time
+	updatedAt time.Time
 }
 
 /* MAIN MODEL */
@@ -82,6 +93,17 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
+  switch msg := msg.(type) {
+  case tea.WindowSizeMsg:
+    log.Println("window size msg")
+    if !m.loaded {
+      m.loaded = true
+    }
+    m.totalWidth = msg.Width
+    m.totalHeight = msg.Height
+    m.initIssueList(msg.Width, msg.Height-4)
+  }
+
 	if m.issueList.SettingFilter() {
 		m.issueList, cmd = m.issueList.Update(msg)
 		return m, cmd
@@ -89,13 +111,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	if m.focusState == issueListFocused {
 		switch msg := msg.(type) {
-		case tea.WindowSizeMsg:
-			if !m.loaded {
-				m.loaded = true
-			}
-			m.totalWidth = msg.Width
-			m.totalHeight = msg.Height
-			m.initIssueList(msg.Width, msg.Height-4)
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "j":
@@ -173,9 +188,9 @@ func (m Model) View() string {
 
 	switch m.focusState {
 	case issueDetailFocused:
-		sidebarView = lipgloss.NewStyle().Width(50).Render(m.issueDetail.View())
+		sidebarView = lipgloss.NewStyle().Width(100).Render(m.issueDetail.View())
 	case issueFormFocused:
-		sidebarView = lipgloss.NewStyle().Width(50).Render(m.issueForm.View())
+		sidebarView = lipgloss.NewStyle().Width(100).Render(m.issueForm.View())
 	}
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, issueListView, sidebarView)
@@ -294,44 +309,82 @@ Rails version: 7
 Ruby version: 3
       `,
 			status: 1,
+			comments: []Comment{
+				{
+          author: "garrett@blvrd.co",
+					content: `
+Yeah, it won't save the item unless it's changed. Code is here: https://github.com/rails/rails/blob/main/activerecord/lib/active_record/autosave_association.rb#L273
+
+If I add a return true your test passes.
+
+I guess it makes sense not to save ... why save if it hasn't changed? Of course, like in your example, you can force it with item.update!.
+
+Maybe it would be good to be able to do items_attributes!: [ (bang method on the key) ... which would force a save.
+          `,
+				},
+				{
+          author: "dev@example.com",
+					content: `@justinko - thanks a lot for looking at this and pointing me to the code. I'm able to override changed_for_autosave? and it seems to be doing exactly what I'm looking for.
+
+> why save if it hasn't changed?
+I don't want it to hit the DB if the record has no changes but I do want validations to run. My use case is that a record is created for a user by another process (hence my validations only running on update). The user is presented with a form and should see validation error messaging if they attempt to update the record without populating the required values.
+
+> Maybe it would be good to be able to do items_attributes!: [ (bang method on the key)
+I like that! I'm happy to take a stab at a PR if that's something that would be of interest.`,
+				},
+			},
 		},
 		Issue{
 			id:     "54321",
 			author: "garrett@blvrd.co",
 			title:  "Parallelized generator tests fail in race condition because destination is not worker aware",
 			description: `
-      ### Steps to reproduce
+### Steps to reproduce
 
-      Write generator tests and turn on parallel testing.
+Write generator tests and turn on parallel testing.
 
-      Rails::Generators::TestCase expects a class level 'destination' https://github.com/rails/rails/blob/main/railties/lib/rails/generators/testing/behavior.rb#L46 but inherits from ActiveSupport::TestCase so if parallel testing is on https://guides.rubyonrails.org/testing.html#parallel-testing-with-processes the test cases can race creating/destroying the directory
-
-
-      ### Expected behavior
-
-      Per parallel executor destinations
+Rails::Generators::TestCase expects a class level 'destination' https://github.com/rails/rails/blob/main/railties/lib/rails/generators/testing/behavior.rb#L46 but inherits from ActiveSupport::TestCase so if parallel testing is on https://guides.rubyonrails.org/testing.html#parallel-testing-with-processes the test cases can race creating/destroying the directory
 
 
-      My hack to get around this for now in the test case:
+### Expected behavior
 
-      def prepare_destination
-        self.destination_root = File.expand_path(\"../tmp\", __dir__) + \"-#{Process.pid}\"
-        super
-      end
+Per parallel executor destinations
 
-      nMaybe destination should use the after fork hook like https://github.com/rails/rails/blob/main/activerecord/lib/active_record/test_databases.rb#L7 ?  Or maybe a cleaned up version of my workaround would suffice?
 
-      ### System configuration
+My hack to get around this for now in the test case:
 
-      **Rails version**:
+def prepare_destination
+  self.destination_root = File.expand_path(\"../tmp\", __dir__) + \"-#{Process.pid}\"
+  super
+end
 
-      7.1.8.4
+Maybe destination should use the after fork hook like https://github.com/rails/rails/blob/main/activerecord/lib/active_record/test_databases.rb#L7 ?  Or maybe a cleaned up version of my workaround would suffice?
 
-      **Ruby version**:
+### System configuration
 
-      3.1.6
+**Rails version**:
+
+7.1.8.4
+
+**Ruby version**:
+
+3.1.6
       `,
 			status: 1,
+			comments: []Comment{
+				{
+          author: "dev@example.com",
+					content: `The workaround and even the after_fork only works if the parallel processor is using processes and not threads. Unfortunately Rails::Generator::TestCase don't support parallel tests at the moment. We should probably disallow setting it at short-term and fix it to support parallel tests long term.`,
+				},
+				{
+          author: "garrett@blvrd.co",
+					content: `@rafaelfranca do you have a preferred approach?`,
+				},
+				{
+          author: "garrett@blvrd.co",
+					content: `If we can fix it, I'd prefer to try that first. Now, how we are going to make sure the destination dir is different for each test worker I don't know.`,
+				},
+			},
 		},
 	})
 }
@@ -342,14 +395,30 @@ type issueDetailModel struct {
 }
 
 func (m *issueDetailModel) Init() tea.Cmd {
-	m.viewport = viewport.New(30, 40)
-	m.viewport.SetContent(m.issue.description)
+	m.viewport = viewport.New(90, 40)
+  content := m.issue.description
+
+  commentStyle := lipgloss.NewStyle().
+    Border(lipgloss.NormalBorder()).
+    BorderForeground(lipgloss.Color("238")).
+    Width(80).
+    MarginTop(1)
+  commentHeaderStyle := lipgloss.NewStyle().
+    Border(lipgloss.NormalBorder(), false, false, true, false).
+    BorderForeground(lipgloss.Color("238")).
+    Width(80)
+
+  for _, comment := range m.issue.comments {
+    commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.author, comment.createdAt))
+    content += commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content))
+  }
+	m.viewport.SetContent(content)
+  m.viewport.GotoBottom()
 	return nil
 }
 
 func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 	var cmd tea.Cmd
-	log.Printf("%#v", m.viewport)
 	m.viewport, cmd = m.viewport.Update(msg)
 	return m, cmd
 }
