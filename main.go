@@ -94,16 +94,16 @@ func (m Model) Init() tea.Cmd {
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
-  switch msg := msg.(type) {
-  case tea.WindowSizeMsg:
-    log.Print("window size msg")
-    if !m.loaded {
-      m.loaded = true
-    }
-    m.totalWidth = msg.Width
-    m.totalHeight = msg.Height
-    m.initIssueList(msg.Width, msg.Height-4)
-  }
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		if !m.loaded {
+			m.loaded = true
+		}
+		m.totalWidth = msg.Width
+		m.totalHeight = msg.Height
+		m.initIssueList(msg.Width, msg.Height-4)
+		m.issueList, cmd = m.issueList.Update(msg)
+	}
 
 	if m.issueList.SettingFilter() {
 		m.issueList, cmd = m.issueList.Update(msg)
@@ -312,7 +312,7 @@ Ruby version: 3
 			status: 1,
 			comments: []Comment{
 				{
-          author: "garrett@blvrd.co",
+					author: "garrett@blvrd.co",
 					content: `
 Yeah, it won't save the item unless it's changed. Code is here: https://github.com/rails/rails/blob/main/activerecord/lib/active_record/autosave_association.rb#L273
 
@@ -324,7 +324,7 @@ Maybe it would be good to be able to do items_attributes!: [ (bang method on the
           `,
 				},
 				{
-          author: "dev@example.com",
+					author: "dev@example.com",
 					content: `@justinko - thanks a lot for looking at this and pointing me to the code. I'm able to override changed_for_autosave? and it seems to be doing exactly what I'm looking for.
 
 > why save if it hasn't changed?
@@ -374,15 +374,15 @@ Maybe destination should use the after fork hook like https://github.com/rails/r
 			status: 1,
 			comments: []Comment{
 				{
-          author: "dev@example.com",
+					author:  "dev@example.com",
 					content: `The workaround and even the after_fork only works if the parallel processor is using processes and not threads. Unfortunately Rails::Generator::TestCase don't support parallel tests at the moment. We should probably disallow setting it at short-term and fix it to support parallel tests long term.`,
 				},
 				{
-          author: "garrett@blvrd.co",
+					author:  "garrett@blvrd.co",
 					content: `@rafaelfranca do you have a preferred approach?`,
 				},
 				{
-          author: "garrett@blvrd.co",
+					author:  "garrett@blvrd.co",
 					content: `If we can fix it, I'd prefer to try that first. Now, how we are going to make sure the destination dir is different for each test worker I don't know.`,
 				},
 			},
@@ -397,24 +397,24 @@ type issueDetailModel struct {
 
 func (m *issueDetailModel) Init() tea.Cmd {
 	m.viewport = viewport.New(90, 40)
-  content := m.issue.description
+	content := m.issue.description
 
-  commentStyle := lipgloss.NewStyle().
-    Border(lipgloss.NormalBorder()).
-    BorderForeground(lipgloss.Color("238")).
-    Width(80).
-    MarginTop(1)
-  commentHeaderStyle := lipgloss.NewStyle().
-    Border(lipgloss.NormalBorder(), false, false, true, false).
-    BorderForeground(lipgloss.Color("238")).
-    Width(80)
+	commentStyle := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("238")).
+		Width(80).
+		MarginTop(1)
+	commentHeaderStyle := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder(), false, false, true, false).
+		BorderForeground(lipgloss.Color("238")).
+		Width(80)
 
-  for _, comment := range m.issue.comments {
-    commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.author, comment.createdAt))
-    content += commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content))
-  }
+	for _, comment := range m.issue.comments {
+		commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.author, comment.createdAt))
+		content += commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content))
+	}
 	m.viewport.SetContent(content)
-  m.viewport.GotoBottom()
+	m.viewport.GotoBottom()
 	return nil
 }
 
@@ -523,7 +523,7 @@ func main() {
 		os.Exit(1)
 	}
 	log.SetOutput(f)
-  log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.DebugLevel)
 
 	if err != nil {
 		log.Print("fatal:", err)
