@@ -58,7 +58,7 @@ func (i Issue) Title() string {
 }
 
 func (i Issue) Description() string {
-	return i.description
+	return fmt.Sprintf("created by %s at %s", i.author, i.createdAt.Format(time.RFC822))
 }
 
 type Comment struct {
