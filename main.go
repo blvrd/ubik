@@ -208,7 +208,7 @@ func (m Model) View() string {
 		return "Loading..."
 	}
 
-	issueListView := lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("238")).Width(50).Render(m.issueList.View())
+	issueListView := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("238")).Width(50).Render(m.issueList.View())
 	var sidebarView string
 
 	switch m.focusState {
@@ -429,7 +429,7 @@ type issueDetailModel struct {
 }
 
 func (m *issueDetailModel) Init() tea.Cmd {
-	m.viewport = viewport.New(90, 40)
+	m.viewport = viewport.New(90, 50)
 	m.focus = issueDetailViewportFocused
 	content := m.issue.description
 
@@ -438,14 +438,19 @@ func (m *issueDetailModel) Init() tea.Cmd {
 		BorderForeground(lipgloss.Color("238")).
 		Width(80).
 		MarginTop(1)
+
 	commentHeaderStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), false, false, true, false).
 		BorderForeground(lipgloss.Color("238")).
 		Width(80)
 
-	for _, comment := range m.issue.comments {
+	for i, comment := range m.issue.comments {
 		commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.author, comment.createdAt))
-		content += commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content))
+		if i == len(m.issue.comments)-1 { // last comment
+			content += commentStyle.MarginBottom(2).Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content))
+		} else {
+			content += commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content))
+		}
 	}
 	m.viewport.SetContent(content)
 	return nil
