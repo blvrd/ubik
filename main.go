@@ -298,15 +298,18 @@ func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 }
 
 func (m issueDetailModel) View() string {
-	var content string
-	content = m.viewport.View()
+	var s strings.Builder
+	s.WriteString(m.viewport.View())
+	s.WriteString("\n")
+	percentage := fmt.Sprintf("%f", m.viewport.ScrollPercent()*100)
+	s.WriteString(percentage)
 
 	if m.focus == issueDetailCommentFocused {
-		content += "\n"
-		content += m.commentForm.View()
+		s.WriteString("\n")
+		s.WriteString(m.commentForm.View())
 	}
 
-	return content
+	return s.String()
 }
 
 type issueFormFocusState int
