@@ -104,6 +104,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.totalHeight = msg.Height
 		m.initIssueList(msg.Width, msg.Height-4)
 		m.issueList, cmd = m.issueList.Update(msg)
+	case commentFormModel:
+		currentIndex := m.issueList.Index()
+		currentIssue := m.issueList.SelectedItem().(Issue)
+		currentIssue.comments = append(currentIssue.comments, Comment{author: "garrett@blvrd.co", content: msg.contentInput.Value()})
+		m.issueList.SetItem(currentIndex, currentIssue)
+		m.issueDetail = issueDetailModel{issue: currentIssue}
+		m.issueDetail.Init()
+		m.issueDetail.viewport.GotoBottom()
+
+		return m, tea.Batch(cmds...)
 	}
 
 	if m.issueList.SettingFilter() {
@@ -165,18 +175,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, cmd
 			}
-		case commentFormModel:
-			currentIndex := m.issueList.Index()
-			currentIssue := m.issueList.SelectedItem().(Issue)
-			currentIssue.comments = append(currentIssue.comments, Comment{author: "garrett@blvrd.co", content: msg.contentInput.Value()})
-			cmds = append(cmds, m.issueList.SetItem(currentIndex, currentIssue))
-			m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
-			m.issueDetail.Init()
-			m.issueDetail.viewport.GotoBottom()
-
-			// m.issueDetail, cmd = m.issueDetail.Update(msg)
-			// cmds = append(cmds, cmd)
-			return m, tea.Batch(cmds...)
 		}
 
 		m.issueDetail, cmd = m.issueDetail.Update(msg)
@@ -208,7 +206,7 @@ func (m Model) View() string {
 		return "Loading..."
 	}
 
-	issueListView := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("238")).Width(50).Render(m.issueList.View())
+	issueListView := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("238")).Width(100).Render(m.issueList.View())
 	var sidebarView string
 
 	switch m.focusState {
