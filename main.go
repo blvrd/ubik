@@ -226,7 +226,7 @@ func (m Model) View() string {
 			// MarginLeft(2).
 			Render(m.issueDetail.View())
 	case issueFormFocused:
-    style := lipgloss.NewStyle().
+		style := lipgloss.NewStyle().
 			// Border(lipgloss.NormalBorder()).
 			// BorderForeground(lipgloss.Color("238")).
 			Width(m.percentageToWidth(0.4))
@@ -266,14 +266,14 @@ type issueDetailModel struct {
 }
 
 func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
-	m.viewport = viewport.New(ctx.percentageToWidth(0.4), ctx.totalHeight - 4)
+	m.viewport = viewport.New(ctx.percentageToWidth(0.4), ctx.totalHeight-4)
 	m.focus = issueDetailViewportFocused
 	content := m.issue.description
 
 	commentStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("238")).
-		Width(40).
+		Width(m.viewport.Width - 2).
 		MarginTop(1)
 
 	commentHeaderStyle := lipgloss.NewStyle().
@@ -321,6 +321,8 @@ func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 
 func (m issueDetailModel) View() string {
 	var s strings.Builder
+	s.WriteString(lipgloss.NewStyle().BorderBottom(true).BorderStyle(lipgloss.NormalBorder()).PaddingTop(1).Render(m.issue.title))
+	s.WriteString("\n")
 	s.WriteString(m.viewport.View())
 	s.WriteString("\n")
 	percentage := fmt.Sprintf("%f", m.viewport.ScrollPercent()*100)
