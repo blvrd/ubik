@@ -81,9 +81,8 @@ type Model struct {
 }
 
 func (m Model) percentageToWidth(percentage float32) int {
-  return int(float32(m.totalWidth) * percentage)
+	return int(float32(m.totalWidth) * percentage)
 }
-
 
 func InitialModel() *Model {
 	return &Model{
@@ -114,7 +113,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		currentIssue.comments = append(currentIssue.comments, Comment{author: "garrett@blvrd.co", content: msg.contentInput.Value()})
 		m.issueList.SetItem(currentIndex, currentIssue)
 		m.issueDetail = issueDetailModel{issue: currentIssue}
-		m.issueDetail.Init()
+		m.issueDetail.Init(m)
 		m.issueDetail.viewport.GotoBottom()
 
 		return m, tea.Batch(cmds...)
@@ -138,7 +137,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "enter":
 				m.focusState = issueDetailFocused
 				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
-				m.issueDetail.Init()
+				m.issueDetail.Init(m)
 				return m, cmd
 			}
 		}
@@ -210,14 +209,32 @@ func (m Model) View() string {
 		return "Loading..."
 	}
 
-	issueListView := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("238")).Width(m.percentageToWidth(0.5)).Render(m.issueList.View())
+	issueListView := lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("238")).
+		Width(m.percentageToWidth(0.5)).
+		// MarginRight(2).
+		Render(m.issueList.View())
 	var sidebarView string
 
 	switch m.focusState {
 	case issueDetailFocused:
-		sidebarView = lipgloss.NewStyle().Width(m.percentageToWidth(0.5)).Render(m.issueDetail.View())
+		sidebarView = lipgloss.NewStyle().
+			// Border(lipgloss.NormalBorder()).
+			// BorderForeground(lipgloss.Color("238")).
+			Width(m.percentageToWidth(0.4)).
+			// MarginLeft(2).
+			Render(m.issueDetail.View())
 	case issueFormFocused:
-		sidebarView = lipgloss.NewStyle().Width(m.percentageToWidth(0.5)).Render(m.issueForm.View())
+    style := lipgloss.NewStyle().
+			// Border(lipgloss.NormalBorder()).
+			// BorderForeground(lipgloss.Color("238")).
+			Width(m.percentageToWidth(0.4))
+			// MarginLeft(2)
+
+		sidebarView = style.
+			Render(m.issueForm.View())
+
 	}
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, issueListView, sidebarView)
@@ -248,8 +265,8 @@ type issueDetailModel struct {
 	commentForm commentFormModel
 }
 
-func (m *issueDetailModel) Init() tea.Cmd {
-	m.viewport = viewport.New(90, 40)
+func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
+	m.viewport = viewport.New(ctx.percentageToWidth(0.4), ctx.totalHeight - 4)
 	m.focus = issueDetailViewportFocused
 	content := m.issue.description
 
