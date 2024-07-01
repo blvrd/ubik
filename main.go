@@ -53,7 +53,19 @@ func (i Issue) FilterValue() string {
 }
 
 func (i Issue) Title() string {
-	return i.title
+	var status string
+
+	switch i.status {
+	case todo:
+		status = "[·]"
+	case inProgress:
+		status = "[⋯]"
+	case wontDo:
+		status = "[×]"
+	case done:
+		status = "[✓]"
+	}
+	return fmt.Sprintf("%s %s", status, i.title)
 }
 
 func (i Issue) Description() string {
@@ -133,6 +145,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			case "k":
 				m.issueList, cmd = m.issueList.Update(msg)
+				return m, cmd
+			case " ":
+				currentIndex := m.issueList.Index()
+				currentIssue := m.issueList.SelectedItem().(Issue)
+				if currentIssue.status == todo {
+					currentIssue.status = done
+				} else {
+					currentIssue.status = todo
+				}
+				cmd = m.issueList.SetItem(currentIndex, currentIssue)
+				return m, cmd
+			case "w":
+				currentIndex := m.issueList.Index()
+				currentIssue := m.issueList.SelectedItem().(Issue)
+				if currentIssue.status == todo {
+					currentIssue.status = wontDo
+				} else {
+					currentIssue.status = todo
+				}
+				cmd = m.issueList.SetItem(currentIndex, currentIssue)
+				return m, cmd
+			case "p":
+				currentIndex := m.issueList.Index()
+				currentIssue := m.issueList.SelectedItem().(Issue)
+				if currentIssue.status == todo {
+					currentIssue.status = inProgress
+				} else {
+					currentIssue.status = todo
+				}
+				cmd = m.issueList.SetItem(currentIndex, currentIssue)
 				return m, cmd
 			case "enter":
 				m.focusState = issueDetailFocused
