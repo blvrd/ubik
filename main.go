@@ -80,6 +80,11 @@ type Model struct {
 	totalHeight int
 }
 
+func (m Model) percentageToWidth(percentage float32) int {
+  return int(float32(m.totalWidth) * percentage)
+}
+
+
 func InitialModel() *Model {
 	return &Model{
 		focusState: issueListFocused,
@@ -205,14 +210,14 @@ func (m Model) View() string {
 		return "Loading..."
 	}
 
-	issueListView := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("238")).Width(100).Render(m.issueList.View())
+	issueListView := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("238")).Width(m.percentageToWidth(0.5)).Render(m.issueList.View())
 	var sidebarView string
 
 	switch m.focusState {
 	case issueDetailFocused:
-		sidebarView = lipgloss.NewStyle().Width(100).Render(m.issueDetail.View())
+		sidebarView = lipgloss.NewStyle().Width(m.percentageToWidth(0.5)).Render(m.issueDetail.View())
 	case issueFormFocused:
-		sidebarView = lipgloss.NewStyle().Width(100).Render(m.issueForm.View())
+		sidebarView = lipgloss.NewStyle().Width(m.percentageToWidth(0.5)).Render(m.issueForm.View())
 	}
 
 	return lipgloss.JoinHorizontal(lipgloss.Top, issueListView, sidebarView)
@@ -244,20 +249,20 @@ type issueDetailModel struct {
 }
 
 func (m *issueDetailModel) Init() tea.Cmd {
-	m.viewport = viewport.New(90, 50)
+	m.viewport = viewport.New(90, 40)
 	m.focus = issueDetailViewportFocused
 	content := m.issue.description
 
 	commentStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(lipgloss.Color("238")).
-		Width(80).
+		Width(40).
 		MarginTop(1)
 
 	commentHeaderStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), false, false, true, false).
 		BorderForeground(lipgloss.Color("238")).
-		Width(80)
+		Width(40)
 
 	for i, comment := range m.issue.comments {
 		commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.author, comment.createdAt))
