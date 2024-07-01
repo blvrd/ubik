@@ -1,10 +1,15 @@
 package main
 
+import (
+	"time"
+)
+
 var seedIssues = []Issue{
 	{
 		id:     "12345",
 		author: "garrett@blvrd.co",
 		title:  "accepts_nested_attributes_for doesn't validate unchanged objects",
+		createdAt: time.Now().UTC(),
 		description: `
 Steps to reproduce
 
@@ -134,10 +139,11 @@ I like that! I'm happy to take a stab at a PR if that's something that would be 
 			},
 		},
 	},
-	Issue{
+	{
 		id:     "54321",
 		author: "garrett@blvrd.co",
 		title:  "Parallelized generator tests fail in race condition because destination is not worker aware",
+		createdAt: time.Now().UTC(),
 		description: `
 ### Steps to reproduce
 
