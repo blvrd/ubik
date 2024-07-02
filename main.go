@@ -204,6 +204,42 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "k":
 				m.issueDetail, cmd = m.issueDetail.Update(msg)
 				return m, cmd
+			case " ":
+				currentIndex := m.issueList.Index()
+				currentIssue := m.issueList.SelectedItem().(Issue)
+				if currentIssue.status == todo {
+					currentIssue.status = done
+				} else {
+					currentIssue.status = todo
+				}
+				m.issueDetail = issueDetailModel{issue: currentIssue}
+				m.issueDetail.Init(m)
+				cmd = m.issueList.SetItem(currentIndex, currentIssue)
+				return m, cmd
+			case "w":
+				currentIndex := m.issueList.Index()
+				currentIssue := m.issueList.SelectedItem().(Issue)
+				if currentIssue.status == todo {
+					currentIssue.status = wontDo
+				} else {
+					currentIssue.status = todo
+				}
+				m.issueDetail = issueDetailModel{issue: currentIssue}
+				m.issueDetail.Init(m)
+				cmd = m.issueList.SetItem(currentIndex, currentIssue)
+				return m, cmd
+			case "p":
+				currentIndex := m.issueList.Index()
+				currentIssue := m.issueList.SelectedItem().(Issue)
+				if currentIssue.status == todo {
+					currentIssue.status = inProgress
+				} else {
+					currentIssue.status = todo
+				}
+				m.issueDetail = issueDetailModel{issue: currentIssue}
+				m.issueDetail.Init(m)
+				cmd = m.issueList.SetItem(currentIndex, currentIssue)
+				return m, cmd
 			case "enter":
 				if m.issueDetail.focus == issueDetailCommentFocused {
 					m.issueDetail, cmd = m.issueDetail.Update(msg)
@@ -372,7 +408,19 @@ func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 
 func (m issueDetailModel) View() string {
 	var s strings.Builder
-	s.WriteString(lipgloss.NewStyle().BorderBottom(true).BorderStyle(lipgloss.NormalBorder()).PaddingTop(1).Render(m.issue.title))
+	var status string
+	switch m.issue.status {
+	case todo:
+		status = "todo"
+	case inProgress:
+		status = "in-progress"
+	case wontDo:
+		status = "wont-do"
+	case done:
+		status = "done"
+	}
+	header := fmt.Sprintf("%s\nStatus: %s", m.issue.title, status)
+	s.WriteString(lipgloss.NewStyle().BorderBottom(true).BorderStyle(lipgloss.NormalBorder()).PaddingTop(1).Render(header))
 	s.WriteString("\n")
 	s.WriteString(m.viewport.View())
 	s.WriteString("\n")
