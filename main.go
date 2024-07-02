@@ -129,6 +129,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.issueDetail.viewport.GotoBottom()
 
 		return m, tea.Batch(cmds...)
+	case issueFormModel:
+		m.focusState = issueDetailFocused
+		currentIndex := m.issueList.Index()
+		currentIssue := m.issueList.SelectedItem().(Issue)
+		currentIssue.title = msg.titleInput.Value()
+		currentIssue.description = msg.descriptionInput.Value()
+		m.issueDetail = issueDetailModel{issue: currentIssue}
+		m.issueDetail.Init(m)
+		m.issueList.SetItem(currentIndex, currentIssue)
 	}
 
 	if m.issueList.SettingFilter() {
@@ -231,13 +240,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.focusState = issueDetailFocused
 				return m, cmd
 			}
-		case issueFormModel:
-			m.focusState = issueDetailFocused
-			currentIndex := m.issueList.Index()
-			currentIssue := m.issueList.SelectedItem().(Issue)
-			currentIssue.title = msg.titleInput.Value()
-			currentIssue.description = msg.descriptionInput.Value()
-			m.issueList.SetItem(currentIndex, currentIssue)
+			// case issueFormModel:
+			// 	m.focusState = issueDetailFocused
+			// 	currentIndex := m.issueList.Index()
+			// 	currentIssue := m.issueList.SelectedItem().(Issue)
+			// 	currentIssue.title = msg.titleInput.Value()
+			// 	currentIssue.description = msg.descriptionInput.Value()
+			// 	m.issueList.SetItem(currentIndex, currentIssue)
 		}
 
 		m.issueForm, cmd = m.issueForm.Update(msg)
