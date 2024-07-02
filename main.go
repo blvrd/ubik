@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textarea"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -36,6 +38,52 @@ var (
 	helpStyle = lipgloss.NewStyle().
 		Foreground(lipgloss.Color("241"))
 )
+
+// keyMap defines a set of keybindings. To work for help it must satisfy
+// key.Map. It could also very easily be a map[string]key.Binding.
+type keyMap struct {
+	Up    key.Binding
+	Down  key.Binding
+	Left  key.Binding
+	Right key.Binding
+	Help  key.Binding
+	Quit  key.Binding
+	Back  key.Binding
+}
+
+// ShortHelp returns keybindings to be shown in the mini help view. It's part
+// of the key.Map interface.
+func (k keyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.Help, k.Quit}
+}
+
+// FullHelp returns keybindings for the expanded help view. It's part of the
+// key.Map interface.
+func (k keyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.Up, k.Down, k.Up, k.Down, k.Up},
+		{k.Help, k.Quit},
+	}
+}
+
+var keys = keyMap{
+	Up: key.NewBinding(
+		key.WithKeys("up", "k"),
+		key.WithHelp("↑/k", "move up"),
+	),
+	Down: key.NewBinding(
+		key.WithKeys("down", "j"),
+		key.WithHelp("↓/j", "move down"),
+	),
+	Help: key.NewBinding(
+		key.WithKeys("?"),
+		key.WithHelp("?", "toggle help"),
+	),
+	Quit: key.NewBinding(
+		key.WithKeys("q", "esc", "ctrl+c"),
+		key.WithHelp("q", "quit"),
+	),
+}
 
 type Issue struct {
 	id          string
@@ -90,6 +138,8 @@ type Model struct {
 	err         error
 	totalWidth  int
 	totalHeight int
+	help        help.Model
+	keys        keyMap
 }
 
 func (m Model) percentageToWidth(percentage float32) int {
@@ -99,6 +149,8 @@ func (m Model) percentageToWidth(percentage float32) int {
 func InitialModel() *Model {
 	return &Model{
 		focusState: issueListFocused,
+		keys:       keys,
+		help:       help.New(),
 	}
 }
 
@@ -138,6 +190,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.issueDetail = issueDetailModel{issue: currentIssue}
 		m.issueDetail.Init(m)
 		m.issueList.SetItem(currentIndex, currentIssue)
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, m.keys.Help):
+			if m.help.ShowAll {
+				m.help.ShowAll = false
+				m.issueList.SetHeight(m.issueList.Height() + 4)
+			} else {
+				m.help.ShowAll = true
+				m.issueList.SetHeight(m.issueList.Height() - 4)
+			}
+		}
 	}
 
 	if m.issueList.SettingFilter() {
@@ -324,7 +387,8 @@ func (m Model) View() string {
 
 	}
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, issueListView, sidebarView)
+	help := m.help.View(m.keys)
+	return lipgloss.JoinVertical(lipgloss.Left, lipgloss.JoinHorizontal(lipgloss.Top, issueListView, sidebarView), help)
 }
 
 func (m *Model) initIssueList(width, height int) {
