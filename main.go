@@ -42,13 +42,17 @@ var (
 // keyMap defines a set of keybindings. To work for help it must satisfy
 // key.Map. It could also very easily be a map[string]key.Binding.
 type keyMap struct {
-	Up    key.Binding
-	Down  key.Binding
-	Left  key.Binding
-	Right key.Binding
-	Help  key.Binding
-	Quit  key.Binding
-	Back  key.Binding
+	Up                    key.Binding
+	Down                  key.Binding
+	Left                  key.Binding
+	Right                 key.Binding
+	Help                  key.Binding
+	Quit                  key.Binding
+	Back                  key.Binding
+	IssueStatusDone       key.Binding
+	IssueStatusWontDo     key.Binding
+	IssueStatusInProgress key.Binding
+	IssueCommentForm      key.Binding
 }
 
 // ShortHelp returns keybindings to be shown in the mini help view. It's part
@@ -61,7 +65,7 @@ func (k keyMap) ShortHelp() []key.Binding {
 // key.Map interface.
 func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Up, k.Down, k.Up, k.Down, k.Up},
+		{k.Up, k.Down, k.IssueStatusDone, k.IssueStatusWontDo, k.IssueStatusInProgress, k.IssueCommentForm},
 		{k.Help, k.Quit},
 	}
 }
@@ -82,6 +86,22 @@ var keys = keyMap{
 	Quit: key.NewBinding(
 		key.WithKeys("q", "esc", "ctrl+c"),
 		key.WithHelp("q", "quit"),
+	),
+	IssueStatusDone: key.NewBinding(
+		key.WithKeys(" "),
+		key.WithHelp("space", "toggle done"),
+	),
+	IssueStatusWontDo: key.NewBinding(
+		key.WithKeys("w"),
+		key.WithHelp("w", "toggle wont-do"),
+	),
+	IssueStatusInProgress: key.NewBinding(
+		key.WithKeys("p"),
+		key.WithHelp("p", "toggle in-progress"),
+	),
+	IssueCommentForm: key.NewBinding(
+		key.WithKeys("c"),
+		key.WithHelp("c", "toggle issue comment form"),
 	),
 }
 
@@ -191,6 +211,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.issueDetail.Init(m)
 		m.issueList.SetItem(currentIndex, currentIssue)
 	case tea.KeyMsg:
+		if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
+			break
+		}
+
 		switch {
 		case key.Matches(msg, m.keys.Help):
 			if m.help.ShowAll {
@@ -248,6 +272,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				cmd = m.issueList.SetItem(currentIndex, currentIssue)
 				return m, cmd
+			case "c":
+				m.focusState = issueDetailFocused
+				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
+				m.issueDetail.Init(m)
+				m.issueDetail, cmd = m.issueDetail.Update(msg)
+				return m, cmd
 			case "enter":
 				m.focusState = issueDetailFocused
 				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
@@ -268,6 +298,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.issueDetail, cmd = m.issueDetail.Update(msg)
 				return m, cmd
 			case " ":
+				if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
+					break
+				}
 				currentIndex := m.issueList.Index()
 				currentIssue := m.issueList.SelectedItem().(Issue)
 				if currentIssue.status == todo {
@@ -280,6 +313,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = m.issueList.SetItem(currentIndex, currentIssue)
 				return m, cmd
 			case "w":
+				if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
+					break
+				}
 				currentIndex := m.issueList.Index()
 				currentIssue := m.issueList.SelectedItem().(Issue)
 				if currentIssue.status == todo {
@@ -292,6 +328,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = m.issueList.SetItem(currentIndex, currentIssue)
 				return m, cmd
 			case "p":
+				if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
+					break
+				}
 				currentIndex := m.issueList.Index()
 				currentIssue := m.issueList.SelectedItem().(Issue)
 				if currentIssue.status == todo {
@@ -417,7 +456,8 @@ type issueDetailModel struct {
 }
 
 func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
-	m.viewport = viewport.New(ctx.percentageToWidth(0.4), ctx.totalHeight-4)
+	// m.viewport = viewport.New(ctx.percentageToWidth(0.4), ctx.totalHeight-4)
+	m.viewport = viewport.New(ctx.percentageToWidth(0.4), 50)
 	m.focus = issueDetailViewportFocused
 	content := m.issue.description
 
@@ -451,6 +491,7 @@ func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 		case tea.KeyMsg:
 			switch msg.String() {
 			case "c":
+				m.viewport.Height = m.viewport.Height - 7
 				m.focus = issueDetailCommentFocused
 				m.commentForm = NewCommentFormModel()
 				m.commentForm.Init()
@@ -488,8 +529,8 @@ func (m issueDetailModel) View() string {
 	s.WriteString("\n")
 	s.WriteString(m.viewport.View())
 	s.WriteString("\n")
-	percentage := fmt.Sprintf("%f", m.viewport.ScrollPercent()*100)
-	s.WriteString(percentage)
+	// percentage := fmt.Sprintf("%f", m.viewport.ScrollPercent()*100)
+	// s.WriteString(percentage)
 
 	if m.focus == issueDetailCommentFocused {
 		s.WriteString("\n")
