@@ -2,11 +2,13 @@ package main
 
 import (
 	"time"
+	"github.com/google/uuid"
 )
 
 var seedIssues = []Issue{
 	{
-		id:        "23456",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "emma@techco.com",
 		title:     "Memory leak in background worker process",
 		createdAt: time.Now().UTC(),
@@ -33,7 +35,8 @@ We need to identify the source of the leak and implement a fix.
 		},
 	},
 	{
-		id:        "34567",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "alex@devfirm.com",
 		title:     "API rate limiting not working correctly",
 		createdAt: time.Now().UTC(),
@@ -57,7 +60,8 @@ Actual: All requests are being accepted
 		},
 	},
 	{
-		id:        "45678",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "ux@designstudio.com",
 		title:     "Mobile responsive design breaks on iPhone 12",
 		createdAt: time.Now().UTC(),
@@ -88,7 +92,8 @@ This issue seems to be specific to iPhone 12 models and doesn't occur on other i
 		},
 	},
 	{
-		id:        "56789",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "security@bigcorp.com",
 		title:     "Potential SQL injection vulnerability in search function",
 		createdAt: time.Now().UTC(),
@@ -111,7 +116,8 @@ This needs to be addressed urgently to prevent potential data breaches.
 		},
 	},
 	{
-		id:        "67890",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "pm@saasplatform.com",
 		title:     "User authentication fails intermittently",
 		createdAt: time.Now().UTC(),
@@ -138,7 +144,8 @@ This is happening to approximately 5% of login attempts.
 		},
 	},
 	{
-		id:        "78901",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "data@analyticsfirm.com",
 		title:     "Incorrect data aggregation in monthly reports",
 		createdAt: time.Now().UTC(),
@@ -162,7 +169,8 @@ This is affecting our clients' decision-making processes and needs to be resolve
 		},
 	},
 	{
-		id:        "89012",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "support@cloudservice.com",
 		title:     "File upload failing for files over 50MB",
 		createdAt: time.Now().UTC(),
@@ -189,7 +197,8 @@ This is blocking some of our enterprise customers from using a key feature of ou
 		},
 	},
 	{
-		id:        "90123",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "ux@mobileapp.com",
 		title:     "App crashes when accessing camera on Android 11",
 		createdAt: time.Now().UTC(),
@@ -212,7 +221,8 @@ This is a critical feature for our app and needs to be fixed ASAP.
 		},
 	},
 	{
-		id:        "01234",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "pm@ecommerce.com",
 		title:     "Checkout process hangs at payment step",
 		createdAt: time.Now().UTC(),
@@ -241,7 +251,8 @@ This is happening sporadically, affecting roughly 10% of transactions.
 		},
 	},
 	{
-		id:        "12345",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "devops@saas.com",
 		title:     "Elasticsearch cluster running out of disk space",
 		createdAt: time.Now().UTC(),
@@ -268,7 +279,8 @@ We need to identify the cause of the increased disk usage and implement a soluti
 		},
 	},
 	{
-		id:        "23456",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "security@fintech.com",
 		title:     "Possible data leak in API response",
 		createdAt: time.Now().UTC(),
@@ -291,7 +303,8 @@ This needs to be addressed immediately to ensure we're not violating any data pr
 		},
 	},
 	{
-		id:        "34567",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "qa@gamedev.com",
 		title:     "Game freezes during level transition on low-end devices",
 		createdAt: time.Now().UTC(),
@@ -318,7 +331,8 @@ The issue is not present on high-end devices or iOS.
 		},
 	},
 	{
-		id:        "45678",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "ux@webapp.com",
 		title:     "WCAG compliance issues on main dashboard",
 		createdAt: time.Now().UTC(),
@@ -345,7 +359,8 @@ We need to address these issues to improve accessibility and avoid potential leg
 		},
 	},
 	{
-		id:        "56789",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "devops@streaming.com",
 		title:     "CDN caching issue causing stale content delivery",
 		createdAt: time.Now().UTC(),
@@ -368,7 +383,8 @@ This is causing confusion among our users and needs to be resolved.
 		},
 	},
 	{
-		id:        "67890",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "pm@adtech.com",
 		title:     "Discrepancy in ad impression counting",
 		createdAt: time.Now().UTC(),
@@ -395,7 +411,8 @@ This discrepancy is causing billing disputes and needs to be resolved to maintai
 		},
 	},
 	{
-		id:        "78901",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "security@bank.com",
 		title:     "Potential timing attack vulnerability in login process",
 		createdAt: time.Now().UTC(),
@@ -412,7 +429,8 @@ This could potentially be exploited to enumerate valid usernames, which is a sec
 		status: 1,
 	},
 	{
-		id:        "89012",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "devops@cloudprovider.com",
 		title:     "Intermittent network timeouts in Kubernetes cluster",
 		createdAt: time.Now().UTC(),
@@ -439,7 +457,8 @@ The issue seems to occur more frequently during high-load periods.
 		},
 	},
 	{
-		id:        "90123",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "frontend@webapp.com",
 		title:     "React component re-rendering excessively",
 		createdAt: time.Now().UTC(),
@@ -463,7 +482,8 @@ This is particularly noticeable on lower-end devices.
 		},
 	},
 	{
-		id:        "01234",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "data@analytics.com",
 		title:     "Inconsistent results in A/B testing framework",
 		createdAt: time.Now().UTC(),
@@ -491,7 +511,8 @@ This is undermining our ability to make data-driven decisions.
 		},
 	},
 	{
-		id:        "12345",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "security@fintech.com",
 		title:     "Potential XSS vulnerability in user profile page",
 		createdAt: time.Now().UTC(),
@@ -520,7 +541,8 @@ This vulnerability could allow attackers to inject malicious scripts into our si
 		},
 	},
 	{
-		id:        "23456",
+		id:        uuid.NewString(),
+    shortcode: StringToShortcode(uuid.NewString()),
 		author:    "pm@saas.com",
 		title:     "Billing cycle not aligning with subscription dates",
 		createdAt: time.Now().UTC(),
