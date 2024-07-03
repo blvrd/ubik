@@ -46,10 +46,11 @@ type issueListKeyMap struct {
 	Right                 key.Binding
 	Help                  key.Binding
 	Quit                  key.Binding
+	IssueDetailFocus      key.Binding
 	IssueStatusDone       key.Binding
 	IssueStatusWontDo     key.Binding
 	IssueStatusInProgress key.Binding
-	IssueCommentForm      key.Binding
+	IssueCommentFormFocus key.Binding
 }
 
 // ShortHelp returns keybindings to be shown in the mini help view. It's part
@@ -62,8 +63,8 @@ func (k issueListKeyMap) ShortHelp() []key.Binding {
 // key.Map interface.
 func (k issueListKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Up, k.Down, k.IssueStatusDone, k.IssueStatusWontDo, k.IssueStatusInProgress, k.IssueCommentForm},
-		{k.Help, k.Quit},
+		{k.Up, k.Down, k.IssueStatusDone, k.IssueStatusWontDo, k.IssueStatusInProgress, k.IssueCommentFormFocus},
+		{k.IssueDetailFocus, k.Help, k.Quit},
 	}
 }
 
@@ -75,6 +76,7 @@ type issueDetailKeyMap struct {
 	Help                  key.Binding
 	Quit                  key.Binding
 	Back                  key.Binding
+	IssueEditForm         key.Binding
 	IssueStatusDone       key.Binding
 	IssueStatusWontDo     key.Binding
 	IssueStatusInProgress key.Binding
@@ -92,6 +94,33 @@ func (k issueDetailKeyMap) ShortHelp() []key.Binding {
 func (k issueDetailKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.IssueStatusDone, k.IssueStatusWontDo, k.IssueStatusInProgress, k.IssueCommentForm},
+		{k.IssueEditForm, k.Help, k.Back, k.Quit},
+	}
+}
+
+type issueFormKeyMap struct {
+	Up        key.Binding
+	Down      key.Binding
+	Left      key.Binding
+	Right     key.Binding
+	Help      key.Binding
+	Quit      key.Binding
+	Back      key.Binding
+	NextInput key.Binding
+	Submit    key.Binding
+}
+
+// ShortHelp returns keybindings to be shown in the mini help view. It's part
+// of the key.Map interface.
+func (k issueFormKeyMap) ShortHelp() []key.Binding {
+	return []key.Binding{k.Help, k.Quit}
+}
+
+// FullHelp returns keybindings for the expanded help view. It's part of the
+// key.Map interface.
+func (k issueFormKeyMap) FullHelp() [][]key.Binding {
+	return [][]key.Binding{
+		{k.NextInput, k.Up, k.Down},
 		{k.Help, k.Back, k.Quit},
 	}
 }
@@ -187,7 +216,7 @@ func InitialModel() *Model {
 			key.WithKeys("p"),
 			key.WithHelp("p", "toggle in-progress"),
 		),
-		IssueCommentForm: key.NewBinding(
+		IssueCommentFormFocus: key.NewBinding(
 			key.WithKeys("c"),
 			key.WithHelp("c", "toggle issue comment form"),
 		),
@@ -413,7 +442,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) HelpKeys() help.KeyMap {
-  var keys help.KeyMap
+	var keys help.KeyMap
 	switch m.focusState {
 	case issueListFocused:
 		keys = issueListKeyMap{
@@ -424,6 +453,10 @@ func (m Model) HelpKeys() help.KeyMap {
 			Down: key.NewBinding(
 				key.WithKeys("down", "j"),
 				key.WithHelp("↓/j", "move down"),
+			),
+			IssueDetailFocus: key.NewBinding(
+				key.WithKeys("enter"),
+				key.WithHelp("enter", "more info"),
 			),
 			Help: key.NewBinding(
 				key.WithKeys("?"),
@@ -445,7 +478,7 @@ func (m Model) HelpKeys() help.KeyMap {
 				key.WithKeys("p"),
 				key.WithHelp("p", "toggle in-progress"),
 			),
-			IssueCommentForm: key.NewBinding(
+			IssueCommentFormFocus: key.NewBinding(
 				key.WithKeys("c"),
 				key.WithHelp("c", "toggle issue comment form"),
 			),
@@ -463,6 +496,10 @@ func (m Model) HelpKeys() help.KeyMap {
 			Help: key.NewBinding(
 				key.WithKeys("?"),
 				key.WithHelp("?", "toggle help"),
+			),
+			IssueEditForm: key.NewBinding(
+				key.WithKeys("enter"),
+				key.WithHelp("enter", "edit issue"),
 			),
 			Quit: key.NewBinding(
 				key.WithKeys("q", "ctrl+c"),
@@ -489,9 +526,36 @@ func (m Model) HelpKeys() help.KeyMap {
 				key.WithHelp("c", "toggle issue comment form"),
 			),
 		}
+	case issueFormFocused:
+		keys = issueFormKeyMap{
+			Up: key.NewBinding(
+				key.WithKeys("up", "k"),
+				key.WithHelp("↑/k", "scroll up"),
+			),
+			Down: key.NewBinding(
+				key.WithKeys("down", "j"),
+				key.WithHelp("↓/j", "scroll down"),
+			),
+			Help: key.NewBinding(
+				key.WithKeys("?"),
+				key.WithHelp("?", "toggle help"),
+			),
+			Quit: key.NewBinding(
+				key.WithKeys("ctrl+c"),
+				key.WithHelp("ctrl+c", "quit"),
+			),
+			Back: key.NewBinding(
+				key.WithKeys("esc"),
+				key.WithHelp("esc", "back"),
+			),
+			NextInput: key.NewBinding(
+				key.WithKeys("tab"),
+				key.WithHelp("tab", "next input"),
+			),
+		}
 	}
 
-  return keys
+	return keys
 }
 
 func (m Model) View() string {
