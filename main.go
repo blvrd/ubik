@@ -37,9 +37,11 @@ const (
 	issueFormFocused   focusState = 3
 )
 
-var (
-	helpStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("241"))
+type pageState int
+
+const (
+	issues pageState = 1
+	checks pageState = 2
 )
 
 type issueListKeyMap struct {
@@ -176,6 +178,7 @@ type Comment struct {
 
 type Model struct {
 	loaded      bool
+	page        pageState
 	focusState  focusState
 	issueList   list.Model
 	issueDetail issueDetailModel
@@ -231,6 +234,7 @@ func InitialModel() *Model {
 		focusState: issueListFocused,
 		keys:       keys,
 		help:       help.New(),
+    page:       checks,
 	}
 }
 
@@ -309,162 +313,167 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	if m.focusState == issueListFocused {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "j":
-				m.issueList, cmd = m.issueList.Update(msg)
-				return m, cmd
-			case "k":
-				m.issueList, cmd = m.issueList.Update(msg)
-				return m, cmd
-			case " ":
-				currentIndex := m.issueList.Index()
-				currentIssue := m.issueList.SelectedItem().(Issue)
-				if currentIssue.status == todo {
-					currentIssue.status = done
-				} else {
-					currentIssue.status = todo
-				}
-				cmd = m.issueList.SetItem(currentIndex, currentIssue)
-				return m, cmd
-			case "w":
-				currentIndex := m.issueList.Index()
-				currentIssue := m.issueList.SelectedItem().(Issue)
-				if currentIssue.status == todo {
-					currentIssue.status = wontDo
-				} else {
-					currentIssue.status = todo
-				}
-				cmd = m.issueList.SetItem(currentIndex, currentIssue)
-				return m, cmd
-			case "p":
-				currentIndex := m.issueList.Index()
-				currentIssue := m.issueList.SelectedItem().(Issue)
-				if currentIssue.status == todo {
-					currentIssue.status = inProgress
-				} else {
-					currentIssue.status = todo
-				}
-				cmd = m.issueList.SetItem(currentIndex, currentIssue)
-				return m, cmd
-			case "c":
-				m.focusState = issueDetailFocused
-				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
-				m.issueDetail.Init(m)
-				m.issueDetail, cmd = m.issueDetail.Update(msg)
-				return m, cmd
-			case "enter":
-				m.focusState = issueDetailFocused
-				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
-				m.issueDetail.Init(m)
-				return m, cmd
-			case "n":
-				m.focusState = issueFormFocused
-				m.issueForm = issueFormModel{editing: false}
-				m.issueForm.SetTitle("")
-				m.issueForm.SetDescription("")
-				m.issueForm.focusState = issueTitleFocused
-				cmd = m.issueForm.titleInput.Focus()
-			}
-		}
-
-		m.issueList, cmd = m.issueList.Update(msg)
-	} else if m.focusState == issueDetailFocused {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "j":
-				m.issueDetail, cmd = m.issueDetail.Update(msg)
-				return m, cmd
-			case "k":
-				m.issueDetail, cmd = m.issueDetail.Update(msg)
-				return m, cmd
-			case " ":
-				if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
-					break
-				}
-				currentIndex := m.issueList.Index()
-				currentIssue := m.issueList.SelectedItem().(Issue)
-				if currentIssue.status == todo {
-					currentIssue.status = done
-				} else {
-					currentIssue.status = todo
-				}
-				m.issueDetail = issueDetailModel{issue: currentIssue}
-				m.issueDetail.Init(m)
-				cmd = m.issueList.SetItem(currentIndex, currentIssue)
-				return m, cmd
-			case "w":
-				if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
-					break
-				}
-				currentIndex := m.issueList.Index()
-				currentIssue := m.issueList.SelectedItem().(Issue)
-				if currentIssue.status == todo {
-					currentIssue.status = wontDo
-				} else {
-					currentIssue.status = todo
-				}
-				m.issueDetail = issueDetailModel{issue: currentIssue}
-				m.issueDetail.Init(m)
-				cmd = m.issueList.SetItem(currentIndex, currentIssue)
-				return m, cmd
-			case "p":
-				if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
-					break
-				}
-				currentIndex := m.issueList.Index()
-				currentIssue := m.issueList.SelectedItem().(Issue)
-				if currentIssue.status == todo {
-					currentIssue.status = inProgress
-				} else {
-					currentIssue.status = todo
-				}
-				m.issueDetail = issueDetailModel{issue: currentIssue}
-				m.issueDetail.Init(m)
-				cmd = m.issueList.SetItem(currentIndex, currentIssue)
-				return m, cmd
-			case "enter":
-				if m.issueDetail.focus == issueDetailCommentFocused {
+	switch m.page {
+	case issues:
+		if m.focusState == issueListFocused {
+			switch msg := msg.(type) {
+			case tea.KeyMsg:
+				switch msg.String() {
+				case "j":
+					m.issueList, cmd = m.issueList.Update(msg)
+					return m, cmd
+				case "k":
+					m.issueList, cmd = m.issueList.Update(msg)
+					return m, cmd
+				case " ":
+					currentIndex := m.issueList.Index()
+					currentIssue := m.issueList.SelectedItem().(Issue)
+					if currentIssue.status == todo {
+						currentIssue.status = done
+					} else {
+						currentIssue.status = todo
+					}
+					cmd = m.issueList.SetItem(currentIndex, currentIssue)
+					return m, cmd
+				case "w":
+					currentIndex := m.issueList.Index()
+					currentIssue := m.issueList.SelectedItem().(Issue)
+					if currentIssue.status == todo {
+						currentIssue.status = wontDo
+					} else {
+						currentIssue.status = todo
+					}
+					cmd = m.issueList.SetItem(currentIndex, currentIssue)
+					return m, cmd
+				case "p":
+					currentIndex := m.issueList.Index()
+					currentIssue := m.issueList.SelectedItem().(Issue)
+					if currentIssue.status == todo {
+						currentIssue.status = inProgress
+					} else {
+						currentIssue.status = todo
+					}
+					cmd = m.issueList.SetItem(currentIndex, currentIssue)
+					return m, cmd
+				case "c":
+					m.focusState = issueDetailFocused
+					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
+					m.issueDetail.Init(m)
 					m.issueDetail, cmd = m.issueDetail.Update(msg)
-				} else {
+					return m, cmd
+				case "enter":
+					m.focusState = issueDetailFocused
+					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
+					m.issueDetail.Init(m)
+					return m, cmd
+				case "n":
 					m.focusState = issueFormFocused
-					m.issueForm = issueFormModel{editing: true}
-					selectedIssue := m.issueList.SelectedItem().(Issue)
-					m.issueForm.SetTitle(selectedIssue.title)
-					m.issueForm.SetDescription(selectedIssue.description)
+					m.issueForm = issueFormModel{editing: false}
+					m.issueForm.SetTitle("")
+					m.issueForm.SetDescription("")
 					m.issueForm.focusState = issueTitleFocused
 					cmd = m.issueForm.titleInput.Focus()
 				}
+			}
 
-				return m, cmd
-			case "c":
-				m.issueDetail, cmd = m.issueDetail.Update(msg)
-				return m, cmd
-			case "esc":
-				if m.issueDetail.focus == issueDetailViewportFocused {
-					m.focusState = issueListFocused
-				} else {
+			m.issueList, cmd = m.issueList.Update(msg)
+		} else if m.focusState == issueDetailFocused {
+			switch msg := msg.(type) {
+			case tea.KeyMsg:
+				switch msg.String() {
+				case "j":
 					m.issueDetail, cmd = m.issueDetail.Update(msg)
+					return m, cmd
+				case "k":
+					m.issueDetail, cmd = m.issueDetail.Update(msg)
+					return m, cmd
+				case " ":
+					if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
+						break
+					}
+					currentIndex := m.issueList.Index()
+					currentIssue := m.issueList.SelectedItem().(Issue)
+					if currentIssue.status == todo {
+						currentIssue.status = done
+					} else {
+						currentIssue.status = todo
+					}
+					m.issueDetail = issueDetailModel{issue: currentIssue}
+					m.issueDetail.Init(m)
+					cmd = m.issueList.SetItem(currentIndex, currentIssue)
+					return m, cmd
+				case "w":
+					if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
+						break
+					}
+					currentIndex := m.issueList.Index()
+					currentIssue := m.issueList.SelectedItem().(Issue)
+					if currentIssue.status == todo {
+						currentIssue.status = wontDo
+					} else {
+						currentIssue.status = todo
+					}
+					m.issueDetail = issueDetailModel{issue: currentIssue}
+					m.issueDetail.Init(m)
+					cmd = m.issueList.SetItem(currentIndex, currentIssue)
+					return m, cmd
+				case "p":
+					if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
+						break
+					}
+					currentIndex := m.issueList.Index()
+					currentIssue := m.issueList.SelectedItem().(Issue)
+					if currentIssue.status == todo {
+						currentIssue.status = inProgress
+					} else {
+						currentIssue.status = todo
+					}
+					m.issueDetail = issueDetailModel{issue: currentIssue}
+					m.issueDetail.Init(m)
+					cmd = m.issueList.SetItem(currentIndex, currentIssue)
+					return m, cmd
+				case "enter":
+					if m.issueDetail.focus == issueDetailCommentFocused {
+						m.issueDetail, cmd = m.issueDetail.Update(msg)
+					} else {
+						m.focusState = issueFormFocused
+						m.issueForm = issueFormModel{editing: true}
+						selectedIssue := m.issueList.SelectedItem().(Issue)
+						m.issueForm.SetTitle(selectedIssue.title)
+						m.issueForm.SetDescription(selectedIssue.description)
+						m.issueForm.focusState = issueTitleFocused
+						cmd = m.issueForm.titleInput.Focus()
+					}
+
+					return m, cmd
+				case "c":
+					m.issueDetail, cmd = m.issueDetail.Update(msg)
+					return m, cmd
+				case "esc":
+					if m.issueDetail.focus == issueDetailViewportFocused {
+						m.focusState = issueListFocused
+					} else {
+						m.issueDetail, cmd = m.issueDetail.Update(msg)
+					}
+					return m, cmd
 				}
-				return m, cmd
 			}
-		}
 
-		m.issueDetail, cmd = m.issueDetail.Update(msg)
-	} else if m.focusState == issueFormFocused {
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch msg.String() {
-			case "esc":
-				m.focusState = issueDetailFocused
-				return m, cmd
+			m.issueDetail, cmd = m.issueDetail.Update(msg)
+		} else if m.focusState == issueFormFocused {
+			switch msg := msg.(type) {
+			case tea.KeyMsg:
+				switch msg.String() {
+				case "esc":
+					m.focusState = issueDetailFocused
+					return m, cmd
+				}
 			}
-		}
 
-		m.issueForm, cmd = m.issueForm.Update(msg)
+			m.issueForm, cmd = m.issueForm.Update(msg)
+		}
+	case checks:
+
 	}
 
 	return m, cmd
@@ -592,36 +601,45 @@ func (m Model) View() string {
 		return "Loading..."
 	}
 
-	issueListView := lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("238")).
-		Width(m.percentageToWidth(0.5)).
-		// MarginRight(2).
-		Render(m.issueList.View())
-	var sidebarView string
+	var view string
 
-	switch m.focusState {
-	case issueDetailFocused:
-		sidebarView = lipgloss.NewStyle().
-			// Border(lipgloss.NormalBorder()).
-			// BorderForeground(lipgloss.Color("238")).
-			Width(m.percentageToWidth(0.4)).
-			// MarginLeft(2).
-			Render(m.issueDetail.View())
-	case issueFormFocused:
-		style := lipgloss.NewStyle().
-			// Border(lipgloss.NormalBorder()).
-			// BorderForeground(lipgloss.Color("238")).
-			Width(m.percentageToWidth(0.4))
+	switch m.page {
+	case issues:
+		issueListView := lipgloss.NewStyle().
+			Border(lipgloss.NormalBorder()).
+			BorderForeground(lipgloss.Color("238")).
+			Width(m.percentageToWidth(0.5)).
+			// MarginRight(2).
+			Render(m.issueList.View())
+		var sidebarView string
+
+		switch m.focusState {
+		case issueDetailFocused:
+			sidebarView = lipgloss.NewStyle().
+				// Border(lipgloss.NormalBorder()).
+				// BorderForeground(lipgloss.Color("238")).
+				Width(m.percentageToWidth(0.4)).
+				// MarginLeft(2).
+				Render(m.issueDetail.View())
+		case issueFormFocused:
+			style := lipgloss.NewStyle().
+				// Border(lipgloss.NormalBorder()).
+				// BorderForeground(lipgloss.Color("238")).
+				Width(m.percentageToWidth(0.4))
 			// MarginLeft(2)
 
-		sidebarView = style.
-			Render(m.issueForm.View())
+			sidebarView = style.
+				Render(m.issueForm.View())
 
+		}
+
+		help := m.help.View(m.HelpKeys())
+		view = lipgloss.JoinVertical(lipgloss.Left, lipgloss.JoinHorizontal(lipgloss.Top, issueListView, sidebarView), help)
+	case checks:
+		view = "hey"
 	}
 
-	help := m.help.View(m.HelpKeys())
-	return lipgloss.JoinVertical(lipgloss.Left, lipgloss.JoinHorizontal(lipgloss.Top, issueListView, sidebarView), help)
+	return view
 }
 
 func (m *Model) initIssueList(width, height int) {
