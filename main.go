@@ -46,6 +46,7 @@ type issueListKeyMap struct {
 	Right                 key.Binding
 	Help                  key.Binding
 	Quit                  key.Binding
+	IssueNewForm          key.Binding
 	IssueDetailFocus      key.Binding
 	IssueStatusDone       key.Binding
 	IssueStatusWontDo     key.Binding
@@ -64,7 +65,7 @@ func (k issueListKeyMap) ShortHelp() []key.Binding {
 func (k issueListKeyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.IssueStatusDone, k.IssueStatusWontDo, k.IssueStatusInProgress, k.IssueCommentFormFocus},
-		{k.IssueDetailFocus, k.Help, k.Quit},
+		{k.IssueNewForm, k.IssueDetailFocus, k.Help, k.Quit},
 	}
 }
 
@@ -257,14 +258,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, tea.Batch(cmds...)
 	case issueFormModel:
-		m.focusState = issueDetailFocused
-		currentIndex := m.issueList.Index()
-		currentIssue := m.issueList.SelectedItem().(Issue)
-		currentIssue.title = msg.titleInput.Value()
-		currentIssue.description = msg.descriptionInput.Value()
-		m.issueDetail = issueDetailModel{issue: currentIssue}
-		m.issueDetail.Init(m)
-		m.issueList.SetItem(currentIndex, currentIssue)
+		if msg.editing {
+			m.focusState = issueDetailFocused
+			currentIndex := m.issueList.Index()
+			currentIssue := m.issueList.SelectedItem().(Issue)
+			currentIssue.title = msg.titleInput.Value()
+			currentIssue.description = msg.descriptionInput.Value()
+			m.issueDetail = issueDetailModel{issue: currentIssue}
+			m.issueDetail.Init(m)
+			m.issueList.SetItem(currentIndex, currentIssue)
+		} else {
+			newIssue := Issue{
+				title:       msg.titleInput.Value(),
+				description: msg.descriptionInput.Value(),
+				status:      todo,
+				author:      "garrett@blvrd.co",
+			}
+			m.issueList.InsertItem(0, newIssue)
+			m.issueList.Select(0)
+			m.focusState = issueDetailFocused
+			m.issueDetail = issueDetailModel{issue: newIssue}
+			m.issueDetail.Init(m)
+		}
 	case tea.KeyMsg:
 		if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
 			break
@@ -338,6 +353,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
 				m.issueDetail.Init(m)
 				return m, cmd
+			case "n":
+				m.focusState = issueFormFocused
+				m.issueForm = issueFormModel{editing: false}
+				m.issueForm.SetTitle("")
+				m.issueForm.SetDescription("")
+				m.issueForm.focusState = issueTitleFocused
+				cmd = m.issueForm.titleInput.Focus()
 			}
 		}
 
@@ -402,7 +424,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail, cmd = m.issueDetail.Update(msg)
 				} else {
 					m.focusState = issueFormFocused
-					m.issueForm = issueFormModel{}
+					m.issueForm = issueFormModel{editing: true}
 					selectedIssue := m.issueList.SelectedItem().(Issue)
 					m.issueForm.SetTitle(selectedIssue.title)
 					m.issueForm.SetDescription(selectedIssue.description)
@@ -717,6 +739,7 @@ type issueFormModel struct {
 	titleInput       textinput.Model
 	descriptionInput textarea.Model
 	focusState       issueFormFocusState
+	editing          bool
 }
 
 func (m issueFormModel) Submit() tea.Msg {
