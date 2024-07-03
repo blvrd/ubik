@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"fmt"
 	"os"
 	"strings"
@@ -15,6 +17,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
+	"github.com/google/uuid"
 )
 
 type status int
@@ -128,6 +131,7 @@ func (k issueFormKeyMap) FullHelp() [][]key.Binding {
 
 type Issue struct {
 	id          string
+	shortcode   string
 	author      string
 	title       string
 	description string
@@ -154,7 +158,7 @@ func (i Issue) Title() string {
 	case done:
 		status = "[✓]"
 	}
-	return fmt.Sprintf("%s %s", status, i.title)
+	return fmt.Sprintf("%s #%s %s", status, i.shortcode, i.title)
 }
 
 func (i Issue) Description() string {
@@ -268,7 +272,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueDetail.Init(m)
 			m.issueList.SetItem(currentIndex, currentIssue)
 		} else {
+			id := uuid.NewString()
 			newIssue := Issue{
+				id:          id,
+				shortcode:   StringToShortcode(id),
 				title:       msg.titleInput.Value(),
 				description: msg.descriptionInput.Value(),
 				status:      todo,
@@ -906,4 +913,17 @@ func main() {
 		log.Print(err)
 		os.Exit(1)
 	}
+}
+
+// UTILS
+
+func StringToShortcode(input string) string {
+	// Hash the input string
+	hash := sha256.Sum256([]byte(input))
+
+	// Encode the first 6 bytes of the hash to base64
+	encoded := base64.RawURLEncoding.EncodeToString(hash[:6])
+
+	// Return the first 6 characters
+	return encoded[:6]
 }
