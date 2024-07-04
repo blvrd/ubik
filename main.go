@@ -44,37 +44,8 @@ const (
 	checks pageState = 2
 )
 
-type issueListKeyMap struct {
-	Up                    key.Binding
-	Down                  key.Binding
-	Left                  key.Binding
-	Right                 key.Binding
-	Help                  key.Binding
-	Quit                  key.Binding
-	IssueNewForm          key.Binding
-	IssueDetailFocus      key.Binding
-	IssueStatusDone       key.Binding
-	IssueStatusWontDo     key.Binding
-	IssueStatusInProgress key.Binding
-	IssueCommentFormFocus key.Binding
-}
-
-// ShortHelp returns keybindings to be shown in the mini help view. It's part
-// of the key.Map interface.
-func (k issueListKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Help, k.Quit}
-}
-
-// FullHelp returns keybindings for the expanded help view. It's part of the
-// key.Map interface.
-func (k issueListKeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		{k.Up, k.Down, k.IssueStatusDone, k.IssueStatusWontDo, k.IssueStatusInProgress, k.IssueCommentFormFocus},
-		{k.IssueNewForm, k.IssueDetailFocus, k.Help, k.Quit},
-	}
-}
-
-type issueDetailKeyMap struct {
+type keyMap struct {
+	FocusState            focusState
 	Up                    key.Binding
 	Down                  key.Binding
 	Left                  key.Binding
@@ -82,53 +53,47 @@ type issueDetailKeyMap struct {
 	Help                  key.Binding
 	Quit                  key.Binding
 	Back                  key.Binding
+	IssueNewForm          key.Binding
 	IssueEditForm         key.Binding
+	IssueDetailFocus      key.Binding
 	IssueStatusDone       key.Binding
 	IssueStatusWontDo     key.Binding
 	IssueStatusInProgress key.Binding
-	IssueCommentForm      key.Binding
+	IssueCommentFormFocus key.Binding
+	NextInput             key.Binding
+	Submit                key.Binding
 }
 
 // ShortHelp returns keybindings to be shown in the mini help view. It's part
 // of the key.Map interface.
-func (k issueDetailKeyMap) ShortHelp() []key.Binding {
+func (k keyMap) ShortHelp() []key.Binding {
 	return []key.Binding{k.Help, k.Quit}
 }
 
 // FullHelp returns keybindings for the expanded help view. It's part of the
 // key.Map interface.
-func (k issueDetailKeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		{k.Up, k.Down, k.IssueStatusDone, k.IssueStatusWontDo, k.IssueStatusInProgress, k.IssueCommentForm},
-		{k.IssueEditForm, k.Help, k.Back, k.Quit},
+func (k keyMap) FullHelp() [][]key.Binding {
+	var bindings [][]key.Binding
+	switch k.FocusState {
+	case issueListFocused:
+		bindings = [][]key.Binding{
+			{k.Up, k.Down, k.IssueStatusDone, k.IssueStatusWontDo, k.IssueStatusInProgress, k.IssueCommentFormFocus},
+			{k.IssueNewForm, k.IssueDetailFocus, k.Help, k.Quit},
+		}
+	case issueDetailFocused:
+		bindings = [][]key.Binding{
+			{k.Up, k.Down, k.IssueStatusDone, k.IssueStatusWontDo, k.IssueStatusInProgress, k.IssueCommentFormFocus},
+			{k.IssueEditForm, k.Help, k.Back, k.Quit},
+		}
+
+	case issueFormFocused:
+		bindings = [][]key.Binding{
+			{k.NextInput, k.Up, k.Down},
+			{k.Help, k.Back, k.Quit},
+		}
 	}
-}
 
-type issueFormKeyMap struct {
-	Up        key.Binding
-	Down      key.Binding
-	Left      key.Binding
-	Right     key.Binding
-	Help      key.Binding
-	Quit      key.Binding
-	Back      key.Binding
-	NextInput key.Binding
-	Submit    key.Binding
-}
-
-// ShortHelp returns keybindings to be shown in the mini help view. It's part
-// of the key.Map interface.
-func (k issueFormKeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Help, k.Quit}
-}
-
-// FullHelp returns keybindings for the expanded help view. It's part of the
-// key.Map interface.
-func (k issueFormKeyMap) FullHelp() [][]key.Binding {
-	return [][]key.Binding{
-		{k.NextInput, k.Up, k.Down},
-		{k.Help, k.Back, k.Quit},
-	}
+	return bindings
 }
 
 type Issue struct {
@@ -187,7 +152,6 @@ type Model struct {
 	totalWidth  int
 	totalHeight int
 	help        help.Model
-	keys        issueListKeyMap
 }
 
 func (m Model) percentageToWidth(percentage float32) int {
@@ -195,46 +159,10 @@ func (m Model) percentageToWidth(percentage float32) int {
 }
 
 func InitialModel() *Model {
-	var keys = issueListKeyMap{
-		Up: key.NewBinding(
-			key.WithKeys("up", "k"),
-			key.WithHelp("↑/k", "move up"),
-		),
-		Down: key.NewBinding(
-			key.WithKeys("down", "j"),
-			key.WithHelp("↓/j", "move down"),
-		),
-		Help: key.NewBinding(
-			key.WithKeys("?"),
-			key.WithHelp("?", "toggle help"),
-		),
-		Quit: key.NewBinding(
-			key.WithKeys("q", "esc", "ctrl+c"),
-			key.WithHelp("q", "quit"),
-		),
-		IssueStatusDone: key.NewBinding(
-			key.WithKeys(" "),
-			key.WithHelp("space", "toggle done"),
-		),
-		IssueStatusWontDo: key.NewBinding(
-			key.WithKeys("w"),
-			key.WithHelp("w", "toggle wont-do"),
-		),
-		IssueStatusInProgress: key.NewBinding(
-			key.WithKeys("p"),
-			key.WithHelp("p", "toggle in-progress"),
-		),
-		IssueCommentFormFocus: key.NewBinding(
-			key.WithKeys("c"),
-			key.WithHelp("c", "toggle issue comment form"),
-		),
-	}
-
 	return &Model{
 		focusState: issueListFocused,
-		keys:       keys,
 		help:       help.New(),
-    page:       checks,
+		page:       issues,
 	}
 }
 
@@ -291,21 +219,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueDetail = issueDetailModel{issue: newIssue}
 			m.issueDetail.Init(m)
 		}
-	case tea.KeyMsg:
-		if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
-			break
-		}
-
-		switch {
-		case key.Matches(msg, m.keys.Help):
-			if m.help.ShowAll {
-				m.help.ShowAll = false
-				m.issueList.SetHeight(m.issueList.Height() + 4)
-			} else {
-				m.help.ShowAll = true
-				m.issueList.SetHeight(m.issueList.Height() - 4)
-			}
-		}
 	}
 
 	if m.issueList.SettingFilter() {
@@ -316,16 +229,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.page {
 	case issues:
 		if m.focusState == issueListFocused {
+			keys := m.HelpKeys()
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
-				switch msg.String() {
-				case "j":
+				switch {
+				case key.Matches(msg, keys.Help):
+					if m.help.ShowAll {
+						m.help.ShowAll = false
+						m.issueList.SetHeight(m.issueList.Height() + 4)
+					} else {
+						m.help.ShowAll = true
+						m.issueList.SetHeight(m.issueList.Height() - 4)
+					}
+				case key.Matches(msg, keys.Down):
 					m.issueList, cmd = m.issueList.Update(msg)
 					return m, cmd
-				case "k":
+				case key.Matches(msg, keys.Up):
 					m.issueList, cmd = m.issueList.Update(msg)
 					return m, cmd
-				case " ":
+				case key.Matches(msg, keys.IssueStatusDone):
 					currentIndex := m.issueList.Index()
 					currentIssue := m.issueList.SelectedItem().(Issue)
 					if currentIssue.status == todo {
@@ -335,7 +257,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					cmd = m.issueList.SetItem(currentIndex, currentIssue)
 					return m, cmd
-				case "w":
+				case key.Matches(msg, keys.IssueStatusWontDo):
 					currentIndex := m.issueList.Index()
 					currentIssue := m.issueList.SelectedItem().(Issue)
 					if currentIssue.status == todo {
@@ -345,7 +267,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					cmd = m.issueList.SetItem(currentIndex, currentIssue)
 					return m, cmd
-				case "p":
+				case key.Matches(msg, keys.IssueStatusInProgress):
 					currentIndex := m.issueList.Index()
 					currentIssue := m.issueList.SelectedItem().(Issue)
 					if currentIssue.status == todo {
@@ -355,18 +277,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					cmd = m.issueList.SetItem(currentIndex, currentIssue)
 					return m, cmd
-				case "c":
+				case key.Matches(msg, keys.IssueCommentFormFocus):
 					m.focusState = issueDetailFocused
 					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
 					m.issueDetail.Init(m)
 					m.issueDetail, cmd = m.issueDetail.Update(msg)
 					return m, cmd
-				case "enter":
+				case key.Matches(msg, keys.IssueDetailFocus):
 					m.focusState = issueDetailFocused
 					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
 					m.issueDetail.Init(m)
 					return m, cmd
-				case "n":
+				case key.Matches(msg, keys.IssueNewForm):
 					m.focusState = issueFormFocused
 					m.issueForm = issueFormModel{editing: false}
 					m.issueForm.SetTitle("")
@@ -378,16 +300,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			m.issueList, cmd = m.issueList.Update(msg)
 		} else if m.focusState == issueDetailFocused {
+			keys := m.HelpKeys()
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
-				switch msg.String() {
-				case "j":
-					m.issueDetail, cmd = m.issueDetail.Update(msg)
+				switch {
+				case key.Matches(msg, keys.Help):
+					if m.help.ShowAll {
+						m.help.ShowAll = false
+						m.issueList.SetHeight(m.issueList.Height() + 4)
+					} else {
+						m.help.ShowAll = true
+						m.issueList.SetHeight(m.issueList.Height() - 4)
+					}
+				case key.Matches(msg, keys.Down):
+					msgg := updateMsg{originalMsg: msg, keys: keys}
+					m.issueDetail, cmd = m.issueDetail.Update(msgg)
 					return m, cmd
-				case "k":
-					m.issueDetail, cmd = m.issueDetail.Update(msg)
+				case key.Matches(msg, keys.Up):
+					msgg := updateMsg{originalMsg: msg, keys: keys}
+					m.issueDetail, cmd = m.issueDetail.Update(msgg)
 					return m, cmd
-				case " ":
+				case key.Matches(msg, keys.IssueStatusDone):
 					currentIndex := m.issueList.Index()
 					currentIssue := m.issueList.SelectedItem().(Issue)
 					if currentIssue.status == todo {
@@ -399,7 +332,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail.Init(m)
 					cmd = m.issueList.SetItem(currentIndex, currentIssue)
 					return m, cmd
-				case "w":
+				case key.Matches(msg, keys.IssueStatusWontDo):
 					if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
 						break
 					}
@@ -414,7 +347,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail.Init(m)
 					cmd = m.issueList.SetItem(currentIndex, currentIssue)
 					return m, cmd
-				case "p":
+				case key.Matches(msg, keys.IssueStatusInProgress):
 					if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
 						break
 					}
@@ -429,9 +362,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail.Init(m)
 					cmd = m.issueList.SetItem(currentIndex, currentIssue)
 					return m, cmd
-				case "enter":
+				case key.Matches(msg, keys.IssueEditForm):
 					if m.issueDetail.focus == issueDetailCommentFocused {
-						m.issueDetail, cmd = m.issueDetail.Update(msg)
+						msgg := updateMsg{originalMsg: msg, keys: keys}
+						m.issueDetail, cmd = m.issueDetail.Update(msgg)
 					} else {
 						m.focusState = issueFormFocused
 						m.issueForm = issueFormModel{editing: true}
@@ -443,25 +377,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 
 					return m, cmd
-				case "c":
-					m.issueDetail, cmd = m.issueDetail.Update(msg)
+				case key.Matches(msg, keys.IssueCommentFormFocus):
+					msgg := updateMsg{originalMsg: msg, keys: m.HelpKeys()}
+					m.issueDetail, cmd = m.issueDetail.Update(msgg)
 					return m, cmd
-				case "esc":
+				case key.Matches(msg, keys.Back):
 					if m.issueDetail.focus == issueDetailViewportFocused {
 						m.focusState = issueListFocused
 					} else {
-						m.issueDetail, cmd = m.issueDetail.Update(msg)
+						msgg := updateMsg{originalMsg: msg, keys: m.HelpKeys()}
+						m.issueDetail, cmd = m.issueDetail.Update(msgg)
 					}
 					return m, cmd
 				}
 			}
 
-			m.issueDetail, cmd = m.issueDetail.Update(msg)
+			msgg := updateMsg{originalMsg: msg, keys: keys}
+			m.issueDetail, cmd = m.issueDetail.Update(msgg)
 		} else if m.focusState == issueFormFocused {
+			keys := m.HelpKeys()
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
-				switch msg.String() {
-				case "esc":
+				switch {
+				case key.Matches(msg, keys.Back):
 					m.focusState = issueDetailFocused
 					return m, cmd
 				}
@@ -476,11 +414,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m Model) HelpKeys() help.KeyMap {
-	var keys help.KeyMap
+func (m Model) HelpKeys() keyMap {
+	var keys keyMap
 	switch m.focusState {
 	case issueListFocused:
-		keys = issueListKeyMap{
+		keys = keyMap{
 			Up: key.NewBinding(
 				key.WithKeys("up", "k"),
 				key.WithHelp("↑/k", "move up"),
@@ -519,7 +457,7 @@ func (m Model) HelpKeys() help.KeyMap {
 			),
 		}
 	case issueDetailFocused:
-		keys = issueDetailKeyMap{
+		keys = keyMap{
 			Up: key.NewBinding(
 				key.WithKeys("up", "k"),
 				key.WithHelp("↑/k", "scroll up"),
@@ -556,13 +494,13 @@ func (m Model) HelpKeys() help.KeyMap {
 				key.WithKeys("p"),
 				key.WithHelp("p", "toggle in-progress"),
 			),
-			IssueCommentForm: key.NewBinding(
+			IssueCommentFormFocus: key.NewBinding(
 				key.WithKeys("c"),
 				key.WithHelp("c", "toggle issue comment form"),
 			),
 		}
 	case issueFormFocused:
-		keys = issueFormKeyMap{
+		keys = keyMap{
 			Up: key.NewBinding(
 				key.WithKeys("up", "k"),
 				key.WithHelp("↑/k", "scroll up"),
@@ -589,6 +527,8 @@ func (m Model) HelpKeys() help.KeyMap {
 			),
 		}
 	}
+
+	keys.FocusState = m.focusState
 
 	return keys
 }
@@ -693,13 +633,21 @@ func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
 	return nil
 }
 
+type updateMsg struct {
+	originalMsg tea.Msg
+	keys        keyMap
+}
+
 func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 	var cmd tea.Cmd
+	msgg := msg.(updateMsg)
+	keys := msgg.keys
+
 	if m.focus == issueDetailViewportFocused {
-		switch msg := msg.(type) {
+		switch msg := msgg.originalMsg.(type) {
 		case tea.KeyMsg:
-			switch msg.String() {
-			case "c":
+			switch {
+			case key.Matches(msg, keys.IssueCommentFormFocus):
 				m.viewport.Height = m.viewport.Height - 7
 				m.focus = issueDetailCommentFocused
 				m.commentForm = NewCommentFormModel()
