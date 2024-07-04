@@ -388,9 +388,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail, cmd = m.issueDetail.Update(msg)
 					return m, cmd
 				case " ":
-					if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
-						break
-					}
 					currentIndex := m.issueList.Index()
 					currentIssue := m.issueList.SelectedItem().(Issue)
 					if currentIssue.status == todo {
