@@ -283,7 +283,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focusState = issueDetailFocused
 					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
 					m.issueDetail.Init(m)
-					m.issueDetail, cmd = m.issueDetail.Update(msg)
+					m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
 					return m, cmd
 				case key.Matches(msg, keys.IssueDetailFocus):
 					m.focusState = issueDetailFocused
@@ -293,9 +293,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case key.Matches(msg, keys.IssueNewForm):
 					m.focusState = issueFormFocused
 					m.issueForm = issueFormModel{editing: false}
-					m.issueForm.SetTitle("")
-					m.issueForm.SetDescription("")
-					m.issueForm.focusState = issueTitleFocused
+					m.issueForm.Init("", "")
 					cmd = m.issueForm.titleInput.Focus()
 				}
 			}
@@ -369,10 +367,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.focusState = issueFormFocused
 						m.issueForm = issueFormModel{editing: true}
 						selectedIssue := m.issueList.SelectedItem().(Issue)
-						m.issueForm.SetTitle(selectedIssue.title)
-						m.issueForm.SetDescription(selectedIssue.description)
-						m.issueForm.focusState = issueTitleFocused
-						cmd = m.issueForm.titleInput.Focus()
+						cmd = m.issueForm.Init(selectedIssue.title, selectedIssue.description)
+						// m.issueForm.SetTitle(selectedIssue.title)
+						// m.issueForm.SetDescription(selectedIssue.description)
+						// m.issueForm.titleInput.Focus()
 					}
 
 					return m, cmd
@@ -397,7 +395,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-			m.issueForm, cmd = m.issueForm.Update(msg)
+			m.issueForm, cmd = m.issueForm.Update(componentUpdateMsg)
 		}
 	case checks:
 
@@ -667,40 +665,54 @@ func (m issueFormModel) Submit() tea.Msg {
 	return m
 }
 
-func (m issueFormModel) Init() tea.Cmd {
-	return textinput.Blink
+func (m *issueFormModel) Init(title, description string) tea.Cmd {
+	m.SetTitle(title)
+	m.SetDescription(description)
+	m.focusState = issueTitleFocused
+	return m.titleInput.Focus()
 }
 
 func (m issueFormModel) Update(msg tea.Msg) (issueFormModel, tea.Cmd) {
 	var cmd tea.Cmd
-
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "tab":
-			switch m.focusState {
-			case issueTitleFocused:
-				m.focusState = issueDescriptionFocused
-				m.titleInput.Blur()
-				cmd = m.descriptionInput.Focus()
-			case issueDescriptionFocused:
-				m.focusState = issueConfirmationFocused
-				m.descriptionInput.Blur()
-			}
-
-			return m, cmd
-		case "enter":
-			if m.focusState == issueConfirmationFocused {
-				return m, m.Submit
-			}
-		}
-	}
+	msgg := msg.(updateMsg)
+	keys := msgg.keys
 
 	switch m.focusState {
 	case issueTitleFocused:
-		m.titleInput, cmd = m.titleInput.Update(msg)
+		switch msg := msgg.originalMsg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.NextInput):
+				m.focusState = issueDescriptionFocused
+				m.titleInput.Blur()
+				cmd = m.descriptionInput.Focus()
+				return m, cmd
+			}
+		}
+
+		m.titleInput, cmd = m.titleInput.Update(msgg.originalMsg)
+		return m, cmd
 	case issueDescriptionFocused:
-		m.descriptionInput, cmd = m.descriptionInput.Update(msg)
+		switch msg := msgg.originalMsg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.NextInput):
+				m.focusState = issueConfirmationFocused
+				m.descriptionInput.Blur()
+				return m, nil
+			}
+		}
+
+		m.descriptionInput, cmd = m.descriptionInput.Update(msgg.originalMsg)
+		return m, cmd
+	case issueConfirmationFocused:
+		switch msg := msgg.originalMsg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Submit):
+				return m, m.Submit
+			}
+		}
 	}
 
 	return m, cmd
