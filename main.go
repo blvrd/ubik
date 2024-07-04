@@ -306,6 +306,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(msg, keys.Help):
+					if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
+						break
+					}
+
 					if m.help.ShowAll {
 						m.help.ShowAll = false
 						m.issueList.SetHeight(m.issueList.Height() + 4)
@@ -314,6 +318,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.issueList.SetHeight(m.issueList.Height() - 4)
 					}
 				case key.Matches(msg, keys.IssueStatusDone):
+					if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
+						break
+					}
 					currentIndex := m.issueList.Index()
 					currentIssue := m.issueList.SelectedItem().(Issue)
 					if currentIssue.status == todo {
