@@ -186,16 +186,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.totalHeight = msg.Height
 		m.initIssueList(msg.Width, msg.Height-4)
 		m.issueList, cmd = m.issueList.Update(msg)
-	case commentFormModel:
-		currentIndex := m.issueList.Index()
-		currentIssue := m.issueList.SelectedItem().(Issue)
-		currentIssue.comments = append(currentIssue.comments, Comment{author: "garrett@blvrd.co", content: msg.contentInput.Value()})
-		m.issueList.SetItem(currentIndex, currentIssue)
-		m.issueDetail = issueDetailModel{issue: currentIssue}
-		m.issueDetail.Init(m)
-		m.issueDetail.viewport.GotoBottom()
-
-		return m, tea.Batch(cmds...)
 	case issueFormModel:
 		if msg.editing {
 			m.focusState = issueDetailFocused
@@ -302,6 +292,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueList, cmd = m.issueList.Update(msg)
 		case issueDetailFocused:
 			switch msg := msg.(type) {
+			case commentFormModel:
+				currentIndex := m.issueList.Index()
+				currentIssue := m.issueList.SelectedItem().(Issue)
+				currentIssue.comments = append(currentIssue.comments, Comment{author: "garrett@blvrd.co", content: msg.contentInput.Value()})
+				m.issueList.SetItem(currentIndex, currentIssue)
+				m.issueDetail = issueDetailModel{issue: currentIssue}
+				m.issueDetail.Init(m)
+				m.issueDetail.viewport.GotoBottom()
+
+				return m, tea.Batch(cmds...)
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(msg, keys.Help):
