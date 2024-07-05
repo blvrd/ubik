@@ -369,8 +369,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
 					} else {
 						m.focusState = issueFormFocused
-						m.issueForm = issueFormModel{editing: true}
 						selectedIssue := m.issueList.SelectedItem().(Issue)
+						m.issueForm = issueFormModel{editing: true, identifier: selectedIssue.shortcode}
 						cmd = m.issueForm.Init(selectedIssue.title, selectedIssue.description)
 						// m.issueForm.SetTitle(selectedIssue.title)
 						// m.issueForm.SetDescription(selectedIssue.description)
@@ -668,6 +668,7 @@ type issueFormModel struct {
 	titleInput       textinput.Model
 	descriptionInput textarea.Model
 	focusState       issueFormFocusState
+	identifier       string
 	editing          bool
 }
 
@@ -730,6 +731,12 @@ func (m issueFormModel) Update(msg tea.Msg) (issueFormModel, tea.Cmd) {
 
 func (m issueFormModel) View() string {
 	var s strings.Builder
+
+	if m.editing {
+		s.WriteString(fmt.Sprintf("Editing issue #%s\n\n", m.identifier))
+	} else {
+		s.WriteString("New issue\n\n")
+	}
 
 	s.WriteString(m.titleInput.View())
 	s.WriteString("\n")
