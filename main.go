@@ -634,11 +634,11 @@ func (m issueDetailModel) View() string {
 	case todo:
 		status = "todo"
 	case inProgress:
-		status = "in-progress"
+		status = lipgloss.NewStyle().Foreground(lipgloss.Color("#f9a800")).Render("in-progress")
 	case wontDo:
-		status = "wont-do"
+		status = lipgloss.NewStyle().Foreground(lipgloss.Color("#aa041a")).Render("wont-do")
 	case done:
-		status = "done"
+		status = lipgloss.NewStyle().Foreground(lipgloss.Color("#0f8558")).Render("done")
 	}
 	header := fmt.Sprintf("%s\nStatus: %s", m.issue.title, status)
 	s.WriteString(lipgloss.NewStyle().BorderBottom(true).BorderStyle(lipgloss.NormalBorder()).PaddingTop(1).Render(header))
