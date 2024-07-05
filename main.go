@@ -592,7 +592,8 @@ func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 	msgg := msg.(updateMsg)
 	keys := msgg.keys
 
-	if m.focus == issueDetailViewportFocused {
+	switch m.focus {
+	case issueDetailViewportFocused:
 		switch msg := msgg.originalMsg.(type) {
 		case tea.KeyMsg:
 			switch {
@@ -604,7 +605,7 @@ func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 			}
 		}
 		m.viewport, cmd = m.viewport.Update(msg)
-	} else if m.focus == issueDetailCommentFocused {
+	case issueDetailCommentFocused:
 		switch msg := msgg.originalMsg.(type) {
 		case tea.KeyMsg:
 			switch {
@@ -614,6 +615,7 @@ func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 		}
 		m.commentForm, cmd = m.commentForm.Update(msgg)
 	}
+
 	return m, cmd
 }
 
