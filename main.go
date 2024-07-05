@@ -782,29 +782,29 @@ func (m commentFormModel) Update(msg tea.Msg) (commentFormModel, tea.Cmd) {
 	msgg := msg.(updateMsg)
 	keys := msgg.keys
 
-	switch msg := msgg.originalMsg.(type) {
-	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, keys.NextInput):
-			switch m.focusState {
-			case commentContentFocused:
-				m.focusState = commentConfirmationFocused
-				m.contentInput.Blur()
-			case commentConfirmationFocused:
-				m.focusState = commentContentFocused
-			}
-
-			return m, cmd
-		case key.Matches(msg, keys.Submit):
-			if m.focusState == commentConfirmationFocused {
-				return m, m.Submit
-			}
-		}
-	}
-
 	switch m.focusState {
 	case commentContentFocused:
+		switch msg := msgg.originalMsg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.NextInput):
+				m.focusState = commentConfirmationFocused
+				m.contentInput.Blur()
+			}
+		}
+
 		m.contentInput, cmd = m.contentInput.Update(msgg.originalMsg)
+	case commentConfirmationFocused:
+		switch msg := msgg.originalMsg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.NextInput):
+				m.focusState = commentContentFocused
+				m.contentInput.Focus()
+			case key.Matches(msg, keys.Submit):
+				cmd = m.Submit
+			}
+		}
 	}
 
 	return m, cmd
