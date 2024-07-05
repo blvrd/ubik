@@ -645,7 +645,8 @@ func (m issueDetailModel) View() string {
 	case done:
 		status = lipgloss.NewStyle().Foreground(lipgloss.Color("#0f8558")).Render("done")
 	}
-	header := fmt.Sprintf("%s\nStatus: %s", m.issue.title, status)
+	identifier := lipgloss.NewStyle().Foreground(lipgloss.Color("#7e7e7e")).Render(fmt.Sprintf("#%s", m.issue.shortcode))
+	header := fmt.Sprintf("%s %s\nStatus: %s", identifier, m.issue.title, status)
 	s.WriteString(lipgloss.NewStyle().BorderBottom(true).BorderStyle(lipgloss.NormalBorder()).PaddingTop(1).Render(header))
 	s.WriteString("\n")
 	s.WriteString(m.viewport.View())
