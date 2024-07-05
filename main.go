@@ -186,28 +186,39 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.totalHeight = msg.Height
 		m.initIssueList(msg.Width, msg.Height-4)
 		m.issueList, cmd = m.issueList.Update(msg)
-	case issueFormModel:
-		if msg.editing {
-		} else {
-			id := uuid.NewString()
-			newIssue := Issue{
-				id:          id,
-				shortcode:   StringToShortcode(id),
-				title:       msg.titleInput.Value(),
-				description: msg.descriptionInput.Value(),
-				status:      todo,
-				author:      "garrett@blvrd.co",
-			}
-			m.issueList.InsertItem(0, newIssue)
-			m.issueList.Select(0)
-			m.focusState = issueDetailFocused
-			m.issueDetail = issueDetailModel{issue: newIssue}
-			m.issueDetail.Init(m)
-		}
 	}
 
 	switch m.page {
 	case issues:
+		switch msg := msg.(type) {
+		case issueFormModel:
+			if msg.editing {
+				m.focusState = issueDetailFocused
+				currentIndex := m.issueList.Index()
+				currentIssue := m.issueList.SelectedItem().(Issue)
+				currentIssue.title = msg.titleInput.Value()
+				currentIssue.description = msg.descriptionInput.Value()
+				m.issueDetail = issueDetailModel{issue: currentIssue}
+				m.issueDetail.Init(m)
+				m.issueList.SetItem(currentIndex, currentIssue)
+			} else {
+				id := uuid.NewString()
+				newIssue := Issue{
+					id:          id,
+					shortcode:   StringToShortcode(id),
+					title:       msg.titleInput.Value(),
+					description: msg.descriptionInput.Value(),
+					status:      todo,
+					author:      "garrett@blvrd.co",
+				}
+				m.issueList.InsertItem(0, newIssue)
+				m.issueList.Select(0)
+				m.focusState = issueDetailFocused
+				m.issueDetail = issueDetailModel{issue: newIssue}
+				m.issueDetail.Init(m)
+			}
+		}
+
 		switch m.focusState {
 		case issueListFocused:
 			if m.issueList.SettingFilter() {
@@ -380,15 +391,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
 		case issueFormFocused:
 			switch msg := msg.(type) {
-			case issueFormModel:
-				m.focusState = issueDetailFocused
-				currentIndex := m.issueList.Index()
-				currentIssue := m.issueList.SelectedItem().(Issue)
-				currentIssue.title = msg.titleInput.Value()
-				currentIssue.description = msg.descriptionInput.Value()
-				m.issueDetail = issueDetailModel{issue: currentIssue}
-				m.issueDetail.Init(m)
-				m.issueList.SetItem(currentIndex, currentIssue)
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(msg, keys.Back):
@@ -451,6 +453,10 @@ func (m Model) HelpKeys() keyMap {
 		IssueDetailFocus: key.NewBinding(
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "more info"),
+		),
+		IssueNewForm: key.NewBinding(
+			key.WithKeys("n"),
+			key.WithHelp("n", "new issue"),
 		),
 		NextInput: key.NewBinding(
 			key.WithKeys("tab"),
