@@ -188,14 +188,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.issueList, cmd = m.issueList.Update(msg)
 	case issueFormModel:
 		if msg.editing {
-			m.focusState = issueDetailFocused
-			currentIndex := m.issueList.Index()
-			currentIssue := m.issueList.SelectedItem().(Issue)
-			currentIssue.title = msg.titleInput.Value()
-			currentIssue.description = msg.descriptionInput.Value()
-			m.issueDetail = issueDetailModel{issue: currentIssue}
-			m.issueDetail.Init(m)
-			m.issueList.SetItem(currentIndex, currentIssue)
 		} else {
 			id := uuid.NewString()
 			newIssue := Issue{
@@ -388,6 +380,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
 		case issueFormFocused:
 			switch msg := msg.(type) {
+			case issueFormModel:
+				m.focusState = issueDetailFocused
+				currentIndex := m.issueList.Index()
+				currentIssue := m.issueList.SelectedItem().(Issue)
+				currentIssue.title = msg.titleInput.Value()
+				currentIssue.description = msg.descriptionInput.Value()
+				m.issueDetail = issueDetailModel{issue: currentIssue}
+				m.issueDetail.Init(m)
+				m.issueList.SetItem(currentIndex, currentIssue)
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(msg, keys.Back):
