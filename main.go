@@ -394,8 +394,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(msg, keys.Back):
-					m.focusState = issueDetailFocused
-					return m, cmd
+					if m.issueForm.editing {
+						m.focusState = issueDetailFocused
+						return m, cmd
+					} else {
+						m.focusState = issueListFocused
+						return m, cmd
+					}
 				}
 			}
 
