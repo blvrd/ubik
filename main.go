@@ -224,14 +224,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	if m.issueList.SettingFilter() {
-		m.issueList, cmd = m.issueList.Update(msg)
-		return m, cmd
-	}
-
 	switch m.page {
 	case issues:
-		if m.focusState == issueListFocused {
+		switch m.focusState {
+		case issueListFocused:
+			if m.issueList.SettingFilter() {
+				m.issueList, cmd = m.issueList.Update(msg)
+				return m, cmd
+			}
+
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
 				switch {
@@ -299,7 +300,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			m.issueList, cmd = m.issueList.Update(msg)
-		} else if m.focusState == issueDetailFocused {
+		case issueDetailFocused:
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
 				switch {
@@ -385,7 +386,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
-		} else if m.focusState == issueFormFocused {
+		case issueFormFocused:
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
 				switch {
