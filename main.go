@@ -21,6 +21,44 @@ import (
 	"github.com/google/uuid"
 )
 
+type Styles struct {
+	Theme Theme
+}
+
+type Theme struct {
+	SelectedBackground lipgloss.AdaptiveColor
+	PrimaryBorder      lipgloss.AdaptiveColor
+	FaintBorder        lipgloss.AdaptiveColor
+	SecondaryBorder    lipgloss.AdaptiveColor
+	FaintText          lipgloss.AdaptiveColor
+	PrimaryText        lipgloss.AdaptiveColor
+	SecondaryText      lipgloss.AdaptiveColor
+	InvertedText       lipgloss.AdaptiveColor
+	GreenText          lipgloss.AdaptiveColor
+	YellowText         lipgloss.AdaptiveColor
+	RedText            lipgloss.AdaptiveColor
+}
+
+func DefaultStyles() Styles {
+	return Styles{
+		Theme: Theme{
+			PrimaryBorder:      lipgloss.AdaptiveColor{Light: "013", Dark: "008"},
+			SecondaryBorder:    lipgloss.AdaptiveColor{Light: "008", Dark: "007"},
+			SelectedBackground: lipgloss.AdaptiveColor{Light: "006", Dark: "008"},
+			FaintBorder:        lipgloss.AdaptiveColor{Light: "254", Dark: "000"},
+			PrimaryText:        lipgloss.AdaptiveColor{Light: "000", Dark: "015"},
+			SecondaryText:      lipgloss.AdaptiveColor{Light: "244", Dark: "251"},
+			FaintText:          lipgloss.AdaptiveColor{Light: "007", Dark: "245"},
+			InvertedText:       lipgloss.AdaptiveColor{Light: "015", Dark: "236"},
+			GreenText:          lipgloss.AdaptiveColor{Light: "002", Dark: "002"},
+			YellowText:         lipgloss.AdaptiveColor{Light: "001", Dark: "001"},
+			RedText:            lipgloss.AdaptiveColor{Light: "001", Dark: "001"},
+		},
+	}
+}
+
+var styles = DefaultStyles()
+
 type status int
 
 const (
@@ -124,7 +162,7 @@ func (i Issue) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 		return
 	}
 
-	styles := list.NewDefaultItemStyles()
+	defaultItemStyles := list.NewDefaultItemStyles()
 
 	var status string
 
@@ -132,17 +170,17 @@ func (i Issue) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 	case todo:
 		status = "[·]"
 	case inProgress:
-		status = lipgloss.NewStyle().Foreground(lipgloss.Color("#f9a800")).Render("[⋯]")
+		status = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]")
 	case wontDo:
-		status = lipgloss.NewStyle().Foreground(lipgloss.Color("#aa041a")).Render("[×]")
+		status = lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]")
 	case done:
-		status = lipgloss.NewStyle().Foreground(lipgloss.Color("#0f8558")).Render("[✓]")
+		status = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]")
 	}
 
-	titleFn := styles.NormalTitle.Padding(0).Render
+	titleFn := defaultItemStyles.NormalTitle.Padding(0).Render
 	if index == m.Index() {
 		titleFn = func(s ...string) string {
-			return styles.SelectedTitle.
+			return defaultItemStyles.SelectedTitle.
 				Border(lipgloss.NormalBorder(), false, false, false, false).
 				Padding(0).
 				Render(strings.Join(s, " "))
@@ -176,6 +214,7 @@ type Model struct {
 	totalWidth  int
 	totalHeight int
 	help        help.Model
+	styles      Styles
 }
 
 func (m Model) percentageToWidth(percentage float32) int {
@@ -187,6 +226,7 @@ func InitialModel() *Model {
 		focusState: issueListFocused,
 		help:       help.New(),
 		page:       issues,
+		styles:     DefaultStyles(),
 	}
 }
 
@@ -530,26 +570,19 @@ func (m Model) View() string {
 	case issues:
 		issueListView := lipgloss.NewStyle().
 			Border(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("238")).
+			BorderForeground(m.styles.Theme.FaintBorder).
 			Width(m.percentageToWidth(0.5)).
-			// MarginRight(2).
 			Render(m.issueList.View())
 		var sidebarView string
 
 		switch m.focusState {
 		case issueDetailFocused:
 			sidebarView = lipgloss.NewStyle().
-				// Border(lipgloss.NormalBorder()).
-				// BorderForeground(lipgloss.Color("238")).
 				Width(m.percentageToWidth(0.4)).
-				// MarginLeft(2).
 				Render(m.issueDetail.View())
 		case issueFormFocused:
 			style := lipgloss.NewStyle().
-				// Border(lipgloss.NormalBorder()).
-				// BorderForeground(lipgloss.Color("238")).
 				Width(m.percentageToWidth(0.4))
-			// MarginLeft(2)
 
 			sidebarView = style.
 				Render(m.issueForm.View())
@@ -598,13 +631,13 @@ func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
 
 	commentStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("238")).
+		BorderForeground(styles.Theme.FaintBorder).
 		Width(m.viewport.Width - 2).
 		MarginTop(1)
 
 	commentHeaderStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), false, false, true, false).
-		BorderForeground(lipgloss.Color("238")).
+		BorderForeground(styles.Theme.FaintBorder).
 		Width(m.viewport.Width - 2)
 
 	for i, comment := range m.issue.comments {
@@ -663,13 +696,13 @@ func (m issueDetailModel) View() string {
 	case todo:
 		status = "todo"
 	case inProgress:
-		status = lipgloss.NewStyle().Foreground(lipgloss.Color("#f9a800")).Render("in-progress")
+		status = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("in-progress")
 	case wontDo:
-		status = lipgloss.NewStyle().Foreground(lipgloss.Color("#aa041a")).Render("wont-do")
+		status = lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("wont-do")
 	case done:
-		status = lipgloss.NewStyle().Foreground(lipgloss.Color("#0f8558")).Render("done")
+		status = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("done")
 	}
-	identifier := lipgloss.NewStyle().Foreground(lipgloss.Color("#7e7e7e")).Render(fmt.Sprintf("#%s", m.issue.shortcode))
+	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.issue.shortcode))
 	header := fmt.Sprintf("%s %s\nStatus: %s", identifier, m.issue.title, status)
 	s.WriteString(lipgloss.NewStyle().BorderBottom(true).BorderStyle(lipgloss.NormalBorder()).PaddingTop(1).Render(header))
 	s.WriteString("\n")
@@ -772,12 +805,14 @@ func (m issueFormModel) View() string {
 	s.WriteString("\n")
 	s.WriteString(m.descriptionInput.View())
 	s.WriteString("\n")
+	var style lipgloss.Style
 	if m.focusState == issueConfirmationFocused {
-		style := lipgloss.NewStyle().Foreground(lipgloss.Color("#0000FF"))
-		s.WriteString(style.Render("Save"))
+		style = lipgloss.NewStyle().Foreground(styles.Theme.PrimaryText).Background(styles.Theme.SelectedBackground)
 	} else {
-		s.WriteString("Save")
+		style = lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText)
 	}
+
+	s.WriteString(style.Render("Save"))
 
 	return s.String()
 }
@@ -865,9 +900,9 @@ func (m commentFormModel) View() string {
 	s.WriteString(m.contentInput.View())
 	s.WriteString("\n")
 	if m.focusState == commentContentFocused {
-		s.WriteString("Save")
+		s.WriteString(lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render("Save"))
 	} else {
-		s.WriteString(lipgloss.NewStyle().Foreground(lipgloss.Color("200")).Render("Save"))
+		s.WriteString(lipgloss.NewStyle().Foreground(styles.Theme.PrimaryText).Background(styles.Theme.SelectedBackground).Render("Save"))
 	}
 	return s.String()
 }
