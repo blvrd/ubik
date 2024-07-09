@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -112,24 +113,47 @@ func (i Issue) FilterValue() string {
 	return i.title
 }
 
-func (i Issue) Title() string {
+func (i Issue) Height() int                             { return 2 }
+func (i Issue) Spacing() int                            { return 1 }
+func (i Issue) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+
+var (
+	titleStyle        = lipgloss.NewStyle()
+	selectedItemStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#ef6503"))
+)
+
+func (i Issue) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	i, ok := listItem.(Issue)
+
+	if !ok {
+		return
+	}
+
 	var status string
 
 	switch i.status {
 	case todo:
 		status = "[·]"
 	case inProgress:
-		status = "[⋯]"
+		status = lipgloss.NewStyle().Foreground(lipgloss.Color("#f9a800")).Render("[⋯]")
 	case wontDo:
-		status = "[×]"
+		status = lipgloss.NewStyle().Foreground(lipgloss.Color("#aa041a")).Render("[×]")
 	case done:
-		status = "[✓]"
+		status = lipgloss.NewStyle().Foreground(lipgloss.Color("#0f8558")).Render("[✓]")
 	}
-	return fmt.Sprintf("%s #%s %s", status, i.shortcode, i.title)
-}
 
-func (i Issue) Description() string {
-	return fmt.Sprintf("created by %s at %s", i.author, i.createdAt.Format(time.RFC822))
+	title := fmt.Sprintf("%s #%s %s", status, i.shortcode, i.title)
+	titleFn := titleStyle.Render
+
+	if index == m.Index() {
+		titleFn = func(s ...string) string {
+			return selectedItemStyle.Render("" + strings.Join(s, " "))
+		}
+	}
+	description := fmt.Sprintf("created by %s at %s", i.author, i.createdAt.Format(time.RFC822))
+	item := lipgloss.JoinVertical(lipgloss.Left, titleFn(title), description)
+
+	fmt.Fprintf(w, item)
 }
 
 type Comment struct {
@@ -542,7 +566,7 @@ func (m Model) View() string {
 }
 
 func (m *Model) initIssueList(width, height int) {
-	m.issueList = list.New([]list.Item{}, list.NewDefaultDelegate(), width, height)
+	m.issueList = list.New([]list.Item{}, Issue{}, width, height)
 	m.issueList.SetShowHelp(false)
 	m.issueList.Title = "Issues"
 	var listItems []list.Item
@@ -581,7 +605,7 @@ func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
 	commentHeaderStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), false, false, true, false).
 		BorderForeground(lipgloss.Color("238")).
-		Width(40)
+		Width(m.viewport.Width - 2)
 
 	for i, comment := range m.issue.comments {
 		commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.author, comment.createdAt))
@@ -761,6 +785,7 @@ func (m issueFormModel) View() string {
 func (m *issueFormModel) SetTitle(title string) {
 	m.titleInput = textinput.New()
 	m.titleInput.CharLimit = 120
+	m.titleInput.Width = 80
 	m.titleInput.SetValue(title)
 }
 
@@ -768,6 +793,8 @@ func (m *issueFormModel) SetDescription(description string) {
 	m.descriptionInput = textarea.New()
 	m.descriptionInput.CharLimit = 0 // unlimited
 	m.descriptionInput.MaxHeight = 0 // unlimited
+	m.descriptionInput.SetHeight(30)
+	m.descriptionInput.SetWidth(80)
 	m.descriptionInput.SetValue(description)
 }
 
