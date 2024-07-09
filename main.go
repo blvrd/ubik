@@ -117,17 +117,14 @@ func (i Issue) Height() int                             { return 2 }
 func (i Issue) Spacing() int                            { return 1 }
 func (i Issue) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
 
-var (
-	titleStyle        = lipgloss.NewStyle()
-	selectedItemStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#ef6503"))
-)
-
 func (i Issue) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	i, ok := listItem.(Issue)
 
 	if !ok {
 		return
 	}
+
+	styles := list.NewDefaultItemStyles()
 
 	var status string
 
@@ -142,16 +139,19 @@ func (i Issue) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 		status = lipgloss.NewStyle().Foreground(lipgloss.Color("#0f8558")).Render("[✓]")
 	}
 
-	title := fmt.Sprintf("%s #%s %s", status, i.shortcode, i.title)
-	titleFn := titleStyle.Render
-
+	titleFn := styles.NormalTitle.Padding(0).Render
 	if index == m.Index() {
 		titleFn = func(s ...string) string {
-			return selectedItemStyle.Render("" + strings.Join(s, " "))
+			return styles.SelectedTitle.
+				Border(lipgloss.NormalBorder(), false, false, false, false).
+				Padding(0).
+				Render(strings.Join(s, " "))
 		}
 	}
+	title := fmt.Sprintf("%s %s", status, titleFn(i.shortcode, i.title))
+
 	description := fmt.Sprintf("created by %s at %s", i.author, i.createdAt.Format(time.RFC822))
-	item := lipgloss.JoinVertical(lipgloss.Left, titleFn(title), description)
+	item := lipgloss.JoinVertical(lipgloss.Left, title, description)
 
 	fmt.Fprintf(w, item)
 }
