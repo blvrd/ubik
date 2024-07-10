@@ -215,11 +215,30 @@ type Model struct {
 	totalHeight int
 	help        help.Model
 	styles      Styles
+	tabs        []string
 }
 
 func (m Model) percentageToWidth(percentage float32) int {
-	return int(float32(m.totalWidth) * percentage)
+	return int(float32(m.totalWidth-windowStyle.GetHorizontalFrameSize()) * percentage)
 }
+
+func tabBorderWithBottom(left, middle, right string) lipgloss.Border {
+	border := lipgloss.RoundedBorder()
+	border.BottomLeft = left
+	border.Bottom = middle
+	border.BottomRight = right
+	return border
+}
+
+var (
+	inactiveTabBorder = tabBorderWithBottom("┴", "─", "┴")
+	activeTabBorder   = tabBorderWithBottom("┘", " ", "└")
+	docStyle          = lipgloss.NewStyle().Padding(1, 2, 1, 2)
+	highlightColor    = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
+	inactiveTabStyle  = lipgloss.NewStyle().Border(inactiveTabBorder, true).BorderForeground(highlightColor).Padding(0, 1)
+	activeTabStyle    = inactiveTabStyle.Border(activeTabBorder, true)
+	windowStyle       = lipgloss.NewStyle().BorderForeground(highlightColor).Padding(2, 0).Align(lipgloss.Left).Border(lipgloss.NormalBorder()).UnsetBorderTop()
+)
 
 func InitialModel() *Model {
 	return &Model{
@@ -227,6 +246,7 @@ func InitialModel() *Model {
 		help:       help.New(),
 		page:       issues,
 		styles:     DefaultStyles(),
+		tabs:       []string{"Issues", "Checks"},
 	}
 }
 
@@ -248,7 +268,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.totalWidth = msg.Width
 		m.totalHeight = msg.Height
-		m.initIssueList(msg.Width, msg.Height-4)
+		log.Debug(msg.Height)
+		log.Debug(windowStyle.GetVerticalFrameSize())
+		log.Debug(docStyle.GetVerticalFrameSize())
+		// m.initIssueList(msg.Width, msg.Height-windowStyle.GetVerticalFrameSize())
+		m.initIssueList(50, 30)
 		m.issueList, cmd = m.issueList.Update(msg)
 	}
 
@@ -471,7 +495,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueForm, cmd = m.issueForm.Update(componentUpdateMsg)
 		}
 	case checks:
-
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Quit):
+				return nil, tea.Quit
+			}
+		}
 	}
 
 	return m, cmd
@@ -595,7 +625,38 @@ func (m Model) View() string {
 		view = "hey"
 	}
 
-	return view
+	// return view
+	doc := strings.Builder{}
+
+	var renderedTabs []string
+
+	for i, t := range m.tabs {
+		var style lipgloss.Style
+		isFirst, isLast, isActive := i == 0, i == len(m.tabs)-1, pageState(i) == m.page
+		if isActive {
+			style = activeTabStyle
+		} else {
+			style = inactiveTabStyle
+		}
+		border, _, _, _, _ := style.GetBorder()
+		if isFirst && isActive {
+			border.BottomLeft = "│"
+		} else if isFirst && !isActive {
+			border.BottomLeft = "├"
+		} else if isLast && isActive {
+			border.BottomRight = "│"
+		} else if isLast && !isActive {
+			border.BottomRight = "┤"
+		}
+		style = style.Border(border)
+		renderedTabs = append(renderedTabs, style.Render(t))
+	}
+
+	row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
+	doc.WriteString(row)
+	doc.WriteString("\n")
+	doc.WriteString(windowStyle.Width((m.totalWidth - windowStyle.GetHorizontalFrameSize())).Render(view))
+	return docStyle.Render(doc.String())
 }
 
 func (m *Model) initIssueList(width, height int) {
