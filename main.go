@@ -280,13 +280,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch {
 		case key.Matches(msg, keys.NextPage):
 			nextPage := clamp(int(m.page+1), 0, int(checks))
-			log.Debugf("next page: %d", nextPage)
-			log.Debugf("last page: %d", checks)
 			m.page = pageState(nextPage)
 		case key.Matches(msg, keys.PrevPage):
 			prevPage := clamp(int(m.page-1), 0, int(checks))
-			log.Debugf("prev page: %d", prevPage)
-			log.Debugf("first page: %d", issues)
 			m.page = pageState(prevPage)
 		}
 	}
