@@ -221,7 +221,7 @@ type Model struct {
 }
 
 func (m Model) percentageToWidth(percentage float32) int {
-	return int(float32(m.totalWidth-windowStyle.GetHorizontalFrameSize()) * percentage)
+	return int(float32(m.totalWidth-docStyle.GetHorizontalFrameSize()) * percentage)
 }
 
 func tabBorderWithBottom(left, middle, right string) lipgloss.Border {
@@ -236,10 +236,13 @@ var (
 	inactiveTabBorder = lipgloss.NormalBorder()
 	activeTabBorder   = lipgloss.NormalBorder()
 	docStyle          = lipgloss.NewStyle().Padding(1, 2, 1, 2)
-	highlightColor    = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
-	inactiveTabStyle  = lipgloss.NewStyle().Border(inactiveTabBorder, true).BorderForeground(styles.Theme.FaintBorder).Padding(0, 1)
-	activeTabStyle    = lipgloss.NewStyle().Border(activeTabBorder, true).BorderForeground(styles.Theme.PrimaryBorder).Padding(0, 1)
-	windowStyle       = lipgloss.NewStyle().Padding(0)
+	highlightColor   = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
+	inactiveTabStyle = lipgloss.NewStyle().Border(inactiveTabBorder, true).BorderForeground(styles.Theme.FaintBorder).Padding(0, 1)
+	activeTabStyle   = lipgloss.NewStyle().Border(activeTabBorder, true).BorderForeground(styles.Theme.PrimaryBorder).Padding(0, 1)
+	windowStyle      = lipgloss.NewStyle().Padding(0)
+	helpStyle        = lipgloss.NewStyle().Padding(0, 1)
+	headerHeight     = docStyle.GetVerticalFrameSize() + activeTabStyle.GetVerticalFrameSize() + 1 // 1 row for the content
+	footerHeight     = helpStyle.GetVerticalFrameSize() + 1
 )
 
 func InitialModel() *Model {
@@ -270,11 +273,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.totalWidth = msg.Width
 		m.totalHeight = msg.Height
-		log.Debug(msg.Height)
-		log.Debug(windowStyle.GetVerticalFrameSize())
-		log.Debug(docStyle.GetVerticalFrameSize())
-		// m.initIssueList(msg.Width, msg.Height-windowStyle.GetVerticalFrameSize())
-		m.initIssueList(50, 30)
+
+    // these things should all be dynamic!
+		m.initIssueList(msg.Width, msg.Height-headerHeight-footerHeight)
 		m.issueList, cmd = m.issueList.Update(msg)
 	case tea.KeyMsg:
 		switch {
@@ -618,8 +619,8 @@ func (m Model) View() string {
 	switch m.page {
 	case issues:
 		issueListView := lipgloss.NewStyle().
-			Border(lipgloss.NormalBorder()).
-			BorderForeground(m.styles.Theme.FaintBorder).
+			// Border(lipgloss.NormalBorder()).
+			// BorderForeground(m.styles.Theme.FaintBorder).
 			Width(m.percentageToWidth(0.5)).
 			Render(m.issueList.View())
 		var sidebarView string
@@ -638,7 +639,7 @@ func (m Model) View() string {
 
 		}
 
-		help := m.help.View(m.HelpKeys())
+		help := helpStyle.Render(m.help.View(m.HelpKeys()))
 		view = lipgloss.JoinVertical(lipgloss.Left, lipgloss.JoinHorizontal(lipgloss.Top, issueListView, sidebarView), help)
 	case checks:
 		view = "hey"
