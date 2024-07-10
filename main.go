@@ -101,6 +101,8 @@ type keyMap struct {
 	IssueCommentFormFocus key.Binding
 	NextInput             key.Binding
 	Submit                key.Binding
+	NextPage              key.Binding
+	PrevPage              key.Binding
 }
 
 // ShortHelp returns keybindings to be shown in the mini help view. It's part
@@ -274,6 +276,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// m.initIssueList(msg.Width, msg.Height-windowStyle.GetVerticalFrameSize())
 		m.initIssueList(50, 30)
 		m.issueList, cmd = m.issueList.Update(msg)
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keys.NextPage):
+			nextPage := clamp(int(m.page+1), 0, int(checks))
+			log.Debugf("next page: %d", nextPage)
+			log.Debugf("last page: %d", checks)
+			m.page = pageState(nextPage)
+		case key.Matches(msg, keys.PrevPage):
+			prevPage := clamp(int(m.page-1), 0, int(checks))
+			log.Debugf("prev page: %d", prevPage)
+			log.Debugf("first page: %d", issues)
+			m.page = pageState(prevPage)
+		}
 	}
 
 	switch m.page {
@@ -564,6 +579,14 @@ func (m Model) HelpKeys() keyMap {
 		Submit: key.NewBinding(
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "submit"),
+		),
+		NextPage: key.NewBinding(
+			key.WithKeys("right"),
+			key.WithHelp("right", "next page"),
+		),
+		PrevPage: key.NewBinding(
+			key.WithKeys("left"),
+			key.WithHelp("left", "previous page"),
 		),
 	}
 
@@ -999,4 +1022,14 @@ func StringToShortcode(input string) string {
 
 	// Return the first 6 characters
 	return encoded[:6]
+}
+
+func clamp(value, min, max int) int {
+	if value < min {
+		return min
+	}
+	if value > max {
+		return max
+	}
+	return value
 }
