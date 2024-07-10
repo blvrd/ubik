@@ -50,9 +50,9 @@ func DefaultStyles() Styles {
 			SecondaryText:      lipgloss.AdaptiveColor{Light: "244", Dark: "251"},
 			FaintText:          lipgloss.AdaptiveColor{Light: "007", Dark: "245"},
 			InvertedText:       lipgloss.AdaptiveColor{Light: "015", Dark: "236"},
-			GreenText:          lipgloss.AdaptiveColor{Light: "002", Dark: "002"},
-			YellowText:         lipgloss.AdaptiveColor{Light: "001", Dark: "001"},
-			RedText:            lipgloss.AdaptiveColor{Light: "001", Dark: "001"},
+			GreenText:          lipgloss.AdaptiveColor{Light: "#3B875E", Dark: "#3B875E"},
+			YellowText:         lipgloss.AdaptiveColor{Light: "#FAAC26", Dark: "#FAAC26"},
+			RedText:            lipgloss.AdaptiveColor{Light: "#b03f3c", Dark: "#b03f3c"},
 		},
 	}
 }
