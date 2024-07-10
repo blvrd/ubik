@@ -79,8 +79,8 @@ const (
 type pageState int
 
 const (
-	issues pageState = 1
-	checks pageState = 2
+	issues pageState = 0
+	checks pageState = 1
 )
 
 type keyMap struct {
@@ -231,13 +231,13 @@ func tabBorderWithBottom(left, middle, right string) lipgloss.Border {
 }
 
 var (
-	inactiveTabBorder = tabBorderWithBottom("┴", "─", "┴")
-	activeTabBorder   = tabBorderWithBottom("┘", " ", "└")
+	inactiveTabBorder = lipgloss.NormalBorder()
+	activeTabBorder   = lipgloss.NormalBorder()
 	docStyle          = lipgloss.NewStyle().Padding(1, 2, 1, 2)
 	highlightColor    = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
-	inactiveTabStyle  = lipgloss.NewStyle().Border(inactiveTabBorder, true).BorderForeground(highlightColor).Padding(0, 1)
-	activeTabStyle    = inactiveTabStyle.Border(activeTabBorder, true)
-	windowStyle       = lipgloss.NewStyle().BorderForeground(highlightColor).Padding(2, 0).Align(lipgloss.Left).Border(lipgloss.NormalBorder()).UnsetBorderTop()
+	inactiveTabStyle  = lipgloss.NewStyle().Border(inactiveTabBorder, true).BorderForeground(styles.Theme.FaintBorder).Padding(0, 1)
+	activeTabStyle    = lipgloss.NewStyle().Border(activeTabBorder, true).BorderForeground(styles.Theme.PrimaryBorder).Padding(0, 1)
+	windowStyle       = lipgloss.NewStyle().Padding(0)
 )
 
 func InitialModel() *Model {
@@ -632,23 +632,22 @@ func (m Model) View() string {
 
 	for i, t := range m.tabs {
 		var style lipgloss.Style
-		isFirst, isLast, isActive := i == 0, i == len(m.tabs)-1, pageState(i) == m.page
+		isActive := pageState(i) == m.page
 		if isActive {
 			style = activeTabStyle
 		} else {
 			style = inactiveTabStyle
 		}
-		border, _, _, _, _ := style.GetBorder()
-		if isFirst && isActive {
-			border.BottomLeft = "│"
-		} else if isFirst && !isActive {
-			border.BottomLeft = "├"
-		} else if isLast && isActive {
-			border.BottomRight = "│"
-		} else if isLast && !isActive {
-			border.BottomRight = "┤"
-		}
-		style = style.Border(border)
+		// border, _, _, _, _ := style.GetBorder()
+		// if isFirst && isActive {
+		// 	border.BottomLeft = "│"
+		// } else if isFirst && !isActive {
+		// 	border.BottomLeft = "├"
+		// } else if isLast && isActive {
+		// 	border.BottomRight = "│"
+		// } else if isLast && !isActive {
+		// 	border.BottomRight = "┤"
+		// }
 		renderedTabs = append(renderedTabs, style.Render(t))
 	}
 
