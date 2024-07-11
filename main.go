@@ -242,7 +242,7 @@ var (
 	windowStyle      = lipgloss.NewStyle().Padding(0)
 	helpStyle        = lipgloss.NewStyle().Padding(0, 1)
 	headerHeight     = docStyle.GetVerticalFrameSize() + activeTabStyle.GetVerticalFrameSize() + 1 // 1 row for the content
-	footerHeight     = helpStyle.GetVerticalFrameSize() + 1
+	footerHeight     = helpStyle.GetVerticalFrameSize() + 1 // 1 row for the context
 )
 
 func InitialModel() *Model {
