@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -74,6 +75,7 @@ const (
 	issueListFocused   focusState = 1
 	issueDetailFocused focusState = 2
 	issueFormFocused   focusState = 3
+	commitListFocused  focusState = 4
 )
 
 type pageState int
@@ -212,6 +214,7 @@ type Model struct {
 	issueList   list.Model
 	issueDetail issueDetailModel
 	issueForm   issueFormModel
+	commitList  list.Model
 	err         error
 	totalWidth  int
 	totalHeight int
@@ -220,6 +223,9 @@ type Model struct {
 	tabs        []string
 }
 
+func (m Model) calculateAvailableContentHeight(headerHeight, footerHeight int) int {
+	return m.totalHeight - headerHeight - footerHeight
+}
 func (m Model) percentageToWidth(percentage float32) int {
 	return int(float32(m.totalWidth-docStyle.GetHorizontalFrameSize()) * percentage)
 }
@@ -236,13 +242,13 @@ var (
 	inactiveTabBorder = lipgloss.NormalBorder()
 	activeTabBorder   = lipgloss.NormalBorder()
 	docStyle          = lipgloss.NewStyle().Padding(1, 2, 1, 2)
-	highlightColor   = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
-	inactiveTabStyle = lipgloss.NewStyle().Border(inactiveTabBorder, true).BorderForeground(styles.Theme.FaintBorder).Padding(0, 1)
-	activeTabStyle   = lipgloss.NewStyle().Border(activeTabBorder, true).BorderForeground(styles.Theme.PrimaryBorder).Padding(0, 1)
-	windowStyle      = lipgloss.NewStyle().Padding(0)
-	helpStyle        = lipgloss.NewStyle().Padding(0, 1)
-	headerHeight     = docStyle.GetVerticalFrameSize() + activeTabStyle.GetVerticalFrameSize() + 1 // 1 row for the content
-	footerHeight     = helpStyle.GetVerticalFrameSize() + 1 // 1 row for the context
+	highlightColor    = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
+	inactiveTabStyle  = lipgloss.NewStyle().Border(inactiveTabBorder, true).BorderForeground(styles.Theme.FaintBorder).Padding(0, 1)
+	activeTabStyle    = lipgloss.NewStyle().Border(activeTabBorder, true).BorderForeground(styles.Theme.PrimaryBorder).Padding(0, 1)
+	windowStyle       = lipgloss.NewStyle().Padding(0)
+	helpStyle         = lipgloss.NewStyle().Padding(0, 1)
+	headerHeight      = docStyle.GetVerticalFrameSize() + activeTabStyle.GetVerticalFrameSize() + 1 // 1 row for the content
+	footerHeight      = helpStyle.GetVerticalFrameSize() + 1                                        // 1 row for the context
 )
 
 func InitialModel() *Model {
@@ -257,6 +263,14 @@ func InitialModel() *Model {
 
 func (m Model) Init() tea.Cmd {
 	return nil
+}
+
+type footerResizedMessage int
+
+func footerResized(height int) tea.Cmd {
+	return func() tea.Msg {
+		return footerResizedMessage(height)
+	}
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -274,9 +288,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.totalWidth = msg.Width
 		m.totalHeight = msg.Height
 
-    // these things should all be dynamic!
-		m.initIssueList(msg.Width, msg.Height-headerHeight-footerHeight)
+		m.initIssueList(msg.Width, m.calculateAvailableContentHeight(headerHeight, footerHeight))
+		m.initCommitList(msg.Width, m.calculateAvailableContentHeight(headerHeight, footerHeight))
 		m.issueList, cmd = m.issueList.Update(msg)
+
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.NextPage):
@@ -327,15 +342,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			switch msg := msg.(type) {
+			case footerResizedMessage:
+				log.Debugf("🪚 available height: %d", m.calculateAvailableContentHeight(headerHeight, int(msg)))
+				m.issueList.SetHeight(m.calculateAvailableContentHeight(headerHeight, int(msg)))
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(msg, keys.Help):
 					if m.help.ShowAll {
 						m.help.ShowAll = false
-						m.issueList.SetHeight(m.issueList.Height() + 4)
+						log.Debugf("🪚 maxHelpHeight: %#v", footerHeight)
+						return m, footerResized(footerHeight)
 					} else {
+						var maxHelpHeight int
+						for _, column := range keys.FullHelp() {
+							if len(column) > maxHelpHeight {
+								maxHelpHeight = len(column)
+							}
+						}
 						m.help.ShowAll = true
-						m.issueList.SetHeight(m.issueList.Height() - 4)
+						log.Debugf("🪚 maxHelpHeight: %#v", maxHelpHeight)
+						return m, footerResized(maxHelpHeight + 1)
 					}
 				case key.Matches(msg, keys.Down):
 					m.issueList, cmd = m.issueList.Update(msg)
@@ -512,6 +538,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, keys.Quit):
 				return nil, tea.Quit
+			case key.Matches(msg, keys.Down):
+				m.commitList, cmd = m.commitList.Update(msg)
+				return m, cmd
+			case key.Matches(msg, keys.Up):
+				m.commitList, cmd = m.commitList.Update(msg)
+				return m, cmd
 			}
 		}
 	}
@@ -616,11 +648,10 @@ func (m Model) View() string {
 
 	var view string
 
+	help := helpStyle.Render(m.help.View(m.HelpKeys()))
 	switch m.page {
 	case issues:
 		issueListView := lipgloss.NewStyle().
-			// Border(lipgloss.NormalBorder()).
-			// BorderForeground(m.styles.Theme.FaintBorder).
 			Width(m.percentageToWidth(0.5)).
 			Render(m.issueList.View())
 		var sidebarView string
@@ -639,10 +670,13 @@ func (m Model) View() string {
 
 		}
 
-		help := helpStyle.Render(m.help.View(m.HelpKeys()))
 		view = lipgloss.JoinVertical(lipgloss.Left, lipgloss.JoinHorizontal(lipgloss.Top, issueListView, sidebarView), help)
 	case checks:
-		view = "hey"
+		commitListView := lipgloss.NewStyle().
+			Width(m.percentageToWidth(0.5)).
+			Render(m.commitList.View())
+
+		view = lipgloss.JoinVertical(lipgloss.Left, commitListView, help)
 	}
 
 	// return view
@@ -676,6 +710,91 @@ func (m Model) View() string {
 	doc.WriteString("\n")
 	doc.WriteString(windowStyle.Width((m.totalWidth - windowStyle.GetHorizontalFrameSize())).Render(view))
 	return docStyle.Render(doc.String())
+}
+
+type Commit struct {
+	id          string
+	author      string
+	description string
+	timestamp   time.Time
+	checks      []Check
+}
+
+type Check struct {
+	id         string
+	commitId   string
+	status     string
+	checker    string
+	startedAt  time.Time
+	finishedAt time.Time
+}
+
+func (c Commit) FilterValue() string {
+	return c.id
+}
+
+func (c Commit) Height() int                             { return 2 }
+func (c Commit) Spacing() int                            { return 1 }
+func (c Commit) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+
+func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
+	c, ok := listItem.(Commit)
+
+	if !ok {
+		return
+	}
+
+	defaultItemStyles := list.NewDefaultItemStyles()
+
+	var author string
+
+	if c.author == "" {
+		author = "unknown"
+	} else {
+		author = c.author
+	}
+
+	titleFn := defaultItemStyles.NormalTitle.Padding(0).Render
+	if index == m.Index() {
+		titleFn = func(s ...string) string {
+			return defaultItemStyles.SelectedTitle.
+				Border(lipgloss.NormalBorder(), false, false, false, false).
+				Padding(0).
+				Render(strings.Join(s, " "))
+		}
+	}
+
+	title := fmt.Sprintf("%s %s", author, titleFn(c.id))
+
+	description := fmt.Sprintf("created at %s", c.timestamp.Format(time.RFC822))
+	item := lipgloss.JoinVertical(lipgloss.Left, title, description)
+
+	fmt.Fprintf(w, item)
+}
+
+func (m *Model) initCommitList(width, height int) {
+	m.commitList = list.New([]list.Item{}, Commit{}, width, height)
+	m.commitList.SetShowHelp(false)
+	m.commitList.Title = "Commits"
+	var listItems []list.Item
+
+	var commits []Commit
+
+	cmd := exec.Command("git", "log", "--pretty=format:%H")
+	output, err := cmd.Output()
+	if err != nil {
+		fmt.Println("Error running command:", err)
+	}
+
+	for _, commitHash := range strings.Split(string(output), "\n") {
+		commits = append(commits, Commit{id: commitHash})
+	}
+
+	for _, commit := range commits {
+		listItems = append(listItems, commit)
+	}
+
+	m.commitList.SetItems(listItems)
 }
 
 func (m *Model) initIssueList(width, height int) {
