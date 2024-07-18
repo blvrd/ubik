@@ -767,7 +767,6 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 
 	title := fmt.Sprintf("%s", titleFn(c.abbreviatedId, truncate(c.description, 50)))
 
-  log.Debugf("🪚 timestamp: %#v", c.timestamp)
 	description := fmt.Sprintf("committed at %s by %s", c.timestamp.Format(time.RFC822), author)
 	item := lipgloss.JoinVertical(lipgloss.Left, title, description)
 
@@ -785,8 +784,8 @@ func (m *Model) initCommitList(width, height int) {
 	cmd := exec.Command(
 		"git",
 		"log",
-		"--pretty=format:%H|%h|%ae|%ad|%s",
-		"--date=format:%a, %d %b %Y %H:%M:%S %z",
+		"--pretty=format:%H|%h|%ae|%aI|%s",
+		"--date=format:%d %b %y %H:%M %z",
 	)
 	output, err := cmd.Output()
 	if err != nil {
@@ -795,11 +794,10 @@ func (m *Model) initCommitList(width, height int) {
 
 	for _, commitHash := range strings.Split(string(output), "\n") {
 		parts := strings.Split(commitHash, "|")
-		log.Debugf("🪚 parts: %#v", parts)
 
-		timestamp, err := time.Parse(time.RFC822, parts[3])
+		timestamp, err := time.Parse(time.RFC3339, parts[3])
 		if err != nil {
-			fmt.Println("Error parsing timestamp:", err)
+			log.Errorf("Error parsing timestamp: %v", err)
 		}
 		commits = append(commits, Commit{
 			id:            parts[0],
