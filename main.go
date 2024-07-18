@@ -713,11 +713,12 @@ func (m Model) View() string {
 }
 
 type Commit struct {
-	id          string
-	author      string
-	description string
-	timestamp   time.Time
-	checks      []Check
+	id            string
+	abbreviatedId string
+	author        string
+	description   string
+	timestamp     time.Time
+	checks        []Check
 }
 
 type Check struct {
@@ -764,9 +765,10 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 		}
 	}
 
-	title := fmt.Sprintf("%s %s", author, titleFn(c.id))
+	title := fmt.Sprintf("%s", titleFn(c.abbreviatedId, truncate(c.description, 50)))
 
-	description := fmt.Sprintf("created at %s", c.timestamp.Format(time.RFC822))
+  log.Debugf("🪚 timestamp: %#v", c.timestamp)
+	description := fmt.Sprintf("committed at %s by %s", c.timestamp.Format(time.RFC822), author)
 	item := lipgloss.JoinVertical(lipgloss.Left, title, description)
 
 	fmt.Fprintf(w, item)
@@ -780,14 +782,32 @@ func (m *Model) initCommitList(width, height int) {
 
 	var commits []Commit
 
-	cmd := exec.Command("git", "log", "--pretty=format:%H")
+	cmd := exec.Command(
+		"git",
+		"log",
+		"--pretty=format:%H|%h|%ae|%ad|%s",
+		"--date=format:%a, %d %b %Y %H:%M:%S %z",
+	)
 	output, err := cmd.Output()
 	if err != nil {
 		fmt.Println("Error running command:", err)
 	}
 
 	for _, commitHash := range strings.Split(string(output), "\n") {
-		commits = append(commits, Commit{id: commitHash})
+		parts := strings.Split(commitHash, "|")
+		log.Debugf("🪚 parts: %#v", parts)
+
+		timestamp, err := time.Parse(time.RFC822, parts[3])
+		if err != nil {
+			fmt.Println("Error parsing timestamp:", err)
+		}
+		commits = append(commits, Commit{
+			id:            parts[0],
+			abbreviatedId: parts[1],
+			author:        parts[2],
+			timestamp:     timestamp,
+			description:   parts[4],
+		})
 	}
 
 	for _, commit := range commits {
@@ -1148,4 +1168,11 @@ func clamp(value, min, max int) int {
 		return max
 	}
 	return value
+}
+
+func truncate(s string, maxLength int) string {
+	if len(s) <= maxLength {
+		return s
+	}
+	return s[:maxLength-3] + "..."
 }
