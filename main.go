@@ -105,6 +105,7 @@ type keyMap struct {
 	Submit                key.Binding
 	NextPage              key.Binding
 	PrevPage              key.Binding
+	RunCheck              key.Binding
 }
 
 // ShortHelp returns keybindings to be shown in the mini help view. It's part
@@ -343,14 +344,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			switch msg := msg.(type) {
 			case footerResizedMessage:
-				log.Debugf("🪚 available height: %d", m.calculateAvailableContentHeight(headerHeight, int(msg)))
 				m.issueList.SetHeight(m.calculateAvailableContentHeight(headerHeight, int(msg)))
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(msg, keys.Help):
 					if m.help.ShowAll {
 						m.help.ShowAll = false
-						log.Debugf("🪚 maxHelpHeight: %#v", footerHeight)
 						return m, footerResized(footerHeight)
 					} else {
 						var maxHelpHeight int
@@ -360,7 +359,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							}
 						}
 						m.help.ShowAll = true
-						log.Debugf("🪚 maxHelpHeight: %#v", maxHelpHeight)
 						return m, footerResized(maxHelpHeight + 1)
 					}
 				case key.Matches(msg, keys.Down):
@@ -544,11 +542,47 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.Up):
 				m.commitList, cmd = m.commitList.Update(msg)
 				return m, cmd
+			case key.Matches(msg, keys.RunCheck):
+				commit := m.commitList.SelectedItem().(Commit)
+				commit.latestCheck = Check{status: "running"}
+				m.commitList.SetItem(m.commitList.Index(), commit)
+				m.commitList, cmd = m.commitList.Update(msg)
+				cmd = RunCheck(commit.id)
+				return m, cmd
 			}
+		case checkResult:
+			var commit Commit
+			var commitIndex int
+			for i, c := range m.commitList.Items() {
+				if c.(Commit).id == msg.commitHash {
+					commit = c.(Commit)
+          commitIndex = i
+					break
+				}
+			}
+			commit.latestCheck = Check{status: msg.status}
+			m.commitList.SetItem(commitIndex, commit)
+			m.commitList, cmd = m.commitList.Update(msg)
 		}
 	}
 
 	return m, cmd
+}
+
+type checkResult struct {
+	status     string
+	commitHash string
+}
+
+func RunCheck(commitId string) tea.Cmd {
+	return func() tea.Msg {
+		command := exec.Command("./ci")
+		_, err := command.Output()
+		if err != nil {
+			return checkResult{commitHash: commitId, status: "failed"}
+		}
+		return checkResult{commitHash: commitId, status: "succeeded"}
+	}
 }
 
 func (m Model) HelpKeys() keyMap {
@@ -616,6 +650,10 @@ func (m Model) HelpKeys() keyMap {
 		PrevPage: key.NewBinding(
 			key.WithKeys("left"),
 			key.WithHelp("left", "previous page"),
+		),
+		RunCheck: key.NewBinding(
+			key.WithKeys(" "),
+			key.WithHelp("space", "run check"),
 		),
 	}
 
@@ -718,7 +756,7 @@ type Commit struct {
 	author        string
 	description   string
 	timestamp     time.Time
-	checks        []Check
+	latestCheck   Check
 }
 
 type Check struct {
@@ -734,9 +772,11 @@ func (c Commit) FilterValue() string {
 	return c.id
 }
 
-func (c Commit) Height() int                             { return 2 }
-func (c Commit) Spacing() int                            { return 1 }
-func (c Commit) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
+func (c Commit) Height() int  { return 2 }
+func (c Commit) Spacing() int { return 1 }
+func (c Commit) Update(_ tea.Msg, _ *list.Model) tea.Cmd {
+	return nil
+}
 
 func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
 	c, ok := listItem.(Commit)
@@ -766,6 +806,15 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 	}
 
 	title := fmt.Sprintf("%s", titleFn(c.abbreviatedId, truncate(c.description, 50)))
+	if c.latestCheck.status == "running" {
+		title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]"))
+	}
+	if c.latestCheck.status == "failed" {
+		title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]"))
+	}
+	if c.latestCheck.status == "succeeded" {
+		title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]"))
+	}
 
 	description := fmt.Sprintf("committed at %s by %s", c.timestamp.Format(time.RFC822), author)
 	item := lipgloss.JoinVertical(lipgloss.Left, title, description)
