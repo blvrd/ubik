@@ -556,7 +556,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			for i, c := range m.commitList.Items() {
 				if c.(Commit).id == msg.commitHash {
 					commit = c.(Commit)
-          commitIndex = i
+					commitIndex = i
 					break
 				}
 			}
@@ -576,9 +576,17 @@ type checkResult struct {
 
 func RunCheck(commitId string) tea.Cmd {
 	return func() tea.Msg {
-		command := exec.Command("./ci")
+		randomString := uuid.NewString()
+		path := "tmp/ci-" + randomString
+		command := exec.Command("git", "worktree", "add", "--detach", path, commitId)
 		_, err := command.Output()
 		if err != nil {
+			log.Fatal(err)
+		}
+		command = exec.Command(path + "/ci")
+		_, err = command.Output()
+		if err != nil {
+			log.Debugf("%#v", err)
 			return checkResult{commitHash: commitId, status: "failed"}
 		}
 		return checkResult{commitHash: commitId, status: "succeeded"}
