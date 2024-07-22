@@ -579,6 +579,8 @@ func RunCheck(commitId string) tea.Cmd {
 		randomString := uuid.NewString()
 		path := "tmp/ci-" + randomString
 		command := exec.Command("git", "worktree", "add", "--detach", path, commitId)
+		removeWorktree := exec.Command("git", "worktree", "remove", path)
+		defer removeWorktree.Run()
 		_, err := command.Output()
 		if err != nil {
 			log.Fatal(err)
