@@ -72,10 +72,11 @@ const (
 type focusState int
 
 const (
-	issueListFocused   focusState = 1
-	issueDetailFocused focusState = 2
-	issueFormFocused   focusState = 3
-	commitListFocused  focusState = 4
+	issueListFocused    focusState = 1
+	issueDetailFocused  focusState = 2
+	issueFormFocused    focusState = 3
+	commitListFocused   focusState = 4
+	commitDetailFocused focusState = 5
 )
 
 type pageState int
@@ -101,6 +102,7 @@ type keyMap struct {
 	IssueStatusWontDo     key.Binding
 	IssueStatusInProgress key.Binding
 	IssueCommentFormFocus key.Binding
+	CommitDetailFocus     key.Binding
 	NextInput             key.Binding
 	Submit                key.Binding
 	NextPage              key.Binding
@@ -133,6 +135,16 @@ func (k keyMap) FullHelp() [][]key.Binding {
 	case issueFormFocused:
 		bindings = [][]key.Binding{
 			{k.NextInput, k.Up, k.Down},
+			{k.Help, k.Back, k.Quit},
+		}
+	case commitListFocused:
+		bindings = [][]key.Binding{
+			{k.Up, k.Down, k.CommitDetailFocus},
+			{k.Help, k.Quit},
+		}
+	case commitDetailFocused:
+		bindings = [][]key.Binding{
+			{k.Up, k.Down},
 			{k.Help, k.Back, k.Quit},
 		}
 	}
@@ -209,19 +221,20 @@ type Comment struct {
 /* MAIN MODEL */
 
 type Model struct {
-	loaded      bool
-	page        pageState
-	focusState  focusState
-	issueList   list.Model
-	issueDetail issueDetailModel
-	issueForm   issueFormModel
-	commitList  list.Model
-	err         error
-	totalWidth  int
-	totalHeight int
-	help        help.Model
-	styles      Styles
-	tabs        []string
+	loaded       bool
+	page         pageState
+	focusState   focusState
+	issueList    list.Model
+	issueDetail  issueDetailModel
+	issueForm    issueFormModel
+	commitList   list.Model
+	commitDetail commitDetailModel
+	err          error
+	totalWidth   int
+	totalHeight  int
+	help         help.Model
+	styles       Styles
+	tabs         []string
 }
 
 func (m Model) calculateAvailableContentHeight(headerHeight, footerHeight int) int {
@@ -547,7 +560,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				commit.latestCheck = Check{status: "running"}
 				m.commitList.SetItem(m.commitList.Index(), commit)
 				m.commitList, cmd = m.commitList.Update(msg)
+				m.commitDetail = commitDetailModel{commit: commit}
+				m.commitDetail.Init(m)
 				cmd = RunCheck(commit.id)
+				return m, cmd
+			case key.Matches(msg, keys.CommitDetailFocus):
+				m.focusState = commitDetailFocused
+				m.commitDetail = commitDetailModel{commit: m.commitList.SelectedItem().(Commit)}
+				m.commitDetail.Init(m)
 				return m, cmd
 			}
 		case checkResult:
@@ -560,9 +580,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					break
 				}
 			}
-			commit.latestCheck = Check{status: msg.status}
+			commit.latestCheck = Check{status: msg.status, output: msg.output}
 			m.commitList.SetItem(commitIndex, commit)
 			m.commitList, cmd = m.commitList.Update(msg)
+			m.commitDetail = commitDetailModel{commit: commit}
+			m.commitDetail.Init(m)
 		}
 	}
 
@@ -572,6 +594,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 type checkResult struct {
 	status     string
 	commitHash string
+	output     string
 }
 
 func RunCheck(commitId string) tea.Cmd {
@@ -586,12 +609,12 @@ func RunCheck(commitId string) tea.Cmd {
 			log.Fatal(err)
 		}
 		command = exec.Command(path + "/ci")
-		_, err = command.Output()
+		output, err := command.Output()
 		if err != nil {
 			log.Debugf("%#v", err)
-			return checkResult{commitHash: commitId, status: "failed"}
+			return checkResult{commitHash: commitId, status: "failed", output: string(output)}
 		}
-		return checkResult{commitHash: commitId, status: "succeeded"}
+		return checkResult{commitHash: commitId, status: "succeeded", output: string(output)}
 	}
 }
 
@@ -665,11 +688,15 @@ func (m Model) HelpKeys() keyMap {
 			key.WithKeys(" "),
 			key.WithHelp("space", "run check"),
 		),
+		CommitDetailFocus: key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "more info"),
+		),
 	}
 
 	switch m.focusState {
 	case issueListFocused:
-	case issueDetailFocused:
+	case issueDetailFocused, commitDetailFocused:
 		keys.Up = key.NewBinding(
 			key.WithKeys("up", "k"),
 			key.WithHelp("↑/k", "scroll up"),
@@ -723,8 +750,15 @@ func (m Model) View() string {
 		commitListView := lipgloss.NewStyle().
 			Width(m.percentageToWidth(0.5)).
 			Render(m.commitList.View())
-
-		view = lipgloss.JoinVertical(lipgloss.Left, commitListView, help)
+		switch m.focusState {
+		case commitDetailFocused:
+			commitDetailView := lipgloss.NewStyle().
+				Width(m.percentageToWidth(0.4)).
+				Render(m.commitDetail.View())
+			view = lipgloss.JoinVertical(lipgloss.Left, lipgloss.JoinHorizontal(lipgloss.Top, commitListView, commitDetailView), help)
+		default:
+			view = lipgloss.JoinVertical(lipgloss.Left, commitListView, help)
+		}
 	}
 
 	// return view
@@ -774,6 +808,7 @@ type Check struct {
 	commitId   string
 	status     string
 	checker    string
+	output     string
 	startedAt  time.Time
 	finishedAt time.Time
 }
@@ -883,6 +918,88 @@ func (m *Model) initIssueList(width, height int) {
 		listItems = append(listItems, issue)
 	}
 	m.issueList.SetItems(listItems)
+}
+
+type commitDetailFocusState int
+
+const (
+	commitDetailViewportFocused commitDetailFocusState = 1
+)
+
+type commitDetailModel struct {
+	commit   Commit
+	viewport viewport.Model
+	focus    commitDetailFocusState
+}
+
+func (m *commitDetailModel) Init(ctx Model) tea.Cmd {
+	m.viewport = viewport.New(ctx.percentageToWidth(0.4), ctx.totalHeight-4)
+	m.focus = commitDetailViewportFocused
+	content := m.commit.description
+	content += fmt.Sprintf("\n\n%s", m.commit.latestCheck.output)
+
+	// for i, comment := range m.commit.comments {
+	// 	commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.author, comment.createdAt))
+	// 	if i == len(m.commit.comments)-1 { // last comment
+	// 		content += commentStyle.MarginBottom(2).Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content))
+	// 	} else {
+	// 		content += commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content))
+	// 	}
+	// }
+	m.viewport.SetContent(content)
+	return nil
+}
+
+func (m commitDetailModel) Update(msg tea.Msg) (commitDetailModel, tea.Cmd) {
+	var cmd tea.Cmd
+	// msgg := msg.(updateMsg)
+	// keys := msgg.keys
+
+	// switch m.focus {
+	// case commitDetailViewportFocused:
+	// 	switch msg := msgg.originalMsg.(type) {
+	// 	case tea.KeyMsg:
+	// 		switch {
+	// 		case key.Matches(msg, keys.CommitDetailFocus):
+	// 			m.viewport.Height = m.viewport.Height - 7
+	// 			m.focus = commitDetailCommentFocused
+	// 			m.commentForm = NewCommentFormModel()
+	// 			m.commentForm.Init()
+	// 		}
+	// 	}
+	// 	m.viewport, cmd = m.viewport.Update(msg)
+	// case commitDetailCommentFocused:
+	// 	switch msg := msgg.originalMsg.(type) {
+	// 	case tea.KeyMsg:
+	// 		switch {
+	// 		case key.Matches(msg, keys.Back):
+	// 			m.focus = commitDetailViewportFocused
+	// 		}
+	// 	}
+	// 	m.commentForm, cmd = m.commentForm.Update(msgg)
+	// }
+	m.viewport, cmd = m.viewport.Update(msg)
+
+	return m, cmd
+}
+
+func (m commitDetailModel) View() string {
+	var s strings.Builder
+	var status string
+	switch m.commit.latestCheck.status {
+	case "running":
+		status = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]")
+	case "failed":
+		status = lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]")
+	case "succeeded":
+		status = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]")
+	}
+	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.commit.abbreviatedId))
+	header := fmt.Sprintf("%s %s\nStatus: %s", identifier, m.commit.description, status)
+	s.WriteString(lipgloss.NewStyle().BorderBottom(true).BorderStyle(lipgloss.NormalBorder()).PaddingTop(1).Render(header))
+	s.WriteString("\n")
+	s.WriteString(m.viewport.View())
+	return s.String()
 }
 
 type issueDetailFocusState int
