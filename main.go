@@ -1184,6 +1184,7 @@ func (m commentFormModel) View() string {
 }
 
 func main() {
+	_ = lipgloss.HasDarkBackground()
 	p := tea.NewProgram(InitialModel(), tea.WithAltScreen())
 	f, err := os.OpenFile("debug.log", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600) //nolint:gomnd
 	if err != nil {
