@@ -311,9 +311,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, keys.NextPage):
 			nextPage := clamp(int(m.page+1), 0, int(checks))
 			m.page = pageState(nextPage)
+			m.focusState = commitListFocused
 		case key.Matches(msg, keys.PrevPage):
 			prevPage := clamp(int(m.page-1), 0, int(checks))
 			m.page = pageState(prevPage)
+			m.focusState = issueListFocused
 		}
 	}
 
@@ -538,47 +540,81 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueForm, cmd = m.issueForm.Update(componentUpdateMsg)
 		}
 	case checks:
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.Quit):
-				return nil, tea.Quit
-			case key.Matches(msg, keys.Down):
-				m.commitList, cmd = m.commitList.Update(msg)
-				return m, cmd
-			case key.Matches(msg, keys.Up):
-				m.commitList, cmd = m.commitList.Update(msg)
-				return m, cmd
-			case key.Matches(msg, keys.RunCheck):
-				commit := m.commitList.SelectedItem().(Commit)
-				commit.latestCheck = Check{status: "running"}
-				m.commitList.SetItem(m.commitList.Index(), commit)
+		switch m.focusState {
+		case commitListFocused:
+			switch msg := msg.(type) {
+			case tea.KeyMsg:
+				switch {
+				case key.Matches(msg, keys.Down):
+					m.commitList, cmd = m.commitList.Update(msg)
+					return m, cmd
+				case key.Matches(msg, keys.Up):
+					m.commitList, cmd = m.commitList.Update(msg)
+					return m, cmd
+				case key.Matches(msg, keys.RunCheck):
+					commit := m.commitList.SelectedItem().(Commit)
+					commit.latestCheck = Check{status: "running"}
+					m.commitList.SetItem(m.commitList.Index(), commit)
+					m.commitList, cmd = m.commitList.Update(msg)
+					m.commitDetail = commitDetailModel{commit: commit}
+					m.commitDetail.Init(m)
+					cmd = RunCheck(commit.id)
+					return m, cmd
+				case key.Matches(msg, keys.CommitDetailFocus):
+					m.focusState = commitDetailFocused
+					m.commitDetail = commitDetailModel{commit: m.commitList.SelectedItem().(Commit)}
+					m.commitDetail.Init(m)
+					return m, cmd
+				}
+			case checkResult:
+				var commit Commit
+				var commitIndex int
+				for i, c := range m.commitList.Items() {
+					if c.(Commit).id == msg.commitHash {
+						commit = c.(Commit)
+						commitIndex = i
+						break
+					}
+				}
+				commit.latestCheck = Check{status: msg.status, output: msg.output}
+				m.commitList.SetItem(commitIndex, commit)
 				m.commitList, cmd = m.commitList.Update(msg)
 				m.commitDetail = commitDetailModel{commit: commit}
 				m.commitDetail.Init(m)
-				cmd = RunCheck(commit.id)
-				return m, cmd
-			case key.Matches(msg, keys.CommitDetailFocus):
-				m.focusState = commitDetailFocused
-				m.commitDetail = commitDetailModel{commit: m.commitList.SelectedItem().(Commit)}
-				m.commitDetail.Init(m)
-				return m, cmd
 			}
-		case checkResult:
-			var commit Commit
-			var commitIndex int
-			for i, c := range m.commitList.Items() {
-				if c.(Commit).id == msg.commitHash {
-					commit = c.(Commit)
-					commitIndex = i
-					break
+			m.issueList, cmd = m.issueList.Update(msg)
+		case commitDetailFocused:
+			switch msg := msg.(type) {
+			case tea.KeyMsg:
+				switch {
+				case key.Matches(msg, keys.Back):
+					m.focusState = commitListFocused
+				case key.Matches(msg, keys.RunCheck):
+					commit := m.commitList.SelectedItem().(Commit)
+					commit.latestCheck = Check{status: "running"}
+					m.commitList.SetItem(m.commitList.Index(), commit)
+					m.commitList, cmd = m.commitList.Update(msg)
+					m.commitDetail = commitDetailModel{commit: commit}
+					m.commitDetail.Init(m)
+					cmd = RunCheck(commit.id)
+					return m, cmd
 				}
+			case checkResult:
+				var commit Commit
+				var commitIndex int
+				for i, c := range m.commitList.Items() {
+					if c.(Commit).id == msg.commitHash {
+						commit = c.(Commit)
+						commitIndex = i
+						break
+					}
+				}
+				commit.latestCheck = Check{status: msg.status, output: msg.output}
+				m.commitList.SetItem(commitIndex, commit)
+				m.commitList, cmd = m.commitList.Update(msg)
+				m.commitDetail = commitDetailModel{commit: commit}
+				m.commitDetail.Init(m)
 			}
-			commit.latestCheck = Check{status: msg.status, output: msg.output}
-			m.commitList.SetItem(commitIndex, commit)
-			m.commitList, cmd = m.commitList.Update(msg)
-			m.commitDetail = commitDetailModel{commit: commit}
-			m.commitDetail.Init(m)
 		}
 	}
 
@@ -1310,8 +1346,9 @@ func main() {
 		os.Exit(1)
 	}
 	defer f.Close()
-	if _, err := p.Run(); err != nil {
-		log.Print(err)
+	_, err = p.Run()
+	if err != nil {
+		log.Debug(err)
 		os.Exit(1)
 	}
 }
