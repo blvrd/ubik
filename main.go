@@ -754,6 +754,7 @@ func (m Model) View() string {
 	var view string
 
 	help := helpStyle.Render(m.help.View(m.HelpKeys()))
+
 	switch m.page {
 	case issues:
 		issueListView := lipgloss.NewStyle().
@@ -963,7 +964,7 @@ type commitDetailModel struct {
 }
 
 func (m *commitDetailModel) Init(ctx Model) tea.Cmd {
-	m.viewport = viewport.New(ctx.percentageToWidth(0.4), ctx.totalHeight-4)
+	m.viewport = viewport.New(ctx.percentageToWidth(0.4), 50)
 	m.focus = commitDetailViewportFocused
 	content := m.commit.description
 	content += fmt.Sprintf("\n\n%s", m.commit.latestCheck.output)
