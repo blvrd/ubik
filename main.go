@@ -608,7 +608,7 @@ func RunCheck(commitId string) tea.Cmd {
 		if err != nil {
 			log.Fatal(err)
 		}
-		command = exec.Command(path + "/ci")
+		command = exec.Command("go", "test")
 		output, err := command.Output()
 		if err != nil {
 			log.Debugf("%#v", err)
