@@ -374,12 +374,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.help.ShowAll = true
 						return m, footerResized(maxHelpHeight + 1)
 					}
-				case key.Matches(msg, keys.Down):
-					m.issueList, cmd = m.issueList.Update(msg)
-					return m, cmd
-				case key.Matches(msg, keys.Up):
-					m.issueList, cmd = m.issueList.Update(msg)
-					return m, cmd
 				case key.Matches(msg, keys.IssueStatusDone):
 					currentIndex := m.issueList.Index()
 					currentIssue := m.issueList.SelectedItem().(Issue)
