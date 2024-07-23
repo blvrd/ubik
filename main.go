@@ -20,6 +20,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/google/uuid"
+	bl "github.com/winder/bubblelayout"
 )
 
 type Styles struct {
@@ -235,6 +236,13 @@ type Model struct {
 	help         help.Model
 	styles       Styles
 	tabs         []string
+	layout       bl.BubbleLayout
+
+	leftID  bl.ID
+	rightID bl.ID
+
+	leftSize  bl.Size
+	rightSize bl.Size
 }
 
 func (m Model) calculateAvailableContentHeight(headerHeight, footerHeight int) int {
@@ -266,12 +274,18 @@ var (
 )
 
 func InitialModel() *Model {
+	layout := bl.New()
+	leftID := layout.Add("width 10")
+	rightID := layout.Add("grow")
 	return &Model{
 		focusState: issueListFocused,
 		help:       help.New(),
 		page:       issues,
 		styles:     DefaultStyles(),
 		tabs:       []string{"Issues", "Checks"},
+		layout:     layout,
+		leftID:     leftID,
+		rightID:    rightID,
 	}
 }
 
@@ -295,17 +309,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	componentUpdateMsg := updateMsg{originalMsg: msg, keys: keys}
 
 	switch msg := msg.(type) {
+	// case tea.WindowSizeMsg:
+	// 	if !m.loaded {
+	// 		m.loaded = true
+	// 	}
+	// 	m.totalWidth = msg.Width
+	// 	m.totalHeight = msg.Height
+	//
+	// 	m.initIssueList(msg.Width, m.calculateAvailableContentHeight(headerHeight, footerHeight))
+	// 	m.initCommitList(msg.Width, m.calculateAvailableContentHeight(headerHeight, footerHeight))
+	// 	m.issueList, cmd = m.issueList.Update(msg)
+
 	case tea.WindowSizeMsg:
 		if !m.loaded {
 			m.loaded = true
 		}
-		m.totalWidth = msg.Width
-		m.totalHeight = msg.Height
-
+		// Convert WindowSizeMsg to BubbleLayoutMsg.
 		m.initIssueList(msg.Width, m.calculateAvailableContentHeight(headerHeight, footerHeight))
 		m.initCommitList(msg.Width, m.calculateAvailableContentHeight(headerHeight, footerHeight))
-		m.issueList, cmd = m.issueList.Update(msg)
-
+	// 	m.issueList, cmd = m.issueList.Update(msg)
+		return m, func() tea.Msg {
+			return m.layout.Resize(msg.Width, msg.Height)
+		}
+	case bl.BubbleLayoutMsg:
+		m.leftSize, _ = msg.Size(m.leftID)
+		m.rightSize, _ = msg.Size(m.rightID)
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.NextPage):
@@ -746,6 +774,15 @@ func (m Model) HelpKeys() keyMap {
 	return keys
 }
 
+func boxStyle(size bl.Size, bg lipgloss.Color) lipgloss.Style {
+	return lipgloss.NewStyle().
+		Background(bg).
+		Foreground(lipgloss.Color("0")).
+		Width(size.Width).
+		Height(size.Height)
+		// Align(lipgloss.Center, lipgloss.Center)
+}
+
 func (m Model) View() string {
 	if !m.loaded {
 		return "Loading..."
@@ -757,26 +794,30 @@ func (m Model) View() string {
 
 	switch m.page {
 	case issues:
-		issueListView := lipgloss.NewStyle().
-			Width(m.percentageToWidth(0.5)).
-			Render(m.issueList.View())
+		// issueListView := lipgloss.NewStyle().
+		// 	Width(m.percentageToWidth(0.5)).
+		// 	Render(m.issueList.View())
 		var sidebarView string
 
 		switch m.focusState {
 		case issueDetailFocused:
 			sidebarView = lipgloss.NewStyle().
-				Width(m.percentageToWidth(0.4)).
+				// Width(m.percentageToWidth(0.4)).
 				Render(m.issueDetail.View())
 		case issueFormFocused:
-			style := lipgloss.NewStyle().
-				Width(m.percentageToWidth(0.4))
+			style := lipgloss.NewStyle()
+				// Width(m.percentageToWidth(0.4))
 
 			sidebarView = style.
 				Render(m.issueForm.View())
 
 		}
 
-		view = lipgloss.JoinVertical(lipgloss.Left, lipgloss.JoinHorizontal(lipgloss.Top, issueListView, sidebarView), help)
+		view = lipgloss.JoinVertical(lipgloss.Left, lipgloss.JoinHorizontal(
+		  lipgloss.Top,
+		  boxStyle(m.leftSize, "9").Render(m.issueList.View()),
+		  boxStyle(m.rightSize, "13").Render(sidebarView),
+		), help)
 	case checks:
 		commitListView := lipgloss.NewStyle().
 			Width(m.percentageToWidth(0.5)).

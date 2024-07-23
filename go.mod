@@ -8,6 +8,7 @@ require (
 	github.com/charmbracelet/lipgloss v0.11.1-0.20240618201632-5a82e41aea3a
 	github.com/charmbracelet/log v0.4.0
 	github.com/google/uuid v1.6.0
+	github.com/winder/bubblelayout v0.0.1
 )
 
 // replace github.com/charmbracelet/bubbles => /Users/blvrd/projects/tmp-bubbles
