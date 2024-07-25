@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"strings"
 	"time"
-  "math/rand"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -207,7 +206,7 @@ func (i Issue) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 	}
 	title := fmt.Sprintf("%s %s", status, titleFn(i.shortcode, i.title))
 
-	description := fmt.Sprintf("created by %s at %s", i.author, i.createdAt.Format(time.RFC822))
+	description := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("created by %s at %s", i.author, i.createdAt.Format(time.RFC822)))
 	item := lipgloss.JoinVertical(lipgloss.Left, title, description)
 
 	fmt.Fprintf(w, item)
@@ -282,8 +281,8 @@ func InitialModel() *Model {
 	blLayout := bl.New()
 	headerId := blLayout.Add("dock north 4!")
 	leftId := blLayout.Add("width 80")
-	rightId := blLayout.Add("grow wrap")
-	footerId := blLayout.Add("dock south 2!")
+	rightId := blLayout.Add("grow")
+	footerId := blLayout.Add("dock south 2")
 
 	layout := Layout{
 		BubbleLayout: blLayout,
@@ -805,14 +804,13 @@ func (m Model) HelpKeys() keyMap {
 }
 
 func boxStyle(size bl.Size) lipgloss.Style {
-  style := lipgloss.NewStyle().
-		Foreground(lipgloss.Color("0")).
-    Background(lipgloss.Color(fmt.Sprintf("%d", rand.Intn(255)))).
+	style := lipgloss.NewStyle().
+		// Foreground(lipgloss.Color("0")).
+		// Background(lipgloss.Color(fmt.Sprintf("%d", rand.Intn(255)))).
 		Width(size.Width).
 		Height(size.Height)
 
-
-  return style
+	return style
 }
 
 func (m Model) View() string {
@@ -874,13 +872,11 @@ func (m Model) View() string {
 
 		}
 
-    log.Debugf("footer size: %#v", m.FooterSize)
-
 		view = lipgloss.JoinVertical(
 			lipgloss.Left,
-      boxStyle(m.HeaderSize).Render(
-        lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-      ),
+			boxStyle(m.HeaderSize).Render(
+				lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+			),
 			lipgloss.JoinHorizontal(
 				lipgloss.Top,
 				boxStyle(m.LeftSize).Render(m.issueList.View()),
@@ -1120,28 +1116,43 @@ type issueDetailModel struct {
 func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
 	m.viewport = viewport.New(ctx.Layout.RightSize.Width, ctx.Layout.RightSize.Height)
 	m.focus = issueDetailViewportFocused
-	content := m.issue.description
+	var s strings.Builder
+	var status string
+	switch m.issue.status {
+	case todo:
+		status = "todo"
+	case inProgress:
+		status = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("in-progress")
+	case wontDo:
+		status = lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("wont-do")
+	case done:
+		status = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("done")
+	}
+	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", m.issue.shortcode))
+	header := fmt.Sprintf("%s %s\nStatus: %s", identifier, m.issue.title, status)
+	s.WriteString(lipgloss.NewStyle().Render(header))
+	s.WriteString(m.issue.description + "\n")
 
 	commentStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
-		BorderForeground(styles.Theme.FaintBorder).
-		Width(m.viewport.Width - 7).
-		MarginTop(0)
+		BorderForeground(styles.Theme.SecondaryBorder).
+		Width(m.viewport.Width - 2).
+		MarginTop(1)
 
 	commentHeaderStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), false, false, true, false).
-		BorderForeground(styles.Theme.FaintBorder).
-		Width(m.viewport.Width - 7)
+		BorderForeground(styles.Theme.SecondaryBorder).
+		Width(m.viewport.Width - 2)
 
 	for i, comment := range m.issue.comments {
 		commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.author, comment.createdAt))
 		if i == len(m.issue.comments)-1 { // last comment
-			content += commentStyle.MarginBottom(0).Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content))
+			s.WriteString(commentStyle.MarginBottom(0).Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content)))
 		} else {
-			content += commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content))
+			s.WriteString(commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content)))
 		}
 	}
-	m.viewport.SetContent(content)
+	m.viewport.SetContent(s.String())
 	return nil
 }
 
@@ -1161,10 +1172,10 @@ func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, keys.IssueCommentFormFocus):
-				m.viewport.Height = m.viewport.Height - 7
 				m.focus = issueDetailCommentFocused
 				m.commentForm = NewCommentFormModel()
 				m.commentForm.Init()
+				m.viewport.Height = m.viewport.Height - len(strings.Split(m.commentForm.View(), "\n"))
 			}
 		}
 		m.viewport, cmd = m.viewport.Update(msg)
@@ -1184,26 +1195,9 @@ func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 
 func (m issueDetailModel) View() string {
 	var s strings.Builder
-	var status string
-	switch m.issue.status {
-	case todo:
-		status = "todo"
-	case inProgress:
-		status = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("in-progress")
-	case wontDo:
-		status = lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("wont-do")
-	case done:
-		status = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("done")
-	}
-	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.issue.shortcode))
-	header := fmt.Sprintf("%s %sStatus: %s", identifier, m.issue.title, status)
-	s.WriteString(lipgloss.NewStyle().BorderBottom(true).BorderStyle(lipgloss.NormalBorder()).PaddingTop(0).Render(header))
 	s.WriteString(m.viewport.View())
-	// percentage := fmt.Sprintf("%f", m.viewport.ScrollPercent()*100)
-	// s.WriteString(percentage)
 
 	if m.focus == issueDetailCommentFocused {
-		// s.WriteString("\n")
 		s.WriteString(m.commentForm.View())
 	}
 
