@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+  "math/rand"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -253,9 +254,6 @@ type Model struct {
 	Layout
 }
 
-func (m Model) calculateAvailableContentHeight(headerHeight, footerHeight int) int {
-	return m.totalHeight - headerHeight - footerHeight
-}
 func (m Model) percentageToWidth(percentage float32) int {
 	return int(float32(m.totalWidth-docStyle.GetHorizontalFrameSize()) * percentage)
 }
@@ -271,25 +269,37 @@ func tabBorderWithBottom(left, middle, right string) lipgloss.Border {
 var (
 	inactiveTabBorder = lipgloss.NormalBorder()
 	activeTabBorder   = lipgloss.NormalBorder()
-	docStyle          = lipgloss.NewStyle().Padding(1, 2, 1, 2)
+	docStyle          = lipgloss.NewStyle().Padding(0)
 	highlightColor    = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
-	inactiveTabStyle  = lipgloss.NewStyle().Border(inactiveTabBorder, true).BorderForeground(styles.Theme.FaintBorder).Padding(0, 1)
-	activeTabStyle    = lipgloss.NewStyle().Border(activeTabBorder, true).BorderForeground(styles.Theme.PrimaryBorder).Padding(0, 1)
+	inactiveTabStyle  = lipgloss.NewStyle().Border(inactiveTabBorder, true).BorderForeground(styles.Theme.FaintBorder).Padding(0, 0)
+	activeTabStyle    = lipgloss.NewStyle().Border(activeTabBorder, true).BorderForeground(styles.Theme.PrimaryBorder).Padding(0, 0)
 	windowStyle       = lipgloss.NewStyle().Padding(0)
-	helpStyle         = lipgloss.NewStyle().Padding(0, 1)
-	headerHeight      = docStyle.GetVerticalFrameSize() + activeTabStyle.GetVerticalFrameSize() + 1 // 1 row for the content
-	footerHeight      = helpStyle.GetVerticalFrameSize() + 1                                        // 1 row for the context
+	helpStyle         = lipgloss.NewStyle().Padding(0, 0)
+	footerHeight      = helpStyle.GetVerticalFrameSize() + 1 // 1 row for the context
 )
 
 func InitialModel() *Model {
 	blLayout := bl.New()
+	headerId := blLayout.Add("dock north 4!")
+	leftId := blLayout.Add("width 80")
+	rightId := blLayout.Add("grow wrap")
+	footerId := blLayout.Add("dock south 2!")
+
 	layout := Layout{
 		BubbleLayout: blLayout,
-		LeftID:       blLayout.Add("width 80"),
-		RightID:      blLayout.Add("grow"),
-		HeaderID:     blLayout.Add("height 1"),
-		FooterID:     blLayout.Add("height 1"),
+		HeaderID:     headerId,
+		LeftID:       leftId,
+		RightID:      rightId,
+		FooterID:     footerId,
 	}
+
+	issueList := list.New([]list.Item{}, Issue{}, 0, 0)
+	issueList.SetShowHelp(false)
+	issueList.Title = "Issues"
+	commitList := list.New([]list.Item{}, Commit{}, 0, 0)
+	commitList.SetShowHelp(false)
+	commitList.Title = "Commits"
+
 	return &Model{
 		focusState: issueListFocused,
 		help:       help.New(),
@@ -297,11 +307,13 @@ func InitialModel() *Model {
 		styles:     DefaultStyles(),
 		tabs:       []string{"Issues", "Checks"},
 		Layout:     layout,
+		issueList:  issueList,
+		commitList: commitList,
 	}
 }
 
 func (m Model) Init() tea.Cmd {
-	return nil
+	return tea.Batch(getIssues, getCommits)
 }
 
 type footerResizedMessage int
@@ -320,31 +332,40 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	componentUpdateMsg := updateMsg{originalMsg: msg, keys: keys}
 
 	switch msg := msg.(type) {
-	// case tea.WindowSizeMsg:
-	// 	if !m.loaded {
-	// 		m.loaded = true
-	// 	}
-	// 	m.totalWidth = msg.Width
-	// 	m.totalHeight = msg.Height
-	//
-	// 	m.initIssueList(msg.Width, m.calculateAvailableContentHeight(headerHeight, footerHeight))
-	// 	m.initCommitList(msg.Width, m.calculateAvailableContentHeight(headerHeight, footerHeight))
-	// 	m.issueList, cmd = m.issueList.Update(msg)
-
 	case tea.WindowSizeMsg:
 		if !m.loaded {
 			m.loaded = true
 		}
-		// Convert WindowSizeMsg to BubbleLayoutMsg.
-		m.initIssueList(msg.Width, m.calculateAvailableContentHeight(headerHeight, footerHeight))
-		m.initCommitList(msg.Width, m.calculateAvailableContentHeight(headerHeight, footerHeight))
-		// 	m.issueList, cmd = m.issueList.Update(msg)
+
 		return m, func() tea.Msg {
-			return m.Layout.Resize(msg.Width, m.calculateAvailableContentHeight(headerHeight, footerHeight))
+			return m.Layout.Resize(msg.Width, msg.Height)
 		}
+	case IssuesReadyMsg:
+		var listItems []list.Item
+		for _, issue := range msg {
+			listItems = append(listItems, issue)
+		}
+		m.issueList.SetItems(listItems)
+	case CommitListReadyMsg:
+		var listItems []list.Item
+		for _, commit := range msg {
+			listItems = append(listItems, commit)
+		}
+		m.commitList.SetItems(listItems)
 	case bl.BubbleLayoutMsg:
 		m.LeftSize, _ = msg.Size(m.LeftID)
 		m.RightSize, _ = msg.Size(m.RightID)
+		m.HeaderSize, _ = msg.Size(m.HeaderID)
+		m.FooterSize, _ = msg.Size(m.FooterID)
+
+		m.issueList.SetWidth(m.LeftSize.Width)
+		m.issueList.SetHeight(m.LeftSize.Height)
+
+		m.commitList.SetWidth(m.LeftSize.Width)
+		m.commitList.SetHeight(m.LeftSize.Height)
+		// TODO: Should just update the lists instead of re-initializing them
+		// m.initIssueList(m.LeftSize.Width, m.LeftSize.Height)
+		// m.initCommitList(m.LeftSize.Width, m.LeftSize.Height)
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.NextPage):
@@ -397,8 +418,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			switch msg := msg.(type) {
-			case footerResizedMessage:
-				m.issueList.SetHeight(m.calculateAvailableContentHeight(headerHeight, int(msg)))
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(msg, keys.Help):
@@ -785,19 +804,50 @@ func (m Model) HelpKeys() keyMap {
 	return keys
 }
 
-func boxStyle(size bl.Size, bg lipgloss.Color) lipgloss.Style {
-	return lipgloss.NewStyle().
-		Background(bg).
+func boxStyle(size bl.Size) lipgloss.Style {
+  style := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("0")).
+    Background(lipgloss.Color(fmt.Sprintf("%d", rand.Intn(255)))).
 		Width(size.Width).
 		Height(size.Height)
-	// Align(lipgloss.Center, lipgloss.Center)
+
+
+  return style
 }
 
 func (m Model) View() string {
 	if !m.loaded {
 		return "Loading..."
 	}
+
+	doc := strings.Builder{}
+
+	var renderedTabs []string
+
+	for i, t := range m.tabs {
+		var style lipgloss.Style
+		isActive := pageState(i) == m.page
+		if isActive {
+			style = activeTabStyle
+		} else {
+			style = inactiveTabStyle
+		}
+		// border, _, _, _, _ := style.GetBorder()
+		// if isFirst && isActive {
+		// 	border.BottomLeft = "│"
+		// } else if isFirst && !isActive {
+		// 	border.BottomLeft = "├"
+		// } else if isLast && isActive {
+		// 	border.BottomRight = "│"
+		// } else if isLast && !isActive {
+		// 	border.BottomRight = "┤"
+		// }
+		renderedTabs = append(renderedTabs, style.Render(t))
+	}
+
+	// row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
+	// doc.WriteString(row)
+	// doc.WriteString("\n")
 
 	var view string
 
@@ -824,11 +874,20 @@ func (m Model) View() string {
 
 		}
 
-		view = lipgloss.JoinVertical(lipgloss.Left, lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			boxStyle(m.LeftSize, "9").Render(m.issueList.View()),
-			boxStyle(m.RightSize, "13").Render(sidebarView),
-		), help)
+    log.Debugf("footer size: %#v", m.FooterSize)
+
+		view = lipgloss.JoinVertical(
+			lipgloss.Left,
+      boxStyle(m.HeaderSize).Render(
+        lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+      ),
+			lipgloss.JoinHorizontal(
+				lipgloss.Top,
+				boxStyle(m.LeftSize).Render(m.issueList.View()),
+				boxStyle(m.RightSize).Render(sidebarView),
+			),
+			boxStyle(m.FooterSize).Render(help),
+		)
 	case checks:
 		commitListView := lipgloss.NewStyle().
 			Width(m.percentageToWidth(0.5)).
@@ -844,36 +903,7 @@ func (m Model) View() string {
 		}
 	}
 
-	// return view
-	doc := strings.Builder{}
-
-	var renderedTabs []string
-
-	for i, t := range m.tabs {
-		var style lipgloss.Style
-		isActive := pageState(i) == m.page
-		if isActive {
-			style = activeTabStyle
-		} else {
-			style = inactiveTabStyle
-		}
-		// border, _, _, _, _ := style.GetBorder()
-		// if isFirst && isActive {
-		// 	border.BottomLeft = "│"
-		// } else if isFirst && !isActive {
-		// 	border.BottomLeft = "├"
-		// } else if isLast && isActive {
-		// 	border.BottomRight = "│"
-		// } else if isLast && !isActive {
-		// 	border.BottomRight = "┤"
-		// }
-		renderedTabs = append(renderedTabs, style.Render(t))
-	}
-
-	row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
-	doc.WriteString(row)
-	doc.WriteString("\n")
-	doc.WriteString(windowStyle.Width((m.totalWidth - windowStyle.GetHorizontalFrameSize())).Render(view))
+	doc.WriteString(view)
 	return docStyle.Render(doc.String())
 }
 
@@ -950,12 +980,9 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 	fmt.Fprintf(w, item)
 }
 
-func (m *Model) initCommitList(width, height int) {
-	m.commitList = list.New([]list.Item{}, Commit{}, width, height)
-	m.commitList.SetShowHelp(false)
-	m.commitList.Title = "Commits"
-	var listItems []list.Item
+type CommitListReadyMsg []Commit
 
+func getCommits() tea.Msg {
 	var commits []Commit
 
 	cmd := exec.Command(
@@ -985,22 +1012,13 @@ func (m *Model) initCommitList(width, height int) {
 		})
 	}
 
-	for _, commit := range commits {
-		listItems = append(listItems, commit)
-	}
-
-	m.commitList.SetItems(listItems)
+	return CommitListReadyMsg(commits)
 }
 
-func (m *Model) initIssueList(width, height int) {
-	m.issueList = list.New([]list.Item{}, Issue{}, width, height)
-	m.issueList.SetShowHelp(false)
-	m.issueList.Title = "Issues"
-	var listItems []list.Item
-	for _, issue := range seedIssues {
-		listItems = append(listItems, issue)
-	}
-	m.issueList.SetItems(listItems)
+type IssuesReadyMsg []Issue
+
+func getIssues() tea.Msg {
+	return IssuesReadyMsg(seedIssues)
 }
 
 type commitDetailFocusState int
@@ -1079,7 +1097,7 @@ func (m commitDetailModel) View() string {
 	}
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.commit.abbreviatedId))
 	header := fmt.Sprintf("%s %s\nStatus: %s", identifier, m.commit.description, status)
-	s.WriteString(lipgloss.NewStyle().BorderBottom(true).BorderStyle(lipgloss.NormalBorder()).PaddingTop(1).Render(header))
+	s.WriteString(lipgloss.NewStyle().BorderBottom(true).BorderStyle(lipgloss.NormalBorder()).PaddingTop(0).Render(header))
 	s.WriteString("\n")
 	s.WriteString(m.viewport.View())
 	return s.String()
@@ -1100,26 +1118,25 @@ type issueDetailModel struct {
 }
 
 func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
-	// m.viewport = viewport.New(ctx.percentageToWidth(0.4), ctx.totalHeight-4)
-	m.viewport = viewport.New(ctx.percentageToWidth(0.4), 50)
+	m.viewport = viewport.New(ctx.Layout.RightSize.Width, ctx.Layout.RightSize.Height)
 	m.focus = issueDetailViewportFocused
 	content := m.issue.description
 
 	commentStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(styles.Theme.FaintBorder).
-		Width(m.viewport.Width - 2).
-		MarginTop(1)
+		Width(m.viewport.Width - 7).
+		MarginTop(0)
 
 	commentHeaderStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), false, false, true, false).
 		BorderForeground(styles.Theme.FaintBorder).
-		Width(m.viewport.Width - 2)
+		Width(m.viewport.Width - 7)
 
 	for i, comment := range m.issue.comments {
 		commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.author, comment.createdAt))
 		if i == len(m.issue.comments)-1 { // last comment
-			content += commentStyle.MarginBottom(2).Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content))
+			content += commentStyle.MarginBottom(0).Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content))
 		} else {
 			content += commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content))
 		}
@@ -1179,16 +1196,14 @@ func (m issueDetailModel) View() string {
 		status = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("done")
 	}
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.issue.shortcode))
-	header := fmt.Sprintf("%s %s\nStatus: %s", identifier, m.issue.title, status)
-	s.WriteString(lipgloss.NewStyle().BorderBottom(true).BorderStyle(lipgloss.NormalBorder()).PaddingTop(1).Render(header))
-	s.WriteString("\n")
+	header := fmt.Sprintf("%s %sStatus: %s", identifier, m.issue.title, status)
+	s.WriteString(lipgloss.NewStyle().BorderBottom(true).BorderStyle(lipgloss.NormalBorder()).PaddingTop(0).Render(header))
 	s.WriteString(m.viewport.View())
-	s.WriteString("\n")
 	// percentage := fmt.Sprintf("%f", m.viewport.ScrollPercent()*100)
 	// s.WriteString(percentage)
 
 	if m.focus == issueDetailCommentFocused {
-		s.WriteString("\n")
+		// s.WriteString("\n")
 		s.WriteString(m.commentForm.View())
 	}
 
