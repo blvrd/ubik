@@ -1175,6 +1175,7 @@ func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 				m.focus = issueDetailCommentFocused
 				m.commentForm = NewCommentFormModel()
 				m.commentForm.Init()
+				// decrease the height of the viewport by the number of lines in the comment form
 				m.viewport.Height = m.viewport.Height - len(strings.Split(m.commentForm.View(), "\n"))
 			}
 		}
