@@ -853,19 +853,14 @@ func (m Model) View() string {
 
 	switch m.page {
 	case issues:
-		// issueListView := lipgloss.NewStyle().
-		// 	Width(m.percentageToWidth(0.5)).
-		// 	Render(m.issueList.View())
 		var sidebarView string
 
 		switch m.focusState {
 		case issueDetailFocused:
 			sidebarView = lipgloss.NewStyle().
-				// Width(m.percentageToWidth(0.4)).
 				Render(m.issueDetail.View())
 		case issueFormFocused:
 			style := lipgloss.NewStyle()
-			// Width(m.percentageToWidth(0.4))
 
 			sidebarView = style.
 				Render(m.issueForm.View())
@@ -886,16 +881,28 @@ func (m Model) View() string {
 		)
 	case checks:
 		commitListView := lipgloss.NewStyle().
-			Width(m.percentageToWidth(0.5)).
 			Render(m.commitList.View())
 		switch m.focusState {
 		case commitDetailFocused:
 			commitDetailView := lipgloss.NewStyle().
-				Width(m.percentageToWidth(0.4)).
 				Render(m.commitDetail.View())
-			view = lipgloss.JoinVertical(lipgloss.Left, lipgloss.JoinHorizontal(lipgloss.Top, commitListView, commitDetailView), help)
+			view = lipgloss.JoinVertical(
+			  lipgloss.Left,
+        boxStyle(m.HeaderSize).Render(
+          lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+        ),
+			  lipgloss.JoinHorizontal(lipgloss.Top, commitListView, commitDetailView),
+			  help,
+			)
 		default:
-			view = lipgloss.JoinVertical(lipgloss.Left, commitListView, help)
+			view = lipgloss.JoinVertical(
+			  lipgloss.Left,
+        boxStyle(m.HeaderSize).Render(
+          lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+        ),
+			  boxStyle(m.LeftSize).Render(commitListView),
+			  boxStyle(m.FooterSize).Render(help),
+			)
 		}
 	}
 
@@ -1030,10 +1037,25 @@ type commitDetailModel struct {
 }
 
 func (m *commitDetailModel) Init(ctx Model) tea.Cmd {
-	m.viewport = viewport.New(ctx.percentageToWidth(0.4), 50)
+	var s strings.Builder
+	var status string
+	switch m.commit.latestCheck.status {
+	case "running":
+		status = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]")
+	case "failed":
+		status = lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]")
+	case "succeeded":
+		status = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]")
+	}
+	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.commit.abbreviatedId))
+	header := fmt.Sprintf("%s %s\nStatus: %s", identifier, m.commit.description, status)
+	s.WriteString(lipgloss.NewStyle().BorderBottom(true).BorderStyle(lipgloss.NormalBorder()).PaddingTop(0).Render(header))
+	s.WriteString("\n")
+
+	m.viewport = viewport.New(ctx.Layout.RightSize.Width, ctx.Layout.RightSize.Height)
 	m.focus = commitDetailViewportFocused
-	content := m.commit.description
-	content += fmt.Sprintf("\n\n%s", m.commit.latestCheck.output)
+	s.WriteString(m.commit.description)
+	s.WriteString(fmt.Sprintf("\n\n%s", m.commit.latestCheck.output))
 
 	// for i, comment := range m.commit.comments {
 	// 	commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.author, comment.createdAt))
@@ -1043,7 +1065,7 @@ func (m *commitDetailModel) Init(ctx Model) tea.Cmd {
 	// 		content += commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content))
 	// 	}
 	// }
-	m.viewport.SetContent(content)
+	m.viewport.SetContent(s.String())
 	return nil
 }
 
@@ -1081,20 +1103,7 @@ func (m commitDetailModel) Update(msg tea.Msg) (commitDetailModel, tea.Cmd) {
 }
 
 func (m commitDetailModel) View() string {
-	var s strings.Builder
-	var status string
-	switch m.commit.latestCheck.status {
-	case "running":
-		status = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]")
-	case "failed":
-		status = lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]")
-	case "succeeded":
-		status = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]")
-	}
-	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.commit.abbreviatedId))
-	header := fmt.Sprintf("%s %s\nStatus: %s", identifier, m.commit.description, status)
-	s.WriteString(lipgloss.NewStyle().BorderBottom(true).BorderStyle(lipgloss.NormalBorder()).PaddingTop(0).Render(header))
-	s.WriteString("\n")
+  var s strings.Builder
 	s.WriteString(m.viewport.View())
 	return s.String()
 }
