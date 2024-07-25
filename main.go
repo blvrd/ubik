@@ -253,10 +253,6 @@ type Model struct {
 	Layout
 }
 
-func (m Model) percentageToWidth(percentage float32) int {
-	return int(float32(m.totalWidth-docStyle.GetHorizontalFrameSize()) * percentage)
-}
-
 func tabBorderWithBottom(left, middle, right string) lipgloss.Border {
 	border := lipgloss.RoundedBorder()
 	border.BottomLeft = left
