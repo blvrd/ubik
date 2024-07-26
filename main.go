@@ -1125,6 +1125,7 @@ const (
 )
 
 type issueDetailModel struct {
+	layout      Layout
 	issue       Issue
 	viewport    viewport.Model
 	focus       issueDetailFocusState
@@ -1133,6 +1134,7 @@ type issueDetailModel struct {
 
 func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
 	m.viewport = viewport.New(ctx.Layout.RightSize.Width, ctx.Layout.RightSize.Height)
+	m.layout = ctx.Layout
 	m.focus = issueDetailViewportFocused
 	var s strings.Builder
 	var status string
@@ -1204,6 +1206,7 @@ func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 			switch {
 			case key.Matches(msg, keys.Back):
 				m.focus = issueDetailViewportFocused
+				m.viewport.Height = m.layout.RightSize.Height
 			}
 		}
 		m.commentForm, cmd = m.commentForm.Update(msgg)
