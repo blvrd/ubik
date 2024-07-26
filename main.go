@@ -10,7 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/help"
+	// "github.com/charmbracelet/bubbles/help"
+	"github.com/blvrd/ubik/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/textarea"
@@ -124,29 +125,39 @@ func (k keyMap) FullHelp() [][]key.Binding {
 	switch k.FocusState {
 	case issueListFocused:
 		bindings = [][]key.Binding{
-			{k.Up, k.Down, k.IssueStatusDone, k.IssueStatusWontDo, k.IssueStatusInProgress, k.IssueCommentFormFocus},
-			{k.IssueNewForm, k.IssueDetailFocus, k.Help, k.Quit},
+			{k.Help, k.Quit},
+			{k.Up, k.Down},
+			{k.IssueNewForm, k.IssueDetailFocus},
+			{k.IssueStatusDone, k.IssueStatusWontDo},
+			{k.IssueStatusInProgress, k.IssueCommentFormFocus},
 		}
 	case issueDetailFocused:
 		bindings = [][]key.Binding{
-			{k.Up, k.Down, k.IssueStatusDone, k.IssueStatusWontDo, k.IssueStatusInProgress, k.IssueCommentFormFocus},
-			{k.IssueEditForm, k.Help, k.Back, k.Quit},
+			{k.Help, k.Quit},
+			{k.Up, k.Down},
+			{k.IssueEditForm, k.Back},
+			{k.IssueNewForm, k.IssueDetailFocus},
+			{k.IssueStatusDone, k.IssueStatusWontDo},
+			{k.IssueStatusInProgress, k.IssueCommentFormFocus},
 		}
 
 	case issueFormFocused:
 		bindings = [][]key.Binding{
-			{k.NextInput, k.Up, k.Down},
-			{k.Help, k.Back, k.Quit},
+			{k.Help, k.Quit},
+			{k.Up, k.Down},
+			{k.NextInput, k.Back},
 		}
 	case commitListFocused:
 		bindings = [][]key.Binding{
-			{k.Up, k.Down, k.CommitDetailFocus},
 			{k.Help, k.Quit},
+			{k.Up, k.Down},
+			{k.CommitDetailFocus},
 		}
 	case commitDetailFocused:
 		bindings = [][]key.Binding{
+			{k.Help, k.Quit},
 			{k.Up, k.Down},
-			{k.Help, k.Back, k.Quit},
+			{k.Back},
 		}
 	}
 
@@ -236,22 +247,21 @@ type Layout struct {
 }
 
 type Model struct {
-	loaded         bool
-	page           pageState
-	focusState     focusState
-	path           string
-	issueList      list.Model
-	issueDetail    issueDetailModel
-	issueForm      issueFormModel
-	commitList     list.Model
-	commitDetail   commitDetailModel
-	err            error
-	totalWidth     int
-	totalHeight    int
-	help           help.Model
-	styles         Styles
-	tabs           []string
-	lastWindowSize tea.WindowSizeMsg
+	loaded       bool
+	page         pageState
+	focusState   focusState
+	path         string
+	issueList    list.Model
+	issueDetail  issueDetailModel
+	issueForm    issueFormModel
+	commitList   list.Model
+	commitDetail commitDetailModel
+	err          error
+	totalWidth   int
+	totalHeight  int
+	help         help.Model
+	styles       Styles
+	tabs         []string
 	Layout
 }
 
@@ -267,48 +277,12 @@ var (
 	footerHeight      = helpStyle.GetVerticalFrameSize() + 1 // 1 row for the context
 )
 
-func DefaultLayout() Layout {
+func InitialModel() Model {
 	blLayout := bl.New()
 	headerId := blLayout.Add("dock north 4!")
 	leftId := blLayout.Add("width 80")
 	rightId := blLayout.Add("grow")
-	footerId := blLayout.Add("dock south 2")
-
-	layout := Layout{
-		BubbleLayout: blLayout,
-		HeaderID:     headerId,
-		LeftID:       leftId,
-		RightID:      rightId,
-		FooterID:     footerId,
-	}
-
-	return layout
-}
-
-func FullHelpLayout() Layout {
-	blLayout := bl.New()
-	headerId := blLayout.Add("dock north 4!")
-	leftId := blLayout.Add("width 80")
-	rightId := blLayout.Add("grow")
-	footerId := blLayout.Add("dock south 7")
-
-	layout := Layout{
-		BubbleLayout: blLayout,
-		HeaderID:     headerId,
-		LeftID:       leftId,
-		RightID:      rightId,
-		FooterID:     footerId,
-	}
-
-	return layout
-}
-
-func InitialModel() *Model {
-	blLayout := bl.New()
-	headerId := blLayout.Add("dock north 4!")
-	leftId := blLayout.Add("width 80")
-	rightId := blLayout.Add("grow")
-	footerId := blLayout.Add("dock south 2")
+	footerId := blLayout.Add("dock south 2!")
 
 	layout := Layout{
 		BubbleLayout: blLayout,
@@ -332,9 +306,12 @@ func InitialModel() *Model {
 	commitList.SetShowTitle(false)
 	commitList.Title = "Commits"
 
-	return &Model{
+	helpModel := help.New()
+	helpModel.FullSeparator = "    "
+
+	return Model{
 		focusState: issueListFocused,
-		help:       help.New(),
+		help:       helpModel,
 		page:       issues,
 		styles:     DefaultStyles(),
 		tabs:       []string{"Issues", "Checks"},
@@ -351,12 +328,6 @@ func (m Model) Init() tea.Cmd {
 type layoutMsg Layout
 type pathChangedMsg string
 
-func footerResized(layout Layout) tea.Cmd {
-	return func() tea.Msg {
-		return layoutMsg(layout)
-	}
-}
-
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
@@ -368,7 +339,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		if !m.loaded {
 			m.loaded = true
-			m.lastWindowSize = msg
 		}
 
 		return m, func() tea.Msg {
@@ -388,21 +358,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			listItems = append(listItems, commit)
 		}
 		m.commitList.SetItems(listItems)
-	case layoutMsg:
-		m.Layout = Layout(msg)
-
-		return m, func() tea.Msg {
-			return m.Layout.Resize(m.lastWindowSize.Width, m.lastWindowSize.Height)
-		}
 	case bl.BubbleLayoutMsg:
 		m.LeftSize, _ = msg.Size(m.LeftID)
 		m.RightSize, _ = msg.Size(m.RightID)
 		m.HeaderSize, _ = msg.Size(m.HeaderID)
 		m.FooterSize, _ = msg.Size(m.FooterID)
-		// log.Debugf("🪚 HeaderSize: %#v", m.HeaderSize)
-		// log.Debugf("🪚 LeftSize: %#v", m.LeftSize)
-		// log.Debugf("🪚 RightSize: %#v", m.RightSize)
-		// log.Debugf("🪚 FooterSize: %#v", m.FooterSize)
 
 		m.issueList.SetSize(m.LeftSize.Width, m.LeftSize.Height)
 		m.commitList.SetSize(m.LeftSize.Width, m.LeftSize.Height)
@@ -476,7 +436,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case key.Matches(msg, keys.Help):
 					if m.help.ShowAll {
 						m.help.ShowAll = false
-						return m, footerResized(DefaultLayout())
+						return m, nil
 					} else {
 						var maxHelpHeight int
 						for _, column := range keys.FullHelp() {
@@ -485,7 +445,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							}
 						}
 						m.help.ShowAll = true
-						return m, footerResized(FullHelpLayout())
+						return m, nil
 					}
 				case key.Matches(msg, keys.IssueStatusDone):
 					currentIndex := m.issueList.Index()
@@ -560,11 +520,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 					if m.help.ShowAll {
 						m.help.ShowAll = false
-						m.issueList.SetHeight(m.issueList.Height() + 4)
 					} else {
 						m.help.ShowAll = true
-						m.issueList.SetHeight(m.issueList.Height() - 4)
 					}
+					return m, nil
 				case key.Matches(msg, keys.IssueStatusDone):
 					if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
 						break
@@ -626,7 +585,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, cmd
 				case key.Matches(msg, keys.Back):
 					m.path = fmt.Sprintf("/issues")
-					log.Debugf("🪚 path: %s", m.path)
 					if m.issueDetail.focus == issueDetailViewportFocused {
 						m.focusState = issueListFocused
 						return m, func() tea.Msg {
