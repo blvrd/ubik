@@ -798,7 +798,6 @@ func (m Model) HelpKeys() keyMap {
 
 func boxStyle(size bl.Size) lipgloss.Style {
 	style := lipgloss.NewStyle().
-		// Foreground(lipgloss.Color("0")).
 		// Background(lipgloss.Color(fmt.Sprintf("%d", rand.Intn(255)))).
 		Width(size.Width).
 		Height(size.Height)
@@ -823,22 +822,8 @@ func (m Model) View() string {
 		} else {
 			style = inactiveTabStyle
 		}
-		// border, _, _, _, _ := style.GetBorder()
-		// if isFirst && isActive {
-		// 	border.BottomLeft = "│"
-		// } else if isFirst && !isActive {
-		// 	border.BottomLeft = "├"
-		// } else if isLast && isActive {
-		// 	border.BottomRight = "│"
-		// } else if isLast && !isActive {
-		// 	border.BottomRight = "┤"
-		// }
 		renderedTabs = append(renderedTabs, style.Render(t))
 	}
-
-	// row := lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
-	// doc.WriteString(row)
-	// doc.WriteString("\n")
 
 	var view string
 
