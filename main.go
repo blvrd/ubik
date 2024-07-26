@@ -627,7 +627,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.commitDetail = commitDetailModel{commit: commit}
 				m.commitDetail.Init(m)
 			}
-			m.issueList, cmd = m.issueList.Update(msg)
+			m.commitList, cmd = m.commitList.Update(msg)
 		case commitDetailFocused:
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
