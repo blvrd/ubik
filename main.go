@@ -236,20 +236,22 @@ type Layout struct {
 }
 
 type Model struct {
-	loaded       bool
-	page         pageState
-	focusState   focusState
-	issueList    list.Model
-	issueDetail  issueDetailModel
-	issueForm    issueFormModel
-	commitList   list.Model
-	commitDetail commitDetailModel
-	err          error
-	totalWidth   int
-	totalHeight  int
-	help         help.Model
-	styles       Styles
-	tabs         []string
+	loaded         bool
+	page           pageState
+	focusState     focusState
+	path           string
+	issueList      list.Model
+	issueDetail    issueDetailModel
+	issueForm      issueFormModel
+	commitList     list.Model
+	commitDetail   commitDetailModel
+	err            error
+	totalWidth     int
+	totalHeight    int
+	help           help.Model
+	styles         Styles
+	tabs           []string
+	lastWindowSize tea.WindowSizeMsg
 	Layout
 }
 
@@ -264,6 +266,42 @@ var (
 	helpStyle         = lipgloss.NewStyle().Padding(0, 0)
 	footerHeight      = helpStyle.GetVerticalFrameSize() + 1 // 1 row for the context
 )
+
+func DefaultLayout() Layout {
+	blLayout := bl.New()
+	headerId := blLayout.Add("dock north 4!")
+	leftId := blLayout.Add("width 80")
+	rightId := blLayout.Add("grow")
+	footerId := blLayout.Add("dock south 2")
+
+	layout := Layout{
+		BubbleLayout: blLayout,
+		HeaderID:     headerId,
+		LeftID:       leftId,
+		RightID:      rightId,
+		FooterID:     footerId,
+	}
+
+	return layout
+}
+
+func FullHelpLayout() Layout {
+	blLayout := bl.New()
+	headerId := blLayout.Add("dock north 4!")
+	leftId := blLayout.Add("width 80")
+	rightId := blLayout.Add("grow")
+	footerId := blLayout.Add("dock south 7")
+
+	layout := Layout{
+		BubbleLayout: blLayout,
+		HeaderID:     headerId,
+		LeftID:       leftId,
+		RightID:      rightId,
+		FooterID:     footerId,
+	}
+
+	return layout
+}
 
 func InitialModel() *Model {
 	blLayout := bl.New()
@@ -303,11 +341,12 @@ func (m Model) Init() tea.Cmd {
 	return tea.Batch(getIssues, getCommits)
 }
 
-type footerResizedMessage int
+type layoutMsg Layout
+type pathChangedMsg string
 
-func footerResized(height int) tea.Cmd {
+func footerResized(layout Layout) tea.Cmd {
 	return func() tea.Msg {
-		return footerResizedMessage(height)
+		return layoutMsg(layout)
 	}
 }
 
@@ -322,11 +361,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		if !m.loaded {
 			m.loaded = true
+			m.lastWindowSize = msg
 		}
 
 		return m, func() tea.Msg {
 			return m.Layout.Resize(msg.Width, msg.Height)
 		}
+	case pathChangedMsg:
+		return m, nil
 	case IssuesReadyMsg:
 		var listItems []list.Item
 		for _, issue := range msg {
@@ -339,20 +381,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			listItems = append(listItems, commit)
 		}
 		m.commitList.SetItems(listItems)
+	case layoutMsg:
+		m.Layout = Layout(msg)
+
+		return m, func() tea.Msg {
+			return m.Layout.Resize(m.lastWindowSize.Width, m.lastWindowSize.Height)
+		}
 	case bl.BubbleLayoutMsg:
 		m.LeftSize, _ = msg.Size(m.LeftID)
 		m.RightSize, _ = msg.Size(m.RightID)
 		m.HeaderSize, _ = msg.Size(m.HeaderID)
 		m.FooterSize, _ = msg.Size(m.FooterID)
+		// log.Debugf("🪚 HeaderSize: %#v", m.HeaderSize)
+		// log.Debugf("🪚 LeftSize: %#v", m.LeftSize)
+		// log.Debugf("🪚 RightSize: %#v", m.RightSize)
+		// log.Debugf("🪚 FooterSize: %#v", m.FooterSize)
 
-		m.issueList.SetWidth(m.LeftSize.Width)
-		m.issueList.SetHeight(m.LeftSize.Height)
-
-		m.commitList.SetWidth(m.LeftSize.Width)
-		m.commitList.SetHeight(m.LeftSize.Height)
-		// TODO: Should just update the lists instead of re-initializing them
-		// m.initIssueList(m.LeftSize.Width, m.LeftSize.Height)
-		// m.initCommitList(m.LeftSize.Width, m.LeftSize.Height)
+		m.issueList.SetSize(m.LeftSize.Width, m.LeftSize.Height)
+		m.commitList.SetSize(m.LeftSize.Width, m.LeftSize.Height)
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.NextPage):
@@ -365,6 +411,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.focusState = issueListFocused
 		}
 	}
+
+	// switch path {
+	// case "/issues":
+	// case "issues/:id":
+	// case "issues/:id/edit/title":
+	// // route keystrokes to issue form model's title field
+	//   // MSG = TAB KEY
+	// // WRAP IT (TAB KEY, extra info for the specific input)
+	// case "issues/:id/edit/description":
+	// // route keystrokes to issue form model's description field
+	// case "issues/:id/edit/confirm":
+	// // route keystrokes to issue form model's confirmation field
+	// }
 
 	switch m.page {
 	case issues:
@@ -410,7 +469,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case key.Matches(msg, keys.Help):
 					if m.help.ShowAll {
 						m.help.ShowAll = false
-						return m, footerResized(footerHeight)
+						return m, footerResized(DefaultLayout())
 					} else {
 						var maxHelpHeight int
 						for _, column := range keys.FullHelp() {
@@ -419,7 +478,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 							}
 						}
 						m.help.ShowAll = true
-						return m, footerResized(maxHelpHeight + 1)
+						return m, footerResized(FullHelpLayout())
 					}
 				case key.Matches(msg, keys.IssueStatusDone):
 					currentIndex := m.issueList.Index()
@@ -461,7 +520,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.focusState = issueDetailFocused
 					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
 					m.issueDetail.Init(m)
-					return m, cmd
+					return m, func() tea.Msg {
+						return pathChangedMsg(m.path)
+					}
 				case key.Matches(msg, keys.IssueNewForm):
 					m.focusState = issueFormFocused
 					m.issueForm = issueFormModel{editing: false}
@@ -557,12 +618,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 					return m, cmd
 				case key.Matches(msg, keys.Back):
+					m.path = fmt.Sprintf("/issues")
+					log.Debugf("🪚 path: %s", m.path)
 					if m.issueDetail.focus == issueDetailViewportFocused {
 						m.focusState = issueListFocused
+						return m, func() tea.Msg {
+							return pathChangedMsg(m.path)
+						}
 					} else {
 						m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
+						return m, cmd
 					}
-					return m, cmd
 				}
 			}
 
@@ -865,21 +931,21 @@ func (m Model) View() string {
 			commitDetailView := lipgloss.NewStyle().
 				Render(m.commitDetail.View())
 			view = lipgloss.JoinVertical(
-			  lipgloss.Left,
-        boxStyle(m.HeaderSize).Render(
-          lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-        ),
-			  lipgloss.JoinHorizontal(lipgloss.Top, commitListView, commitDetailView),
-			  help,
+				lipgloss.Left,
+				boxStyle(m.HeaderSize).Render(
+					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+				),
+				lipgloss.JoinHorizontal(lipgloss.Top, commitListView, commitDetailView),
+				help,
 			)
 		default:
 			view = lipgloss.JoinVertical(
-			  lipgloss.Left,
-        boxStyle(m.HeaderSize).Render(
-          lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-        ),
-			  boxStyle(m.LeftSize).Render(commitListView),
-			  boxStyle(m.FooterSize).Render(help),
+				lipgloss.Left,
+				boxStyle(m.HeaderSize).Render(
+					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+				),
+				boxStyle(m.LeftSize).Render(commitListView),
+				boxStyle(m.FooterSize).Render(help),
 			)
 		}
 	}
@@ -1081,7 +1147,7 @@ func (m commitDetailModel) Update(msg tea.Msg) (commitDetailModel, tea.Cmd) {
 }
 
 func (m commitDetailModel) View() string {
-  var s strings.Builder
+	var s strings.Builder
 	s.WriteString(m.viewport.View())
 	return s.String()
 }
