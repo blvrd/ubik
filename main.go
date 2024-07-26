@@ -320,9 +320,16 @@ func InitialModel() *Model {
 
 	issueList := list.New([]list.Item{}, Issue{}, 0, 0)
 	issueList.SetShowHelp(false)
+	issueList.SetShowTitle(false)
+	issueList.SetShowStatusBar(false)
+	issueList.Styles.TitleBar = lipgloss.NewStyle().Padding(0)
+	issueList.Styles.PaginationStyle = lipgloss.NewStyle().Padding(0)
+	issueList.FilterInput.Prompt = "search: "
+	issueList.FilterInput.PromptStyle = lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText)
 	issueList.Title = "Issues"
 	commitList := list.New([]list.Item{}, Commit{}, 0, 0)
 	commitList.SetShowHelp(false)
+	commitList.SetShowTitle(false)
 	commitList.Title = "Commits"
 
 	return &Model{
