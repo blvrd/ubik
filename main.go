@@ -587,6 +587,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case checks:
 		switch m.focusState {
 		case commitListFocused:
+			if m.commitList.SettingFilter() {
+				m.commitList, cmd = m.commitList.Update(msg)
+				return m, cmd
+			}
+
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
 				switch {
