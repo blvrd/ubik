@@ -366,17 +366,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.issueList.SetSize(m.LeftSize.Width, m.LeftSize.Height)
 		m.commitList.SetSize(m.LeftSize.Width, m.LeftSize.Height)
-	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, keys.NextPage):
-			nextPage := clamp(int(m.page+1), 0, int(checks))
-			m.page = pageState(nextPage)
-			m.focusState = commitListFocused
-		case key.Matches(msg, keys.PrevPage):
-			prevPage := clamp(int(m.page-1), 0, int(checks))
-			m.page = pageState(prevPage)
-			m.focusState = issueListFocused
-		}
 	}
 
 	// switch path {
@@ -495,6 +484,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueForm = issueFormModel{editing: false}
 					m.issueForm.Init("", "")
 					cmd = m.issueForm.titleInput.Focus()
+				case key.Matches(msg, keys.NextPage):
+					nextPage := clamp(int(m.page+1), 0, int(checks))
+					m.page = pageState(nextPage)
+					m.focusState = commitListFocused
+				case key.Matches(msg, keys.PrevPage):
+					prevPage := clamp(int(m.page-1), 0, int(checks))
+					m.page = pageState(prevPage)
+					m.focusState = issueListFocused
 				}
 			}
 
@@ -646,6 +643,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.commitDetail = commitDetailModel{commit: m.commitList.SelectedItem().(Commit)}
 					m.commitDetail.Init(m)
 					return m, cmd
+				case key.Matches(msg, keys.NextPage):
+					nextPage := clamp(int(m.page+1), 0, int(checks))
+					m.page = pageState(nextPage)
+					m.focusState = commitListFocused
+				case key.Matches(msg, keys.PrevPage):
+					prevPage := clamp(int(m.page-1), 0, int(checks))
+					m.page = pageState(prevPage)
+					m.focusState = issueListFocused
 				}
 			case checkResult:
 				var commit Commit
