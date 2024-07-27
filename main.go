@@ -1335,6 +1335,7 @@ func (m *issueFormModel) SetDescription(description string) {
 	m.descriptionInput = textarea.New()
 	m.descriptionInput.CharLimit = 0 // unlimited
 	m.descriptionInput.MaxHeight = 0 // unlimited
+	m.descriptionInput.ShowLineNumbers = false
 	m.descriptionInput.SetHeight(30)
 	m.descriptionInput.SetWidth(80)
 	m.descriptionInput.SetValue(description)
