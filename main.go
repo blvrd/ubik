@@ -1353,8 +1353,15 @@ type commentFormModel struct {
 }
 
 func NewCommentFormModel() commentFormModel {
+	t := textarea.New()
+	t.ShowLineNumbers = false
+	t.Prompt = "┃"
+	t.FocusedStyle.CursorLine = lipgloss.NewStyle().Background(lipgloss.Color("transparent"))
+	t.SetCursor(0)
+	t.Focus()
+
 	return commentFormModel{
-		contentInput: textarea.New(),
+		contentInput: t,
 		focusState:   commentContentFocused,
 	}
 }
@@ -1363,10 +1370,8 @@ func (m commentFormModel) Submit() tea.Msg {
 	return m
 }
 
-func (m *commentFormModel) Init() tea.Cmd {
-	m.focusState = commentContentFocused
-	m.contentInput.Focus()
-	return textinput.Blink
+func (m commentFormModel) Init() tea.Cmd {
+	return textarea.Blink
 }
 
 func (m commentFormModel) Update(msg tea.Msg) (commentFormModel, tea.Cmd) {
