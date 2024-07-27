@@ -1302,8 +1302,10 @@ func (m issueFormModel) Update(msg tea.Msg) (issueFormModel, tea.Cmd) {
 func (m issueFormModel) View() string {
 	var s strings.Builder
 
+	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", m.identifier))
+
 	if m.editing {
-		s.WriteString(fmt.Sprintf("Editing issue #%s\n\n", m.identifier))
+		s.WriteString(fmt.Sprintf("Editing issue %s\n\n", identifier))
 	} else {
 		s.WriteString("New issue\n\n")
 	}
