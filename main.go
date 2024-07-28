@@ -651,6 +651,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					prevPage := clamp(int(m.page-1), 0, int(checks))
 					m.page = pageState(prevPage)
 					m.focusState = issueListFocused
+				case key.Matches(msg, keys.Help):
+					if m.help.ShowAll {
+						m.help.ShowAll = false
+						return m, nil
+					} else {
+						var maxHelpHeight int
+						for _, column := range keys.FullHelp() {
+							if len(column) > maxHelpHeight {
+								maxHelpHeight = len(column)
+							}
+						}
+						m.help.ShowAll = true
+						return m, nil
+					}
 				}
 			case checkResult:
 				var commit Commit
