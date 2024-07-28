@@ -304,6 +304,11 @@ func InitialModel() Model {
 	commitList := list.New([]list.Item{}, Commit{}, 0, 0)
 	commitList.SetShowHelp(false)
 	commitList.SetShowTitle(false)
+	commitList.SetShowStatusBar(false)
+	commitList.Styles.TitleBar = lipgloss.NewStyle().Padding(0)
+	commitList.Styles.PaginationStyle = lipgloss.NewStyle().Padding(0)
+	commitList.FilterInput.Prompt = "search: "
+	commitList.FilterInput.PromptStyle = lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText)
 	commitList.Title = "Commits"
 
 	helpModel := help.New()
