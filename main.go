@@ -739,11 +739,13 @@ func RunCheck(commitId string) tea.Cmd {
 		command := exec.Command("git", "worktree", "add", "--detach", path, commitId)
 		removeWorktree := exec.Command("git", "worktree", "remove", path)
 		defer removeWorktree.Run()
+
 		_, err := command.Output()
 		if err != nil {
 			log.Fatal(err)
 		}
 		command = exec.Command("go", "test")
+		command.Dir = path
 		output, err := command.Output()
 		if err != nil {
 			log.Debugf("%#v", err)
