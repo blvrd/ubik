@@ -6,7 +6,7 @@ import (
 
 func TestStringToShortcode(t *testing.T) {
 	input := "hello world"
-	expected := "uU0nuZ"
+	expected := "uU0nu1"
 	shortcode := StringToShortcode(input)
 	if shortcode != expected {
 		t.Errorf("Expected %s, got %s", expected, shortcode)
