@@ -1458,6 +1458,7 @@ func main() {
 	}
 	log.SetOutput(f)
 	log.SetLevel(log.DebugLevel)
+	log.SetReportCaller(true)
 
 	if err != nil {
 		log.Print("fatal:", err)
