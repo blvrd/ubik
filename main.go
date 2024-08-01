@@ -591,12 +591,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 					return m, tea.Sequence(NavigateTo("/issues/edit"), cmd)
 				case key.Matches(msg, keys.Back):
-					m.path = fmt.Sprintf("/issues")
 					if m.issueDetail.focus == issueDetailViewportFocused {
-						m.focusState = issueListFocused
-						return m, func() tea.Msg {
-							return pathChangedMsg(m.path)
-						}
+						return m, NavigateTo("/issues/index")
 					} else {
 						m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
 						return m, cmd
