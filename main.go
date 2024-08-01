@@ -24,6 +24,14 @@ import (
 	bl "github.com/winder/bubblelayout"
 )
 
+type pathChangedMsg string
+
+func NavigateTo(path string) tea.Cmd {
+	return func() tea.Msg {
+		return pathChangedMsg(path)
+	}
+}
+
 type Styles struct {
 	Theme Theme
 }
@@ -315,6 +323,7 @@ func InitialModel() Model {
 	helpModel.FullSeparator = "    "
 
 	return Model{
+		path:       "/issues/index",
 		focusState: issueListFocused,
 		help:       helpModel,
 		page:       issues,
@@ -331,7 +340,6 @@ func (m Model) Init() tea.Cmd {
 }
 
 type layoutMsg Layout
-type pathChangedMsg string
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
@@ -350,7 +358,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.Layout.Resize(msg.Width, msg.Height)
 		}
 	case pathChangedMsg:
-		return m, nil
+		m.path = string(msg)
+		log.Debug(m.path)
 	case IssuesReadyMsg:
 		var listItems []list.Item
 		for _, issue := range msg {
@@ -371,54 +380,51 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.issueList.SetSize(m.LeftSize.Width, m.LeftSize.Height)
 		m.commitList.SetSize(m.LeftSize.Width, m.LeftSize.Height)
+	case issueFormModel:
+		if msg.editing {
+			m.focusState = issueDetailFocused
+			currentIndex := m.issueList.Index()
+			currentIssue := m.issueList.SelectedItem().(Issue)
+			currentIssue.title = msg.titleInput.Value()
+			currentIssue.description = msg.descriptionInput.Value()
+			m.issueDetail = issueDetailModel{issue: currentIssue}
+			m.issueDetail.Init(m)
+			m.issueList.SetItem(currentIndex, currentIssue)
+		} else {
+			id := uuid.NewString()
+			newIssue := Issue{
+				id:          id,
+				shortcode:   StringToShortcode(id),
+				title:       msg.titleInput.Value(),
+				description: msg.descriptionInput.Value(),
+				status:      todo,
+				author:      "garrett@blvrd.co",
+			}
+			m.issueList.InsertItem(0, newIssue)
+			m.issueList.Select(0)
+			m.focusState = issueDetailFocused
+			m.issueDetail = issueDetailModel{issue: newIssue}
+			m.issueDetail.Init(m)
+		}
 	}
 
 	// switch path {
 	// case "/issues":
-	// case "issues/:id":
-	// case "issues/:id/edit/title":
+	// case "/issues/:id":
+	// case "/issues/:id/edit/title":
 	// // route keystrokes to issue form model's title field
 	//   // MSG = TAB KEY
 	// // WRAP IT (TAB KEY, extra info for the specific input)
-	// case "issues/:id/edit/description":
+	// case "/issues/:id/edit/description":
 	// // route keystrokes to issue form model's description field
-	// case "issues/:id/edit/confirm":
+	// case "/issues/:id/edit/confirm":
 	// // route keystrokes to issue form model's confirmation field
 	// }
 
-	switch m.page {
-	case issues:
-		switch msg := msg.(type) {
-		case issueFormModel:
-			if msg.editing {
-				m.focusState = issueDetailFocused
-				currentIndex := m.issueList.Index()
-				currentIssue := m.issueList.SelectedItem().(Issue)
-				currentIssue.title = msg.titleInput.Value()
-				currentIssue.description = msg.descriptionInput.Value()
-				m.issueDetail = issueDetailModel{issue: currentIssue}
-				m.issueDetail.Init(m)
-				m.issueList.SetItem(currentIndex, currentIssue)
-			} else {
-				id := uuid.NewString()
-				newIssue := Issue{
-					id:          id,
-					shortcode:   StringToShortcode(id),
-					title:       msg.titleInput.Value(),
-					description: msg.descriptionInput.Value(),
-					status:      todo,
-					author:      "garrett@blvrd.co",
-				}
-				m.issueList.InsertItem(0, newIssue)
-				m.issueList.Select(0)
-				m.focusState = issueDetailFocused
-				m.issueDetail = issueDetailModel{issue: newIssue}
-				m.issueDetail.Init(m)
-			}
-		}
-
-		switch m.focusState {
-		case issueListFocused:
+	switch {
+	case strings.HasPrefix(m.path, "/issues"):
+		switch {
+		case strings.HasSuffix(m.path, "/index"):
 			if m.issueList.SettingFilter() {
 				m.issueList, cmd = m.issueList.Update(msg)
 				return m, cmd
@@ -482,7 +488,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
 					m.issueDetail.Init(m)
 					return m, func() tea.Msg {
-						return pathChangedMsg(m.path)
+						return pathChangedMsg("/issues/show")
 					}
 				case key.Matches(msg, keys.IssueNewForm):
 					m.focusState = issueFormFocused
@@ -501,7 +507,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			m.issueList, cmd = m.issueList.Update(msg)
-		case issueDetailFocused:
+		case strings.HasSuffix(m.path, "/show"):
 			switch msg := msg.(type) {
 			case commentFormModel:
 				currentIndex := m.issueList.Index()
@@ -575,7 +581,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					if m.issueDetail.focus == issueDetailCommentFocused {
 						m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
 					} else {
-						m.focusState = issueFormFocused
 						selectedIssue := m.issueList.SelectedItem().(Issue)
 						m.issueForm = issueFormModel{editing: true, identifier: selectedIssue.shortcode}
 						cmd = m.issueForm.Init(selectedIssue.title, selectedIssue.description)
@@ -584,7 +589,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// m.issueForm.titleInput.Focus()
 					}
 
-					return m, cmd
+					return m, tea.Sequence(NavigateTo("/issues/edit"), cmd)
 				case key.Matches(msg, keys.Back):
 					m.path = fmt.Sprintf("/issues")
 					if m.issueDetail.focus == issueDetailViewportFocused {
@@ -600,7 +605,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
-		case issueFormFocused:
+		case strings.HasSuffix(m.path, "/edit"):
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
 				switch {
@@ -617,7 +622,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			m.issueForm, cmd = m.issueForm.Update(componentUpdateMsg)
 		}
-	case checks:
+	case strings.HasPrefix(m.path, "/checks"):
 		switch m.focusState {
 		case commitListFocused:
 			if m.commitList.SettingFilter() {
@@ -886,39 +891,73 @@ func (m Model) View() string {
 
 	help := helpStyle.Render(m.help.View(m.HelpKeys()))
 
-	switch m.page {
-	case issues:
+	switch {
+	case strings.HasPrefix(m.path, "/issues"):
 		var sidebarView string
 
-		switch m.focusState {
-		case issueDetailFocused:
+		switch {
+		case strings.HasSuffix(m.path, "/index"):
+			view = lipgloss.JoinVertical(
+				lipgloss.Left,
+				boxStyle(m.HeaderSize).Render(
+					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+				),
+				lipgloss.JoinHorizontal(
+					lipgloss.Top,
+					boxStyle(m.LeftSize).Render(m.issueList.View()),
+				),
+				boxStyle(m.FooterSize).Render(help),
+			)
+		case strings.HasSuffix(m.path, "/show"):
 			sidebarView = lipgloss.NewStyle().
 				Render(m.issueDetail.View())
-		case issueFormFocused:
+
+			view = lipgloss.JoinVertical(
+				lipgloss.Left,
+				boxStyle(m.HeaderSize).Render(
+					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+				),
+				lipgloss.JoinHorizontal(
+					lipgloss.Top,
+					boxStyle(m.LeftSize).Render(m.issueList.View()),
+					boxStyle(m.RightSize).Render(sidebarView),
+				),
+				boxStyle(m.FooterSize).Render(help),
+			)
+		case strings.HasSuffix(m.path, "/edit"):
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
 				Render(m.issueForm.View())
 
+			view = lipgloss.JoinVertical(
+				lipgloss.Left,
+				boxStyle(m.HeaderSize).Render(
+					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+				),
+				lipgloss.JoinHorizontal(
+					lipgloss.Top,
+					boxStyle(m.LeftSize).Render(m.issueList.View()),
+					boxStyle(m.RightSize).Render(sidebarView),
+				),
+				boxStyle(m.FooterSize).Render(help),
+			)
 		}
 
-		view = lipgloss.JoinVertical(
-			lipgloss.Left,
-			boxStyle(m.HeaderSize).Render(
-				lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-			),
-			lipgloss.JoinHorizontal(
-				lipgloss.Top,
-				boxStyle(m.LeftSize).Render(m.issueList.View()),
-				boxStyle(m.RightSize).Render(sidebarView),
-			),
-			boxStyle(m.FooterSize).Render(help),
-		)
-	case checks:
+	case strings.HasPrefix(m.path, "/checks"):
 		commitListView := lipgloss.NewStyle().
 			Render(m.commitList.View())
-		switch m.focusState {
-		case commitDetailFocused:
+		switch {
+		case strings.HasPrefix(m.path, "/index"):
+			view = lipgloss.JoinVertical(
+				lipgloss.Left,
+				boxStyle(m.HeaderSize).Render(
+					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+				),
+				boxStyle(m.LeftSize).Render(commitListView),
+				boxStyle(m.FooterSize).Render(help),
+			)
+		case strings.HasPrefix(m.path, "/show"):
 			commitDetailView := lipgloss.NewStyle().
 				Render(m.commitDetail.View())
 			view = lipgloss.JoinVertical(
@@ -928,15 +967,6 @@ func (m Model) View() string {
 				),
 				lipgloss.JoinHorizontal(lipgloss.Top, commitListView, commitDetailView),
 				help,
-			)
-		default:
-			view = lipgloss.JoinVertical(
-				lipgloss.Left,
-				boxStyle(m.HeaderSize).Render(
-					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-				),
-				boxStyle(m.LeftSize).Render(commitListView),
-				boxStyle(m.FooterSize).Render(help),
 			)
 		}
 	}
@@ -1317,7 +1347,8 @@ func (m issueFormModel) Update(msg tea.Msg) (issueFormModel, tea.Cmd) {
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, keys.Submit):
-				return m, m.Submit
+				// TODO: shouldn't navigate here. The redirect path should be decided in a "controller" in the Update function
+				return m, tea.Sequence(NavigateTo("/issues/show"), m.Submit)
 			}
 		}
 	}
