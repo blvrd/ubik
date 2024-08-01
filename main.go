@@ -406,6 +406,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueDetail = issueDetailModel{issue: newIssue}
 			m.issueDetail.Init(m)
 		}
+
+		return m, NavigateTo("/issues/show")
 	}
 
 	// switch path {
@@ -1343,8 +1345,7 @@ func (m issueFormModel) Update(msg tea.Msg) (issueFormModel, tea.Cmd) {
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, keys.Submit):
-				// TODO: shouldn't navigate here. The redirect path should be decided in a "controller" in the Update function
-				return m, tea.Sequence(NavigateTo("/issues/show"), m.Submit)
+				return m, m.Submit
 			}
 		}
 	}
