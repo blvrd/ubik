@@ -79,23 +79,6 @@ const (
 	wontDo     status = 4
 )
 
-type focusState int
-
-const (
-	issueListFocused    focusState = 1
-	issueDetailFocused  focusState = 2
-	issueFormFocused    focusState = 3
-	commitListFocused   focusState = 4
-	commitDetailFocused focusState = 5
-)
-
-type pageState int
-
-const (
-	issues pageState = 0
-	checks pageState = 1
-)
-
 type keyMap struct {
 	Path                  string
 	Up                    key.Binding
@@ -256,8 +239,6 @@ type Layout struct {
 
 type Model struct {
 	loaded       bool
-	page         pageState
-	focusState   focusState
 	path         string
 	issueList    list.Model
 	issueDetail  issueDetailModel
@@ -324,9 +305,7 @@ func InitialModel() Model {
 
 	return Model{
 		path:       "/issues/index",
-		focusState: issueListFocused,
 		help:       helpModel,
-		page:       issues,
 		styles:     DefaultStyles(),
 		tabs:       []string{"Issues", "Checks"},
 		Layout:     layout,
@@ -391,7 +370,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, NavigateTo("/issues/show")
 	case issueFormModel:
 		if msg.editing {
-			m.focusState = issueDetailFocused
 			currentIndex := m.issueList.Index()
 			currentIssue := m.issueList.SelectedItem().(Issue)
 			currentIssue.title = msg.titleInput.Value()
@@ -411,7 +389,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.issueList.InsertItem(0, newIssue)
 			m.issueList.Select(0)
-			m.focusState = issueDetailFocused
 			m.issueDetail = issueDetailModel{issue: newIssue}
 			m.issueDetail.Init(m)
 		}
@@ -489,29 +466,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmd = m.issueList.SetItem(currentIndex, currentIssue)
 					return m, cmd
 				case key.Matches(msg, keys.IssueCommentFormFocus):
-					m.focusState = issueDetailFocused
 					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
 					m.issueDetail.Init(m)
 					m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
 					return m, cmd
 				case key.Matches(msg, keys.IssueDetailFocus):
-					m.focusState = issueDetailFocused
 					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
 					m.issueDetail.Init(m)
 					return m, NavigateTo("/issues/show")
 				case key.Matches(msg, keys.IssueNewForm):
-					m.focusState = issueFormFocused
 					m.issueForm = issueFormModel{editing: false}
 					m.issueForm.Init("", "")
 					cmd = m.issueForm.titleInput.Focus()
 				case key.Matches(msg, keys.NextPage):
-					nextPage := clamp(int(m.page+1), 0, int(checks))
-					m.page = pageState(nextPage)
-					m.focusState = commitListFocused
+					return m, NavigateTo("/checks/index")
 				case key.Matches(msg, keys.PrevPage):
-					prevPage := clamp(int(m.page-1), 0, int(checks))
-					m.page = pageState(prevPage)
-					m.focusState = issueListFocused
+					return m, nil
 				}
 			}
 
@@ -521,7 +491,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(msg, keys.Help):
-					if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
+					if m.issueDetail.focus == issueDetailCommentFocused {
 						break
 					}
 
@@ -532,7 +502,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					return m, nil
 				case key.Matches(msg, keys.IssueStatusDone):
-					if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
+					if m.issueDetail.focus == issueDetailCommentFocused {
 						break
 					}
 					currentIndex := m.issueList.Index()
@@ -547,7 +517,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmd = m.issueList.SetItem(currentIndex, currentIssue)
 					return m, cmd
 				case key.Matches(msg, keys.IssueStatusWontDo):
-					if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
+					if m.issueDetail.focus == issueDetailCommentFocused {
 						break
 					}
 					currentIndex := m.issueList.Index()
@@ -562,7 +532,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmd = m.issueList.SetItem(currentIndex, currentIssue)
 					return m, cmd
 				case key.Matches(msg, keys.IssueStatusInProgress):
-					if m.focusState == issueFormFocused || m.issueDetail.focus == issueDetailCommentFocused {
+					if m.issueDetail.focus == issueDetailCommentFocused {
 						break
 					}
 					currentIndex := m.issueList.Index()
@@ -610,10 +580,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				switch {
 				case key.Matches(msg, keys.Back):
 					if m.issueForm.editing {
-						m.focusState = issueDetailFocused
 						return m, cmd
 					} else {
-						m.focusState = issueListFocused
 						return m, cmd
 					}
 				}
@@ -622,8 +590,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueForm, cmd = m.issueForm.Update(componentUpdateMsg)
 		}
 	case strings.HasPrefix(m.path, "/checks"):
-		switch m.focusState {
-		case commitListFocused:
+		switch {
+		case strings.HasSuffix(m.path, "/index"):
 			if m.commitList.SettingFilter() {
 				m.commitList, cmd = m.commitList.Update(msg)
 				return m, cmd
@@ -648,18 +616,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmd = RunCheck(commit.id)
 					return m, cmd
 				case key.Matches(msg, keys.CommitDetailFocus):
-					m.focusState = commitDetailFocused
 					m.commitDetail = commitDetailModel{commit: m.commitList.SelectedItem().(Commit)}
 					m.commitDetail.Init(m)
 					return m, cmd
 				case key.Matches(msg, keys.NextPage):
-					nextPage := clamp(int(m.page+1), 0, int(checks))
-					m.page = pageState(nextPage)
-					m.focusState = commitListFocused
+					return m, nil
 				case key.Matches(msg, keys.PrevPage):
-					prevPage := clamp(int(m.page-1), 0, int(checks))
-					m.page = pageState(prevPage)
-					m.focusState = issueListFocused
+					return m, NavigateTo("/issues/index")
 				case key.Matches(msg, keys.Help):
 					if m.help.ShowAll {
 						m.help.ShowAll = false
@@ -692,12 +655,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.commitDetail.Init(m)
 			}
 			m.commitList, cmd = m.commitList.Update(msg)
-		case commitDetailFocused:
+		case strings.HasSuffix(m.path, "/show"):
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(msg, keys.Back):
-					m.focusState = commitListFocused
 				case key.Matches(msg, keys.RunCheck):
 					commit := m.commitList.SelectedItem().(Commit)
 					commit.latestCheck = Check{status: "running"}
@@ -835,9 +797,9 @@ func (m Model) HelpKeys() keyMap {
 		),
 	}
 
-	switch m.focusState {
-	case issueListFocused:
-	case issueDetailFocused, commitDetailFocused:
+	switch {
+	case strings.HasPrefix(m.path, "/issues/index"):
+	case strings.HasSuffix(m.path, "/show"):
 		keys.Up = key.NewBinding(
 			key.WithKeys("up", "k"),
 			key.WithHelp("↑/k", "scroll up"),
@@ -875,17 +837,6 @@ func (m Model) View() string {
 
 	var renderedTabs []string
 
-	for i, t := range m.tabs {
-		var style lipgloss.Style
-		isActive := pageState(i) == m.page
-		if isActive {
-			style = activeTabStyle
-		} else {
-			style = inactiveTabStyle
-		}
-		renderedTabs = append(renderedTabs, style.Render(t))
-	}
-
 	var view string
 
 	help := helpStyle.Render(m.help.View(m.HelpKeys()))
@@ -894,8 +845,20 @@ func (m Model) View() string {
 	case strings.HasPrefix(m.path, "/issues"):
 		var sidebarView string
 
+		for _, t := range m.tabs {
+			var style lipgloss.Style
+			isActive := t == "Issues"
+			if isActive {
+				style = activeTabStyle
+			} else {
+				style = inactiveTabStyle
+			}
+			renderedTabs = append(renderedTabs, style.Render(t))
+		}
+
 		switch {
 		case strings.HasSuffix(m.path, "/index"):
+
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
 				boxStyle(m.HeaderSize).Render(
@@ -961,10 +924,21 @@ func (m Model) View() string {
 		}
 
 	case strings.HasPrefix(m.path, "/checks"):
+		for _, t := range m.tabs {
+			var style lipgloss.Style
+			isActive := t == "Checks"
+			if isActive {
+				style = activeTabStyle
+			} else {
+				style = inactiveTabStyle
+			}
+			renderedTabs = append(renderedTabs, style.Render(t))
+		}
 		commitListView := lipgloss.NewStyle().
 			Render(m.commitList.View())
+
 		switch {
-		case strings.HasPrefix(m.path, "/index"):
+		case strings.HasSuffix(m.path, "/index"):
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
 				boxStyle(m.HeaderSize).Render(
@@ -973,7 +947,7 @@ func (m Model) View() string {
 				boxStyle(m.LeftSize).Render(commitListView),
 				boxStyle(m.FooterSize).Render(help),
 			)
-		case strings.HasPrefix(m.path, "/show"):
+		case strings.HasSuffix(m.path, "/show"):
 			commitDetailView := lipgloss.NewStyle().
 				Render(m.commitDetail.View())
 			view = lipgloss.JoinVertical(
