@@ -97,7 +97,7 @@ const (
 )
 
 type keyMap struct {
-	FocusState            focusState
+	Path                  string
 	Up                    key.Binding
 	Down                  key.Binding
 	Left                  key.Binding
@@ -130,8 +130,9 @@ func (k keyMap) ShortHelp() []key.Binding {
 // key.Map interface.
 func (k keyMap) FullHelp() [][]key.Binding {
 	var bindings [][]key.Binding
-	switch k.FocusState {
-	case issueListFocused:
+
+	switch {
+	case strings.HasPrefix(k.Path, "/issues/index"):
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
@@ -139,7 +140,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 			{k.IssueStatusDone, k.IssueStatusWontDo},
 			{k.IssueStatusInProgress, k.IssueCommentFormFocus},
 		}
-	case issueDetailFocused:
+	case strings.HasPrefix(k.Path, "/issues/show"):
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
@@ -148,20 +149,19 @@ func (k keyMap) FullHelp() [][]key.Binding {
 			{k.IssueStatusDone, k.IssueStatusWontDo},
 			{k.IssueStatusInProgress, k.IssueCommentFormFocus},
 		}
-
-	case issueFormFocused:
+	case strings.HasPrefix(k.Path, "/issues/edit"):
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
 			{k.NextInput, k.Back},
 		}
-	case commitListFocused:
+	case strings.HasPrefix(k.Path, "/commits/index"):
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
 			{k.CommitDetailFocus},
 		}
-	case commitDetailFocused:
+	case strings.HasPrefix(k.Path, "/commits/show"):
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
@@ -343,7 +343,6 @@ type layoutMsg Layout
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
-	var cmds []tea.Cmd
 
 	keys := m.HelpKeys()
 	componentUpdateMsg := updateMsg{originalMsg: msg, keys: keys}
@@ -853,7 +852,7 @@ func (m Model) HelpKeys() keyMap {
 		// keys.IssueCommentFormFocus.SetEnabled(false)
 	}
 
-	keys.FocusState = m.focusState
+	keys.Path = m.path
 
 	return keys
 }
