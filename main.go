@@ -1217,7 +1217,6 @@ type issueDetailModel struct {
 }
 
 func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
-	// m.issueDetail.commentForm = NewCommentFormModel()
 	m.viewport = viewport.New(
 		ctx.Layout.RightSize.Width,
 		ctx.Layout.RightSize.Height-len(strings.Split(m.commentForm.View(), "\n")),
