@@ -467,11 +467,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, cmd
 				case key.Matches(msg, keys.IssueCommentFormFocus):
 					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
+					m.issueDetail.commentForm = NewCommentFormModel()
+					m.issueDetail.commentForm.Init()
 					m.issueDetail.Init(m)
-					m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
-					return m, cmd
+					return m, NavigateTo("/issues/show/comments/new")
 				case key.Matches(msg, keys.IssueDetailFocus):
 					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
+					m.issueDetail.commentForm = NewCommentFormModel()
+					m.issueDetail.commentForm.Init()
 					m.issueDetail.Init(m)
 					return m, NavigateTo("/issues/show")
 				case key.Matches(msg, keys.IssueNewForm):
@@ -570,8 +573,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
-
 		case strings.HasSuffix(m.path, "/show/comments/new"):
+			switch msg := msg.(type) {
+			case tea.KeyMsg:
+				switch {
+				case key.Matches(msg, keys.Back):
+					currentIssue := m.issueList.SelectedItem().(Issue)
+					m.issueDetail = issueDetailModel{issue: currentIssue}
+					m.issueDetail.commentForm = NewCommentFormModel()
+					m.issueDetail.Init(m)
+					return m, NavigateTo("/issues/show")
+				}
+			}
 			m.issueDetail.commentForm, cmd = m.issueDetail.commentForm.Update(componentUpdateMsg)
 			return m, cmd
 		case strings.HasSuffix(m.path, "/edit"):
@@ -871,7 +884,7 @@ func (m Model) View() string {
 				boxStyle(m.FooterSize).Render(help),
 			)
 		case strings.HasSuffix(m.path, "/show"):
-
+			log.Debugf("🪚 path: %#v", m.path)
 			sidebarView = lipgloss.NewStyle().
 				Render(m.issueDetail.View())
 
@@ -888,8 +901,13 @@ func (m Model) View() string {
 				boxStyle(m.FooterSize).Render(help),
 			)
 		case strings.HasSuffix(m.path, "/show/comments/new"):
+			log.Debugf("🪚 path: %#v", m.path)
 			sidebarView = lipgloss.NewStyle().
-				Render(lipgloss.JoinVertical(lipgloss.Left, m.issueDetail.View(), m.issueDetail.commentForm.View()))
+				Render(lipgloss.JoinVertical(
+					lipgloss.Left,
+					m.issueDetail.View(),
+					m.issueDetail.commentForm.View(),
+				))
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -1179,7 +1197,11 @@ type issueDetailModel struct {
 }
 
 func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
-	m.viewport = viewport.New(ctx.Layout.RightSize.Width, ctx.Layout.RightSize.Height)
+	// m.issueDetail.commentForm = NewCommentFormModel()
+	m.viewport = viewport.New(
+		ctx.Layout.RightSize.Width,
+		ctx.Layout.RightSize.Height-len(strings.Split(m.commentForm.View(), "\n")),
+	)
 	m.layout = ctx.Layout
 	m.focus = issueDetailViewportFocused
 	var s strings.Builder
@@ -1232,6 +1254,7 @@ func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 	msgg := msg.(updateMsg)
 	keys := msgg.keys
 
+	log.Debug("🪚hiiiiiiiiiiiiiiiiii")
 	switch m.focus {
 	case issueDetailViewportFocused:
 		switch msg := msgg.originalMsg.(type) {
@@ -1241,9 +1264,8 @@ func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 				m.focus = issueDetailCommentFocused
 				m.commentForm = NewCommentFormModel()
 				m.commentForm.Init()
-				// decrease the height of the viewport by the number of lines in the comment form
-				m.viewport.Height = m.viewport.Height - len(strings.Split(m.commentForm.View(), "\n"))
 				m.viewport, cmd = m.viewport.Update(msg)
+				m.viewport.GotoBottom()
 				return m, tea.Batch(cmd, NavigateTo("/issues/show/comments/new"))
 			default:
 				m.viewport, cmd = m.viewport.Update(msg)
@@ -1251,14 +1273,6 @@ func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 			}
 		}
 	case issueDetailCommentFocused:
-		switch msg := msgg.originalMsg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.Back):
-				m.focus = issueDetailViewportFocused
-				m.viewport.Height = m.layout.RightSize.Height
-			}
-		}
 		m.commentForm, cmd = m.commentForm.Update(msgg)
 	}
 
