@@ -567,6 +567,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
 						return m, cmd
 					}
+				case key.Matches(msg, keys.IssueCommentFormFocus):
+					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
+					m.issueDetail.commentForm = NewCommentFormModel()
+					m.issueDetail.commentForm.Init()
+					m.issueDetail.Init(m)
+					return m, NavigateTo("/issues/show/comments/new/content")
 				}
 			}
 
@@ -900,7 +906,6 @@ func (m Model) View() string {
 				boxStyle(m.FooterSize).Render(help),
 			)
 		case strings.HasSuffix(m.path, "/show"):
-			log.Debugf("🪚 path: %#v", m.path)
 			sidebarView = lipgloss.NewStyle().
 				Render(m.issueDetail.View())
 
@@ -917,7 +922,6 @@ func (m Model) View() string {
 				boxStyle(m.FooterSize).Render(help),
 			)
 		case strings.Contains(m.path, "/show/comments/new"):
-			log.Debugf("🪚 path: %#v", m.path)
 			sidebarView = lipgloss.NewStyle().
 				Render(lipgloss.JoinVertical(
 					lipgloss.Left,
@@ -1268,20 +1272,12 @@ type updateMsg struct {
 func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 	var cmd tea.Cmd
 	msgg := msg.(updateMsg)
-	keys := msgg.keys
 
 	switch m.focus {
 	case issueDetailViewportFocused:
 		switch msg := msgg.originalMsg.(type) {
 		case tea.KeyMsg:
 			switch {
-			case key.Matches(msg, keys.IssueCommentFormFocus):
-				m.focus = issueDetailCommentFocused
-				m.commentForm = NewCommentFormModel()
-				m.commentForm.Init()
-				m.viewport, cmd = m.viewport.Update(msg)
-				m.viewport.GotoBottom()
-				return m, tea.Batch(cmd, NavigateTo("/issues/show/comments/new/content"))
 			default:
 				m.viewport, cmd = m.viewport.Update(msg)
 				return m, cmd
