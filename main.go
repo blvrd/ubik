@@ -470,6 +470,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail.commentForm = NewCommentFormModel()
 					m.issueDetail.commentForm.Init()
 					m.issueDetail.Init(m)
+					m.issueDetail.viewport.GotoBottom()
 					return m, NavigateTo("/issues/show/comments/new/content")
 				case key.Matches(msg, keys.IssueDetailFocus):
 					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
@@ -574,6 +575,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail.commentForm = NewCommentFormModel()
 					m.issueDetail.commentForm.Init()
 					m.issueDetail.Init(m)
+					m.issueDetail.viewport.GotoBottom()
 					return m, NavigateTo("/issues/show/comments/new/content")
 				}
 			}
