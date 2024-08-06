@@ -246,8 +246,6 @@ type Model struct {
 	commitList   list.Model
 	commitDetail commitDetailModel
 	err          error
-	totalWidth   int
-	totalHeight  int
 	help         help.Model
 	styles       Styles
 	tabs         []string
