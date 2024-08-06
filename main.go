@@ -373,6 +373,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			currentIssue.title = msg.titleInput.Value()
 			currentIssue.description = msg.descriptionInput.Value()
 			m.issueDetail = issueDetailModel{issue: currentIssue}
+			m.issueDetail.commentForm = NewCommentFormModel()
 			m.issueDetail.Init(m)
 			m.issueList.SetItem(currentIndex, currentIssue)
 		} else {
@@ -388,6 +389,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueList.InsertItem(0, newIssue)
 			m.issueList.Select(0)
 			m.issueDetail = issueDetailModel{issue: newIssue}
+			m.issueDetail.commentForm = NewCommentFormModel()
 			m.issueDetail.Init(m)
 		}
 
