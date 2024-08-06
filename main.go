@@ -470,7 +470,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail.commentForm = NewCommentFormModel()
 					m.issueDetail.commentForm.Init()
 					m.issueDetail.Init(m)
-					return m, NavigateTo("/issues/show/comments/new")
+					return m, NavigateTo("/issues/show/comments/new/content")
 				case key.Matches(msg, keys.IssueDetailFocus):
 					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
 					m.issueDetail.commentForm = NewCommentFormModel()
@@ -573,7 +573,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
-		case strings.HasSuffix(m.path, "/show/comments/new"):
+		case strings.HasSuffix(m.path, "/show/comments/new/content"):
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
 				switch {
@@ -583,10 +583,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail.commentForm = NewCommentFormModel()
 					m.issueDetail.Init(m)
 					return m, NavigateTo("/issues/show")
+				case key.Matches(msg, keys.NextInput):
+					m.issueDetail.commentForm.contentInput.Blur()
+					m.issueDetail.commentForm.focusState = commentConfirmationFocused
+					return m, NavigateTo("/issues/show/comments/new/confirmation")
 				}
 			}
-			m.issueDetail.commentForm, cmd = m.issueDetail.commentForm.Update(componentUpdateMsg)
+			m.issueDetail.commentForm.contentInput, cmd = m.issueDetail.commentForm.contentInput.Update(componentUpdateMsg.originalMsg)
 			return m, cmd
+		case strings.HasSuffix(m.path, "/show/comments/new/confirmation"):
+			switch msg := msg.(type) {
+			case tea.KeyMsg:
+				switch {
+				case key.Matches(msg, keys.Back):
+					currentIssue := m.issueList.SelectedItem().(Issue)
+					m.issueDetail = issueDetailModel{issue: currentIssue}
+					m.issueDetail.commentForm = NewCommentFormModel()
+					m.issueDetail.Init(m)
+					return m, NavigateTo("/issues/show")
+				case key.Matches(msg, keys.Submit):
+					return m, m.issueDetail.commentForm.Submit
+				}
+			}
 		case strings.HasSuffix(m.path, "/edit"):
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
@@ -900,7 +918,7 @@ func (m Model) View() string {
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
-		case strings.HasSuffix(m.path, "/show/comments/new"):
+		case strings.Contains(m.path, "/show/comments/new"):
 			log.Debugf("🪚 path: %#v", m.path)
 			sidebarView = lipgloss.NewStyle().
 				Render(lipgloss.JoinVertical(
@@ -1254,7 +1272,6 @@ func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 	msgg := msg.(updateMsg)
 	keys := msgg.keys
 
-	log.Debug("🪚hiiiiiiiiiiiiiiiiii")
 	switch m.focus {
 	case issueDetailViewportFocused:
 		switch msg := msgg.originalMsg.(type) {
@@ -1266,7 +1283,7 @@ func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
 				m.commentForm.Init()
 				m.viewport, cmd = m.viewport.Update(msg)
 				m.viewport.GotoBottom()
-				return m, tea.Batch(cmd, NavigateTo("/issues/show/comments/new"))
+				return m, tea.Batch(cmd, NavigateTo("/issues/show/comments/new/content"))
 			default:
 				m.viewport, cmd = m.viewport.Update(msg)
 				return m, cmd
