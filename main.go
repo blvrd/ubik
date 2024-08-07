@@ -567,7 +567,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						// m.issueForm.titleInput.Focus()
 					}
 
-					return m, tea.Sequence(NavigateTo("/issues/edit"), cmd)
+					m.path = "/issues/edit/title"
+					return m, cmd
 				case key.Matches(msg, keys.Back):
 					if m.issueDetail.focus == issueDetailViewportFocused {
 						m.path = "/issues/index"
@@ -623,20 +624,72 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, m.issueDetail.commentForm.Submit
 				}
 			}
-		case strings.HasSuffix(m.path, "/edit"):
+		case strings.HasSuffix(m.path, "/edit/title"):
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(msg, keys.Back):
 					if m.issueForm.editing {
+						m.path = "/issues/show"
 						return m, cmd
 					} else {
+						m.path = "/issues/index"
 						return m, cmd
 					}
+				case key.Matches(msg, keys.NextInput):
+					m.path = "/issues/edit/description"
+					m.issueForm.titleInput.Blur()
+					cmd = m.issueForm.descriptionInput.Focus()
+					return m, cmd
+				}
+			}
+
+			m.issueForm.titleInput, cmd = m.issueForm.titleInput.Update(msg)
+			return m, cmd
+		case strings.HasSuffix(m.path, "/edit/description"):
+			switch msg := msg.(type) {
+			case tea.KeyMsg:
+				switch {
+				case key.Matches(msg, keys.Back):
+					if m.issueForm.editing {
+						m.path = "/issues/show"
+						return m, cmd
+					} else {
+						m.path = "/issues/index"
+						return m, cmd
+					}
+				case key.Matches(msg, keys.NextInput):
+					m.path = "/issues/edit/confirmation"
+					m.issueForm.descriptionInput.Blur()
+					return m, cmd
+				}
+			}
+
+			m.issueForm.descriptionInput, cmd = m.issueForm.descriptionInput.Update(msg)
+			return m, cmd
+		case strings.HasSuffix(m.path, "/edit/confirmation"):
+			switch msg := msg.(type) {
+			case tea.KeyMsg:
+				switch {
+				case key.Matches(msg, keys.Back):
+					if m.issueForm.editing {
+						m.path = "/issues/show"
+						return m, cmd
+					} else {
+						m.path = "/issues/index"
+						return m, cmd
+					}
+				case key.Matches(msg, keys.NextInput):
+					m.path = "issues/edit/title"
+					cmd = m.issueForm.titleInput.Focus()
+					return m, cmd
+				case key.Matches(msg, keys.Submit):
+					return m, m.issueForm.Submit
 				}
 			}
 
 			m.issueForm, cmd = m.issueForm.Update(componentUpdateMsg)
+			return m, cmd
 		}
 	case strings.HasPrefix(m.path, "/checks"):
 		switch {
@@ -978,11 +1031,47 @@ func (m Model) View() string {
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
-		case strings.HasSuffix(m.path, "/edit"):
+		case strings.HasSuffix(m.path, "/edit/title"):
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
-				Render(m.issueForm.View())
+				Render(m.issueForm.View("title", true))
+
+			view = lipgloss.JoinVertical(
+				lipgloss.Left,
+				boxStyle(m.HeaderSize).Render(
+					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+				),
+				lipgloss.JoinHorizontal(
+					lipgloss.Top,
+					boxStyle(m.LeftSize).Render(m.issueList.View()),
+					boxStyle(m.RightSize).Render(sidebarView),
+				),
+				boxStyle(m.FooterSize).Render(help),
+			)
+		case strings.HasSuffix(m.path, "/edit/description"):
+			style := lipgloss.NewStyle()
+
+			sidebarView = style.
+				Render(m.issueForm.View("description", true))
+
+			view = lipgloss.JoinVertical(
+				lipgloss.Left,
+				boxStyle(m.HeaderSize).Render(
+					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+				),
+				lipgloss.JoinHorizontal(
+					lipgloss.Top,
+					boxStyle(m.LeftSize).Render(m.issueList.View()),
+					boxStyle(m.RightSize).Render(sidebarView),
+				),
+				boxStyle(m.FooterSize).Render(help),
+			)
+		case strings.HasSuffix(m.path, "/edit/confirmation"):
+			style := lipgloss.NewStyle()
+
+			sidebarView = style.
+				Render(m.issueForm.View("confirmation", true))
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -997,7 +1086,6 @@ func (m Model) View() string {
 				boxStyle(m.FooterSize).Render(help),
 			)
 		}
-
 	case strings.HasPrefix(m.path, "/checks"):
 		for _, t := range m.tabs {
 			var style lipgloss.Style
@@ -1332,12 +1420,6 @@ func (m issueDetailModel) View() string {
 
 type issueFormFocusState int
 
-const (
-	issueTitleFocused        issueFormFocusState = 1
-	issueDescriptionFocused  issueFormFocusState = 2
-	issueConfirmationFocused issueFormFocusState = 3
-)
-
 type issueFormModel struct {
 	titleInput       textinput.Model
 	descriptionInput textarea.Model
@@ -1353,62 +1435,19 @@ func (m issueFormModel) Submit() tea.Msg {
 func (m *issueFormModel) Init(title, description string) tea.Cmd {
 	m.SetTitle(title)
 	m.SetDescription(description)
-	m.focusState = issueTitleFocused
 	return m.titleInput.Focus()
 }
 
 func (m issueFormModel) Update(msg tea.Msg) (issueFormModel, tea.Cmd) {
-	var cmd tea.Cmd
-	msgg := msg.(updateMsg)
-	keys := msgg.keys
-
-	switch m.focusState {
-	case issueTitleFocused:
-		switch msg := msgg.originalMsg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.NextInput):
-				m.focusState = issueDescriptionFocused
-				m.titleInput.Blur()
-				cmd = m.descriptionInput.Focus()
-				return m, cmd
-			}
-		}
-
-		m.titleInput, cmd = m.titleInput.Update(msgg.originalMsg)
-		return m, cmd
-	case issueDescriptionFocused:
-		switch msg := msgg.originalMsg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.NextInput):
-				m.focusState = issueConfirmationFocused
-				m.descriptionInput.Blur()
-				return m, nil
-			}
-		}
-
-		m.descriptionInput, cmd = m.descriptionInput.Update(msgg.originalMsg)
-		return m, cmd
-	case issueConfirmationFocused:
-		switch msg := msgg.originalMsg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.Submit):
-				return m, m.Submit
-			}
-		}
-	}
-
-	return m, cmd
+	return m, nil
 }
 
-func (m issueFormModel) View() string {
+func (m issueFormModel) View(focus string, editing bool) string {
 	var s strings.Builder
 
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", m.identifier))
 
-	if m.editing {
+	if editing {
 		s.WriteString(fmt.Sprintf("Editing issue %s\n\n", identifier))
 	} else {
 		s.WriteString("New issue\n\n")
@@ -1419,7 +1458,7 @@ func (m issueFormModel) View() string {
 	s.WriteString(m.descriptionInput.View())
 	s.WriteString("\n")
 	var style lipgloss.Style
-	if m.focusState == issueConfirmationFocused {
+	if focus == "confirmation" {
 		style = lipgloss.NewStyle().Foreground(styles.Theme.PrimaryText).Background(styles.Theme.SelectedBackground)
 	} else {
 		style = lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText)
