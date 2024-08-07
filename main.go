@@ -1371,7 +1371,6 @@ type issueFormFocusState int
 type issueFormModel struct {
 	titleInput       textinput.Model
 	descriptionInput textarea.Model
-	focusState       issueFormFocusState
 	identifier       string
 	editing          bool
 }
