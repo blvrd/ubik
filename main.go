@@ -549,9 +549,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						selectedIssue := m.issueList.SelectedItem().(Issue)
 						m.issueForm = issueFormModel{editing: true, identifier: selectedIssue.shortcode}
 						cmd = m.issueForm.Init(selectedIssue.title, selectedIssue.description)
-						// m.issueForm.SetTitle(selectedIssue.title)
-						// m.issueForm.SetDescription(selectedIssue.description)
-						// m.issueForm.titleInput.Focus()
 					}
 
 					m.path = "/issues/edit/title"
