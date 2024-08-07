@@ -398,19 +398,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, NavigateTo("/issues/show")
 	}
 
-	// switch path {
-	// case "/issues":
-	// case "/issues/:id":
-	// case "/issues/:id/edit/title":
-	// // route keystrokes to issue form model's title field
-	//   // MSG = TAB KEY
-	// // WRAP IT (TAB KEY, extra info for the specific input)
-	// case "/issues/:id/edit/description":
-	// // route keystrokes to issue form model's description field
-	// case "/issues/:id/edit/confirm":
-	// // route keystrokes to issue form model's confirmation field
-	// }
-
 	switch {
 	case strings.HasPrefix(m.path, "/issues"):
 		switch {
@@ -928,7 +915,6 @@ func (m Model) HelpKeys() keyMap {
 
 func boxStyle(size bl.Size) lipgloss.Style {
 	style := lipgloss.NewStyle().
-		// Background(lipgloss.Color(fmt.Sprintf("%d", rand.Intn(255)))).
 		Width(size.Width).
 		Height(size.Height)
 
@@ -1277,14 +1263,6 @@ func (m *commitDetailModel) Init(ctx Model) tea.Cmd {
 	s.WriteString(m.commit.description)
 	s.WriteString(fmt.Sprintf("\n\n%s", m.commit.latestCheck.output))
 
-	// for i, comment := range m.commit.comments {
-	// 	commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.author, comment.createdAt))
-	// 	if i == len(m.commit.comments)-1 { // last comment
-	// 		content += commentStyle.MarginBottom(2).Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content))
-	// 	} else {
-	// 		content += commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content))
-	// 	}
-	// }
 	m.viewport.SetContent(s.String())
 	return nil
 }
