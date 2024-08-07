@@ -667,6 +667,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case key.Matches(msg, keys.CommitDetailFocus):
 					m.commitDetail = commitDetailModel{commit: m.commitList.SelectedItem().(Commit)}
 					m.commitDetail.Init(m)
+					m.path = "/checks/show"
 					return m, cmd
 				case key.Matches(msg, keys.NextPage):
 					return m, nil
@@ -710,6 +711,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(msg, keys.Back):
+					m.path = "/checks/index"
 				case key.Matches(msg, keys.RunCheck):
 					commit := m.commitList.SelectedItem().(Commit)
 					commit.latestCheck = Check{status: "running"}
