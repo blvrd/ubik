@@ -602,7 +602,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, NavigateTo("/issues/show")
 				case key.Matches(msg, keys.NextInput):
 					m.issueDetail.commentForm.contentInput.Blur()
-					m.issueDetail.commentForm.focusState = commentConfirmationFocused
 					m.path = "/issues/show/comments/new/confirmation"
 					return m, NavigateTo("/issues/show/comments/new/confirmation")
 				}
@@ -1486,16 +1485,8 @@ func (m *issueFormModel) SetDescription(description string) {
 	m.descriptionInput.SetValue(description)
 }
 
-type commentFormFocusState int
-
-const (
-	commentContentFocused      commentFormFocusState = 1
-	commentConfirmationFocused commentFormFocusState = 2
-)
-
 type commentFormModel struct {
 	contentInput textarea.Model
-	focusState   commentFormFocusState
 }
 
 func NewCommentFormModel() commentFormModel {
@@ -1508,7 +1499,6 @@ func NewCommentFormModel() commentFormModel {
 
 	return commentFormModel{
 		contentInput: t,
-		focusState:   commentContentFocused,
 	}
 }
 
@@ -1521,36 +1511,7 @@ func (m commentFormModel) Init() tea.Cmd {
 }
 
 func (m commentFormModel) Update(msg tea.Msg) (commentFormModel, tea.Cmd) {
-	var cmd tea.Cmd
-	msgg := msg.(updateMsg)
-	keys := msgg.keys
-
-	switch m.focusState {
-	case commentContentFocused:
-		switch msg := msgg.originalMsg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.NextInput):
-				m.focusState = commentConfirmationFocused
-				m.contentInput.Blur()
-			}
-		}
-
-		m.contentInput, cmd = m.contentInput.Update(msgg.originalMsg)
-	case commentConfirmationFocused:
-		switch msg := msgg.originalMsg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.NextInput):
-				m.focusState = commentContentFocused
-				m.contentInput.Focus()
-			case key.Matches(msg, keys.Submit):
-				cmd = m.Submit
-			}
-		}
-	}
-
-	return m, cmd
+	return m, nil
 }
 
 func (m commentFormModel) View(focus string) string {
