@@ -790,6 +790,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.commitDetail = commitDetailModel{commit: commit}
 				m.commitDetail.Init(m)
 			}
+		default:
+			m.commitDetail.viewport, cmd = m.commitDetail.viewport.Update(msg)
+			return m, cmd
 		}
 	}
 
@@ -1287,36 +1290,7 @@ func (m *commitDetailModel) Init(ctx Model) tea.Cmd {
 }
 
 func (m commitDetailModel) Update(msg tea.Msg) (commitDetailModel, tea.Cmd) {
-	var cmd tea.Cmd
-	// msgg := msg.(updateMsg)
-	// keys := msgg.keys
-
-	// switch m.focus {
-	// case commitDetailViewportFocused:
-	// 	switch msg := msgg.originalMsg.(type) {
-	// 	case tea.KeyMsg:
-	// 		switch {
-	// 		case key.Matches(msg, keys.CommitDetailFocus):
-	// 			m.viewport.Height = m.viewport.Height - 7
-	// 			m.focus = commitDetailCommentFocused
-	// 			m.commentForm = NewCommentFormModel()
-	// 			m.commentForm.Init()
-	// 		}
-	// 	}
-	// 	m.viewport, cmd = m.viewport.Update(msg)
-	// case commitDetailCommentFocused:
-	// 	switch msg := msgg.originalMsg.(type) {
-	// 	case tea.KeyMsg:
-	// 		switch {
-	// 		case key.Matches(msg, keys.Back):
-	// 			m.focus = commitDetailViewportFocused
-	// 		}
-	// 	}
-	// 	m.commentForm, cmd = m.commentForm.Update(msgg)
-	// }
-	m.viewport, cmd = m.viewport.Update(msg)
-
-	return m, cmd
+	return m, nil
 }
 
 func (m commitDetailModel) View() string {
