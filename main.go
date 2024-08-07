@@ -365,6 +365,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.issueDetail.Init(m)
 		m.issueDetail.viewport.GotoBottom()
 
+		m.path = "/issues/show"
 		return m, NavigateTo("/issues/show")
 	case issueFormModel:
 		if msg.editing {
@@ -393,6 +394,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueDetail.Init(m)
 		}
 
+		m.path = "/issues/show"
 		return m, NavigateTo("/issues/show")
 	}
 
@@ -471,18 +473,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail.commentForm.Init()
 					m.issueDetail.Init(m)
 					m.issueDetail.viewport.GotoBottom()
+					m.path = "/issues/show/comments/new/content"
 					return m, NavigateTo("/issues/show/comments/new/content")
 				case key.Matches(msg, keys.IssueDetailFocus):
 					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
 					m.issueDetail.commentForm = NewCommentFormModel()
 					m.issueDetail.commentForm.Init()
 					m.issueDetail.Init(m)
+					m.path = "/issues/show"
 					return m, NavigateTo("/issues/show")
 				case key.Matches(msg, keys.IssueNewForm):
 					m.issueForm = issueFormModel{editing: false}
 					m.issueForm.Init("", "")
 					cmd = m.issueForm.titleInput.Focus()
 				case key.Matches(msg, keys.NextPage):
+					m.path = "/checks/index"
 					return m, NavigateTo("/checks/index")
 				case key.Matches(msg, keys.PrevPage):
 					return m, nil
@@ -565,6 +570,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, tea.Sequence(NavigateTo("/issues/edit"), cmd)
 				case key.Matches(msg, keys.Back):
 					if m.issueDetail.focus == issueDetailViewportFocused {
+						m.path = "/issues/index"
 						return m, NavigateTo("/issues/index")
 					} else {
 						m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
@@ -576,6 +582,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail.commentForm.Init()
 					m.issueDetail.Init(m)
 					m.issueDetail.viewport.GotoBottom()
+					m.path = "/issues/show/comments/new/content"
 					return m, NavigateTo("/issues/show/comments/new/content")
 				}
 			}
@@ -590,10 +597,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail = issueDetailModel{issue: currentIssue}
 					m.issueDetail.commentForm = NewCommentFormModel()
 					m.issueDetail.Init(m)
+					m.path = "/issues/show"
 					return m, NavigateTo("/issues/show")
 				case key.Matches(msg, keys.NextInput):
 					m.issueDetail.commentForm.contentInput.Blur()
 					m.issueDetail.commentForm.focusState = commentConfirmationFocused
+					m.path = "/issues/show/comments/new/confirmation"
 					return m, NavigateTo("/issues/show/comments/new/confirmation")
 				}
 			}
@@ -608,6 +617,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail = issueDetailModel{issue: currentIssue}
 					m.issueDetail.commentForm = NewCommentFormModel()
 					m.issueDetail.Init(m)
+					m.path = "/issues/show"
 					return m, NavigateTo("/issues/show")
 				case key.Matches(msg, keys.Submit):
 					return m, m.issueDetail.commentForm.Submit
@@ -661,6 +671,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case key.Matches(msg, keys.NextPage):
 					return m, nil
 				case key.Matches(msg, keys.PrevPage):
+					m.path = "/issues/index"
 					return m, NavigateTo("/issues/index")
 				case key.Matches(msg, keys.Help):
 					if m.help.ShowAll {
@@ -925,12 +936,32 @@ func (m Model) View() string {
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
-		case strings.Contains(m.path, "/show/comments/new"):
+		case strings.HasSuffix(m.path, "/show/comments/new/content"):
 			sidebarView = lipgloss.NewStyle().
 				Render(lipgloss.JoinVertical(
 					lipgloss.Left,
 					m.issueDetail.View(),
-					m.issueDetail.commentForm.View(),
+					m.issueDetail.commentForm.View("content"),
+				))
+
+			view = lipgloss.JoinVertical(
+				lipgloss.Left,
+				boxStyle(m.HeaderSize).Render(
+					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+				),
+				lipgloss.JoinHorizontal(
+					lipgloss.Top,
+					boxStyle(m.LeftSize).Render(m.issueList.View()),
+					boxStyle(m.RightSize).Render(sidebarView),
+				),
+				boxStyle(m.FooterSize).Render(help),
+			)
+		case strings.HasSuffix(m.path, "/show/comments/new/confirmation"):
+			sidebarView = lipgloss.NewStyle().
+				Render(lipgloss.JoinVertical(
+					lipgloss.Left,
+					m.issueDetail.View(),
+					m.issueDetail.commentForm.View("confirmation"),
 				))
 
 			view = lipgloss.JoinVertical(
@@ -1223,7 +1254,7 @@ type issueDetailModel struct {
 func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
 	m.viewport = viewport.New(
 		ctx.Layout.RightSize.Width,
-		ctx.Layout.RightSize.Height-len(strings.Split(m.commentForm.View(), "\n")),
+		ctx.Layout.RightSize.Height-len(strings.Split(m.commentForm.View("content"), "\n")),
 	)
 	m.layout = ctx.Layout
 	m.focus = issueDetailViewportFocused
@@ -1481,11 +1512,11 @@ func (m commentFormModel) Update(msg tea.Msg) (commentFormModel, tea.Cmd) {
 	return m, cmd
 }
 
-func (m commentFormModel) View() string {
+func (m commentFormModel) View(focus string) string {
 	var s strings.Builder
 	s.WriteString(m.contentInput.View())
 	s.WriteString("\n")
-	if m.focusState == commentContentFocused {
+	if focus == "content" {
 		s.WriteString(lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render("Save"))
 	} else {
 		s.WriteString(lipgloss.NewStyle().Foreground(styles.Theme.PrimaryText).Background(styles.Theme.SelectedBackground).Render("Save"))
