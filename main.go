@@ -487,10 +487,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(msg, keys.Help):
-					if m.issueDetail.focus == issueDetailCommentFocused {
-						break
-					}
-
 					if m.help.ShowAll {
 						m.help.ShowAll = false
 					} else {
@@ -498,9 +494,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 					return m, nil
 				case key.Matches(msg, keys.IssueStatusDone):
-					if m.issueDetail.focus == issueDetailCommentFocused {
-						break
-					}
 					currentIndex := m.issueList.Index()
 					currentIssue := m.issueList.SelectedItem().(Issue)
 					if currentIssue.status == todo {
@@ -509,13 +502,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						currentIssue.status = todo
 					}
 					m.issueDetail = issueDetailModel{issue: currentIssue}
+					m.issueDetail.commentForm = NewCommentFormModel()
+					m.issueDetail.commentForm.Init()
 					m.issueDetail.Init(m)
 					cmd = m.issueList.SetItem(currentIndex, currentIssue)
 					return m, cmd
 				case key.Matches(msg, keys.IssueStatusWontDo):
-					if m.issueDetail.focus == issueDetailCommentFocused {
-						break
-					}
 					currentIndex := m.issueList.Index()
 					currentIssue := m.issueList.SelectedItem().(Issue)
 					if currentIssue.status == todo {
@@ -524,13 +516,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						currentIssue.status = todo
 					}
 					m.issueDetail = issueDetailModel{issue: currentIssue}
+					m.issueDetail.commentForm = NewCommentFormModel()
+					m.issueDetail.commentForm.Init()
 					m.issueDetail.Init(m)
 					cmd = m.issueList.SetItem(currentIndex, currentIssue)
 					return m, cmd
 				case key.Matches(msg, keys.IssueStatusInProgress):
-					if m.issueDetail.focus == issueDetailCommentFocused {
-						break
-					}
 					currentIndex := m.issueList.Index()
 					currentIssue := m.issueList.SelectedItem().(Issue)
 					if currentIssue.status == todo {
@@ -539,28 +530,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 						currentIssue.status = todo
 					}
 					m.issueDetail = issueDetailModel{issue: currentIssue}
+					m.issueDetail.commentForm = NewCommentFormModel()
+					m.issueDetail.commentForm.Init()
 					m.issueDetail.Init(m)
 					cmd = m.issueList.SetItem(currentIndex, currentIssue)
 					return m, cmd
 				case key.Matches(msg, keys.IssueEditForm):
-					if m.issueDetail.focus == issueDetailCommentFocused {
-						m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
-					} else {
-						selectedIssue := m.issueList.SelectedItem().(Issue)
-						m.issueForm = issueFormModel{editing: true, identifier: selectedIssue.shortcode}
-						cmd = m.issueForm.Init(selectedIssue.title, selectedIssue.description)
-					}
+					selectedIssue := m.issueList.SelectedItem().(Issue)
+					m.issueForm = issueFormModel{editing: true, identifier: selectedIssue.shortcode}
+					cmd = m.issueForm.Init(selectedIssue.title, selectedIssue.description)
 
 					m.path = "/issues/edit/title"
 					return m, cmd
 				case key.Matches(msg, keys.Back):
-					if m.issueDetail.focus == issueDetailViewportFocused {
-						m.path = "/issues/index"
-						return m, NavigateTo("/issues/index")
-					} else {
-						m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
-						return m, cmd
-					}
+					m.path = "/issues/index"
+					return m, NavigateTo("/issues/index")
 				case key.Matches(msg, keys.IssueCommentFormFocus):
 					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
 					m.issueDetail.commentForm = NewCommentFormModel()
@@ -572,7 +556,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-			m.issueDetail, cmd = m.issueDetail.Update(componentUpdateMsg)
+			m.issueDetail.viewport, cmd = m.issueDetail.viewport.Update(componentUpdateMsg)
 		case strings.HasSuffix(m.path, "/show/comments/new/content"):
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
@@ -1266,18 +1250,10 @@ func (m commitDetailModel) View() string {
 	return s.String()
 }
 
-type issueDetailFocusState int
-
-const (
-	issueDetailViewportFocused issueDetailFocusState = 1
-	issueDetailCommentFocused  issueDetailFocusState = 2
-)
-
 type issueDetailModel struct {
 	layout      Layout
 	issue       Issue
 	viewport    viewport.Model
-	focus       issueDetailFocusState
 	commentForm commentFormModel
 }
 
@@ -1287,7 +1263,6 @@ func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
 		ctx.Layout.RightSize.Height-len(strings.Split(m.commentForm.View("content"), "\n")),
 	)
 	m.layout = ctx.Layout
-	m.focus = issueDetailViewportFocused
 	var s strings.Builder
 	var status string
 	switch m.issue.status {
@@ -1334,31 +1309,12 @@ type updateMsg struct {
 }
 
 func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
-	var cmd tea.Cmd
-	msgg := msg.(updateMsg)
-
-	switch m.focus {
-	case issueDetailViewportFocused:
-		switch msg := msgg.originalMsg.(type) {
-		case tea.KeyMsg:
-			switch {
-			default:
-				m.viewport, cmd = m.viewport.Update(msg)
-				return m, cmd
-			}
-		}
-	case issueDetailCommentFocused:
-		m.commentForm, cmd = m.commentForm.Update(msgg)
-	}
-
-	return m, cmd
+	return m, nil
 }
 
 func (m issueDetailModel) View() string {
 	return m.viewport.View()
 }
-
-type issueFormFocusState int
 
 type issueFormModel struct {
 	titleInput       textinput.Model
