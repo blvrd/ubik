@@ -1227,16 +1227,9 @@ func getIssues() tea.Msg {
 	return IssuesReadyMsg(seedIssues)
 }
 
-type commitDetailFocusState int
-
-const (
-	commitDetailViewportFocused commitDetailFocusState = 1
-)
-
 type commitDetailModel struct {
 	commit   Commit
 	viewport viewport.Model
-	focus    commitDetailFocusState
 }
 
 func (m *commitDetailModel) Init(ctx Model) tea.Cmd {
@@ -1256,7 +1249,6 @@ func (m *commitDetailModel) Init(ctx Model) tea.Cmd {
 	s.WriteString("\n")
 
 	m.viewport = viewport.New(ctx.Layout.RightSize.Width, ctx.Layout.RightSize.Height)
-	m.focus = commitDetailViewportFocused
 	s.WriteString(m.commit.description)
 	s.WriteString(fmt.Sprintf("\n\n%s", m.commit.latestCheck.output))
 
