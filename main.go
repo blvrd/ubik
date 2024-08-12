@@ -35,6 +35,10 @@ const (
 	checksShowPath                string = "/checks/show"
 )
 
+func matchRoute(currentRoute, route string) bool {
+	return route == currentRoute
+}
+
 type Styles struct {
 	Theme Theme
 }
@@ -118,7 +122,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 	var bindings [][]key.Binding
 
 	switch {
-	case strings.HasPrefix(k.Path, issuesIndexPath):
+	case matchRoute(k.Path, issuesIndexPath):
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
@@ -126,7 +130,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 			{k.IssueStatusDone, k.IssueStatusWontDo},
 			{k.IssueStatusInProgress, k.IssueCommentFormFocus},
 		}
-	case strings.HasPrefix(k.Path, issuesShowPath):
+	case matchRoute(k.Path, issuesShowPath):
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
@@ -135,19 +139,19 @@ func (k keyMap) FullHelp() [][]key.Binding {
 			{k.IssueStatusDone, k.IssueStatusWontDo},
 			{k.IssueStatusInProgress, k.IssueCommentFormFocus},
 		}
-	case strings.HasPrefix(k.Path, issuesEditConfirmationPath):
+	case matchRoute(k.Path, issuesEditConfirmationPath):
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
 			{k.NextInput, k.Back},
 		}
-	case strings.HasPrefix(k.Path, "/commits/index"):
+	case matchRoute(k.Path, "/commits/index"):
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
 			{k.CommitDetailFocus},
 		}
-	case strings.HasPrefix(k.Path, "/commits/show"):
+	case matchRoute(k.Path, "/commits/show"):
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
@@ -398,360 +402,356 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
-	case strings.HasPrefix(m.path, "/issues"):
-		switch {
-		case strings.HasSuffix(m.path, "/index"):
-			if m.issueList.SettingFilter() {
-				m.issueList, cmd = m.issueList.Update(msg)
-				return m, cmd
-			}
-
-			switch msg := msg.(type) {
-			case tea.KeyMsg:
-				switch {
-				case key.Matches(msg, keys.Help):
-					if m.help.ShowAll {
-						m.help.ShowAll = false
-						return m, nil
-					} else {
-						var maxHelpHeight int
-						for _, column := range keys.FullHelp() {
-							if len(column) > maxHelpHeight {
-								maxHelpHeight = len(column)
-							}
-						}
-						m.help.ShowAll = true
-						return m, nil
-					}
-				case key.Matches(msg, keys.IssueStatusDone):
-					currentIndex := m.issueList.Index()
-					currentIssue := m.issueList.SelectedItem().(Issue)
-					if currentIssue.status == todo {
-						currentIssue.status = done
-					} else {
-						currentIssue.status = todo
-					}
-					cmd = m.issueList.SetItem(currentIndex, currentIssue)
-					return m, cmd
-				case key.Matches(msg, keys.IssueStatusWontDo):
-					currentIndex := m.issueList.Index()
-					currentIssue := m.issueList.SelectedItem().(Issue)
-					if currentIssue.status == todo {
-						currentIssue.status = wontDo
-					} else {
-						currentIssue.status = todo
-					}
-					cmd = m.issueList.SetItem(currentIndex, currentIssue)
-					return m, cmd
-				case key.Matches(msg, keys.IssueStatusInProgress):
-					currentIndex := m.issueList.Index()
-					currentIssue := m.issueList.SelectedItem().(Issue)
-					if currentIssue.status == todo {
-						currentIssue.status = inProgress
-					} else {
-						currentIssue.status = todo
-					}
-					cmd = m.issueList.SetItem(currentIndex, currentIssue)
-					return m, cmd
-				case key.Matches(msg, keys.IssueCommentFormFocus):
-					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
-					m.issueDetail.commentForm = NewCommentFormModel()
-					m.issueDetail.commentForm.Init()
-					m.issueDetail.Init(m)
-					m.issueDetail.viewport.GotoBottom()
-					m.path = issuesCommentContentPath
-				case key.Matches(msg, keys.IssueDetailFocus):
-					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
-					m.issueDetail.commentForm = NewCommentFormModel()
-					m.issueDetail.commentForm.Init()
-					m.issueDetail.Init(m)
-					m.path = issuesShowPath
-				case key.Matches(msg, keys.IssueNewForm):
-					m.issueForm = issueFormModel{editing: false}
-					m.issueForm.Init("", "")
-					cmd = m.issueForm.titleInput.Focus()
-				case key.Matches(msg, keys.NextPage):
-					m.path = checksIndexPath
-				case key.Matches(msg, keys.PrevPage):
-					return m, nil
-				}
-			}
-
+	case matchRoute(m.path, issuesIndexPath):
+		if m.issueList.SettingFilter() {
 			m.issueList, cmd = m.issueList.Update(msg)
-		case strings.HasSuffix(m.path, "/show"):
-			switch msg := msg.(type) {
-			case tea.KeyMsg:
-				switch {
-				case key.Matches(msg, keys.Help):
-					if m.help.ShowAll {
-						m.help.ShowAll = false
-					} else {
-						m.help.ShowAll = true
-					}
-					return m, nil
-				case key.Matches(msg, keys.IssueStatusDone):
-					currentIndex := m.issueList.Index()
-					currentIssue := m.issueList.SelectedItem().(Issue)
-					if currentIssue.status == todo {
-						currentIssue.status = done
-					} else {
-						currentIssue.status = todo
-					}
-					m.issueDetail = issueDetailModel{issue: currentIssue}
-					m.issueDetail.commentForm = NewCommentFormModel()
-					m.issueDetail.commentForm.Init()
-					m.issueDetail.Init(m)
-					cmd = m.issueList.SetItem(currentIndex, currentIssue)
-					return m, cmd
-				case key.Matches(msg, keys.IssueStatusWontDo):
-					currentIndex := m.issueList.Index()
-					currentIssue := m.issueList.SelectedItem().(Issue)
-					if currentIssue.status == todo {
-						currentIssue.status = wontDo
-					} else {
-						currentIssue.status = todo
-					}
-					m.issueDetail = issueDetailModel{issue: currentIssue}
-					m.issueDetail.commentForm = NewCommentFormModel()
-					m.issueDetail.commentForm.Init()
-					m.issueDetail.Init(m)
-					cmd = m.issueList.SetItem(currentIndex, currentIssue)
-					return m, cmd
-				case key.Matches(msg, keys.IssueStatusInProgress):
-					currentIndex := m.issueList.Index()
-					currentIssue := m.issueList.SelectedItem().(Issue)
-					if currentIssue.status == todo {
-						currentIssue.status = inProgress
-					} else {
-						currentIssue.status = todo
-					}
-					m.issueDetail = issueDetailModel{issue: currentIssue}
-					m.issueDetail.commentForm = NewCommentFormModel()
-					m.issueDetail.commentForm.Init()
-					m.issueDetail.Init(m)
-					cmd = m.issueList.SetItem(currentIndex, currentIssue)
-					return m, cmd
-				case key.Matches(msg, keys.IssueEditForm):
-					selectedIssue := m.issueList.SelectedItem().(Issue)
-					m.issueForm = issueFormModel{editing: true, identifier: selectedIssue.shortcode}
-					cmd = m.issueForm.Init(selectedIssue.title, selectedIssue.description)
-
-					m.path = issuesEditTitlePath
-					return m, cmd
-				case key.Matches(msg, keys.Back):
-					m.path = issuesIndexPath
-				case key.Matches(msg, keys.IssueCommentFormFocus):
-					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
-					m.issueDetail.commentForm = NewCommentFormModel()
-					m.issueDetail.commentForm.Init()
-					m.issueDetail.Init(m)
-					m.issueDetail.viewport.GotoBottom()
-					m.path = issuesCommentContentPath
-				}
-			}
-
-			m.issueDetail.viewport, cmd = m.issueDetail.viewport.Update(componentUpdateMsg)
-		case strings.HasSuffix(m.path, issuesCommentContentPath):
-			switch msg := msg.(type) {
-			case tea.KeyMsg:
-				switch {
-				case key.Matches(msg, keys.Back):
-					currentIssue := m.issueList.SelectedItem().(Issue)
-					m.issueDetail = issueDetailModel{issue: currentIssue}
-					m.issueDetail.commentForm = NewCommentFormModel()
-					m.issueDetail.Init(m)
-					m.path = issuesShowPath
-				case key.Matches(msg, keys.NextInput):
-					m.issueDetail.commentForm.contentInput.Blur()
-					m.path = issuesCommentConfirmationPath
-				}
-			}
-			m.issueDetail.commentForm.contentInput, cmd = m.issueDetail.commentForm.contentInput.Update(componentUpdateMsg.originalMsg)
-			return m, cmd
-		case strings.HasSuffix(m.path, issuesCommentConfirmationPath):
-			switch msg := msg.(type) {
-			case tea.KeyMsg:
-				switch {
-				case key.Matches(msg, keys.Back):
-					currentIssue := m.issueList.SelectedItem().(Issue)
-					m.issueDetail = issueDetailModel{issue: currentIssue}
-					m.issueDetail.commentForm = NewCommentFormModel()
-					m.issueDetail.Init(m)
-					m.path = issuesShowPath
-				case key.Matches(msg, keys.Submit):
-					return m, m.issueDetail.commentForm.Submit
-				}
-			}
-		case strings.HasSuffix(m.path, issuesEditTitlePath):
-			switch msg := msg.(type) {
-			case tea.KeyMsg:
-				switch {
-				case key.Matches(msg, keys.Back):
-					if m.issueForm.editing {
-						m.path = issuesShowPath
-						return m, cmd
-					} else {
-						m.path = issuesIndexPath
-						return m, cmd
-					}
-				case key.Matches(msg, keys.NextInput):
-					m.path = issuesEditDescriptionPath
-					m.issueForm.titleInput.Blur()
-					cmd = m.issueForm.descriptionInput.Focus()
-					return m, cmd
-				}
-			}
-
-			m.issueForm.titleInput, cmd = m.issueForm.titleInput.Update(msg)
-			return m, cmd
-		case strings.HasSuffix(m.path, issuesEditDescriptionPath):
-			switch msg := msg.(type) {
-			case tea.KeyMsg:
-				switch {
-				case key.Matches(msg, keys.Back):
-					if m.issueForm.editing {
-						m.path = issuesShowPath
-						return m, cmd
-					} else {
-						m.path = issuesIndexPath
-						return m, cmd
-					}
-				case key.Matches(msg, keys.NextInput):
-					m.path = issuesEditConfirmationPath
-					m.issueForm.descriptionInput.Blur()
-					return m, cmd
-				}
-			}
-
-			m.issueForm.descriptionInput, cmd = m.issueForm.descriptionInput.Update(msg)
-			return m, cmd
-		case strings.HasSuffix(m.path, issuesEditConfirmationPath):
-			switch msg := msg.(type) {
-			case tea.KeyMsg:
-				switch {
-				case key.Matches(msg, keys.Back):
-					if m.issueForm.editing {
-						m.path = issuesShowPath
-						return m, cmd
-					} else {
-						m.path = issuesIndexPath
-						return m, cmd
-					}
-				case key.Matches(msg, keys.NextInput):
-					m.path = issuesEditTitlePath
-					cmd = m.issueForm.titleInput.Focus()
-					return m, cmd
-				case key.Matches(msg, keys.Submit):
-					return m, m.issueForm.Submit
-				}
-			}
-
-			m.issueForm, cmd = m.issueForm.Update(componentUpdateMsg)
 			return m, cmd
 		}
-	case strings.HasPrefix(m.path, "/checks"):
-		switch {
-		case strings.HasSuffix(m.path, "/index"):
-			if m.commitList.SettingFilter() {
-				m.commitList, cmd = m.commitList.Update(msg)
+
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Help):
+				if m.help.ShowAll {
+					m.help.ShowAll = false
+					return m, nil
+				} else {
+					var maxHelpHeight int
+					for _, column := range keys.FullHelp() {
+						if len(column) > maxHelpHeight {
+							maxHelpHeight = len(column)
+						}
+					}
+					m.help.ShowAll = true
+					return m, nil
+				}
+			case key.Matches(msg, keys.IssueStatusDone):
+				currentIndex := m.issueList.Index()
+				currentIssue := m.issueList.SelectedItem().(Issue)
+				if currentIssue.status == todo {
+					currentIssue.status = done
+				} else {
+					currentIssue.status = todo
+				}
+				cmd = m.issueList.SetItem(currentIndex, currentIssue)
+				return m, cmd
+			case key.Matches(msg, keys.IssueStatusWontDo):
+				currentIndex := m.issueList.Index()
+				currentIssue := m.issueList.SelectedItem().(Issue)
+				if currentIssue.status == todo {
+					currentIssue.status = wontDo
+				} else {
+					currentIssue.status = todo
+				}
+				cmd = m.issueList.SetItem(currentIndex, currentIssue)
+				return m, cmd
+			case key.Matches(msg, keys.IssueStatusInProgress):
+				currentIndex := m.issueList.Index()
+				currentIssue := m.issueList.SelectedItem().(Issue)
+				if currentIssue.status == todo {
+					currentIssue.status = inProgress
+				} else {
+					currentIssue.status = todo
+				}
+				cmd = m.issueList.SetItem(currentIndex, currentIssue)
+				return m, cmd
+			case key.Matches(msg, keys.IssueCommentFormFocus):
+				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
+				m.issueDetail.commentForm = NewCommentFormModel()
+				m.issueDetail.commentForm.Init()
+				m.issueDetail.Init(m)
+				m.issueDetail.viewport.GotoBottom()
+				m.path = issuesCommentContentPath
+			case key.Matches(msg, keys.IssueDetailFocus):
+				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
+				m.issueDetail.commentForm = NewCommentFormModel()
+				m.issueDetail.commentForm.Init()
+				m.issueDetail.Init(m)
+				m.path = issuesShowPath
+			case key.Matches(msg, keys.IssueNewForm):
+				m.issueForm = issueFormModel{editing: false}
+				m.issueForm.Init("", "")
+				cmd = m.issueForm.titleInput.Focus()
+			case key.Matches(msg, keys.NextPage):
+				m.path = checksIndexPath
+			case key.Matches(msg, keys.PrevPage):
+				return m, nil
+			}
+		}
+
+		m.issueList, cmd = m.issueList.Update(msg)
+	case matchRoute(m.path, issuesShowPath):
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Help):
+				if m.help.ShowAll {
+					m.help.ShowAll = false
+				} else {
+					m.help.ShowAll = true
+				}
+				return m, nil
+			case key.Matches(msg, keys.IssueStatusDone):
+				currentIndex := m.issueList.Index()
+				currentIssue := m.issueList.SelectedItem().(Issue)
+				if currentIssue.status == todo {
+					currentIssue.status = done
+				} else {
+					currentIssue.status = todo
+				}
+				m.issueDetail = issueDetailModel{issue: currentIssue}
+				m.issueDetail.commentForm = NewCommentFormModel()
+				m.issueDetail.commentForm.Init()
+				m.issueDetail.Init(m)
+				cmd = m.issueList.SetItem(currentIndex, currentIssue)
+				return m, cmd
+			case key.Matches(msg, keys.IssueStatusWontDo):
+				currentIndex := m.issueList.Index()
+				currentIssue := m.issueList.SelectedItem().(Issue)
+				if currentIssue.status == todo {
+					currentIssue.status = wontDo
+				} else {
+					currentIssue.status = todo
+				}
+				m.issueDetail = issueDetailModel{issue: currentIssue}
+				m.issueDetail.commentForm = NewCommentFormModel()
+				m.issueDetail.commentForm.Init()
+				m.issueDetail.Init(m)
+				cmd = m.issueList.SetItem(currentIndex, currentIssue)
+				return m, cmd
+			case key.Matches(msg, keys.IssueStatusInProgress):
+				currentIndex := m.issueList.Index()
+				currentIssue := m.issueList.SelectedItem().(Issue)
+				if currentIssue.status == todo {
+					currentIssue.status = inProgress
+				} else {
+					currentIssue.status = todo
+				}
+				m.issueDetail = issueDetailModel{issue: currentIssue}
+				m.issueDetail.commentForm = NewCommentFormModel()
+				m.issueDetail.commentForm.Init()
+				m.issueDetail.Init(m)
+				cmd = m.issueList.SetItem(currentIndex, currentIssue)
+				return m, cmd
+			case key.Matches(msg, keys.IssueEditForm):
+				selectedIssue := m.issueList.SelectedItem().(Issue)
+				m.issueForm = issueFormModel{editing: true, identifier: selectedIssue.shortcode}
+				cmd = m.issueForm.Init(selectedIssue.title, selectedIssue.description)
+
+				m.path = issuesEditTitlePath
+				return m, cmd
+			case key.Matches(msg, keys.Back):
+				m.path = issuesIndexPath
+			case key.Matches(msg, keys.IssueCommentFormFocus):
+				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
+				m.issueDetail.commentForm = NewCommentFormModel()
+				m.issueDetail.commentForm.Init()
+				m.issueDetail.Init(m)
+				m.issueDetail.viewport.GotoBottom()
+				m.path = issuesCommentContentPath
+			}
+		}
+
+		m.issueDetail.viewport, cmd = m.issueDetail.viewport.Update(componentUpdateMsg)
+	case matchRoute(m.path, issuesCommentContentPath):
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Back):
+				currentIssue := m.issueList.SelectedItem().(Issue)
+				m.issueDetail = issueDetailModel{issue: currentIssue}
+				m.issueDetail.commentForm = NewCommentFormModel()
+				m.issueDetail.Init(m)
+				m.path = issuesShowPath
+			case key.Matches(msg, keys.NextInput):
+				m.issueDetail.commentForm.contentInput.Blur()
+				m.path = issuesCommentConfirmationPath
+			}
+		}
+		m.issueDetail.commentForm.contentInput, cmd = m.issueDetail.commentForm.contentInput.Update(componentUpdateMsg.originalMsg)
+		return m, cmd
+	case matchRoute(m.path, issuesCommentConfirmationPath):
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Back):
+				currentIssue := m.issueList.SelectedItem().(Issue)
+				m.issueDetail = issueDetailModel{issue: currentIssue}
+				m.issueDetail.commentForm = NewCommentFormModel()
+				m.issueDetail.Init(m)
+				m.path = issuesShowPath
+			case key.Matches(msg, keys.Submit):
+				return m, m.issueDetail.commentForm.Submit
+			}
+		}
+	case matchRoute(m.path, issuesEditTitlePath):
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Back):
+				if m.issueForm.editing {
+					m.path = issuesShowPath
+					return m, cmd
+				} else {
+					m.path = issuesIndexPath
+					return m, cmd
+				}
+			case key.Matches(msg, keys.NextInput):
+				m.path = issuesEditDescriptionPath
+				m.issueForm.titleInput.Blur()
+				cmd = m.issueForm.descriptionInput.Focus()
 				return m, cmd
 			}
+		}
 
-			switch msg := msg.(type) {
-			case tea.KeyMsg:
-				switch {
-				case key.Matches(msg, keys.Down):
-					m.commitList, cmd = m.commitList.Update(msg)
+		m.issueForm.titleInput, cmd = m.issueForm.titleInput.Update(msg)
+		return m, cmd
+	case matchRoute(m.path, issuesEditDescriptionPath):
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Back):
+				if m.issueForm.editing {
+					m.path = issuesShowPath
 					return m, cmd
-				case key.Matches(msg, keys.Up):
-					m.commitList, cmd = m.commitList.Update(msg)
-					return m, cmd
-				case key.Matches(msg, keys.RunCheck):
-					commit := m.commitList.SelectedItem().(Commit)
-					commit.latestCheck = Check{status: "running"}
-					m.commitList.SetItem(m.commitList.Index(), commit)
-					m.commitList, cmd = m.commitList.Update(msg)
-					m.commitDetail = commitDetailModel{commit: commit}
-					m.commitDetail.Init(m)
-					cmd = RunCheck(commit.id)
-					return m, cmd
-				case key.Matches(msg, keys.CommitDetailFocus):
-					m.commitDetail = commitDetailModel{commit: m.commitList.SelectedItem().(Commit)}
-					m.commitDetail.Init(m)
-					m.path = checksShowPath
-					return m, cmd
-				case key.Matches(msg, keys.NextPage):
-					return m, nil
-				case key.Matches(msg, keys.PrevPage):
+				} else {
 					m.path = issuesIndexPath
-				case key.Matches(msg, keys.Help):
-					if m.help.ShowAll {
-						m.help.ShowAll = false
-						return m, nil
-					} else {
-						var maxHelpHeight int
-						for _, column := range keys.FullHelp() {
-							if len(column) > maxHelpHeight {
-								maxHelpHeight = len(column)
-							}
-						}
-						m.help.ShowAll = true
-						return m, nil
-					}
-				}
-			case checkResult:
-				var commit Commit
-				var commitIndex int
-				for i, c := range m.commitList.Items() {
-					if c.(Commit).id == msg.commitHash {
-						commit = c.(Commit)
-						commitIndex = i
-						break
-					}
-				}
-				commit.latestCheck = Check{status: msg.status, output: msg.output}
-				m.commitList.SetItem(commitIndex, commit)
-				m.commitList, cmd = m.commitList.Update(msg)
-				m.commitDetail = commitDetailModel{commit: commit}
-				m.commitDetail.Init(m)
-			}
-			m.commitList, cmd = m.commitList.Update(msg)
-		case strings.HasSuffix(m.path, "/show"):
-			switch msg := msg.(type) {
-			case tea.KeyMsg:
-				switch {
-				case key.Matches(msg, keys.Back):
-					m.path = checksIndexPath
-				case key.Matches(msg, keys.RunCheck):
-					commit := m.commitList.SelectedItem().(Commit)
-					commit.latestCheck = Check{status: "running"}
-					m.commitList.SetItem(m.commitList.Index(), commit)
-					m.commitList, cmd = m.commitList.Update(msg)
-					m.commitDetail = commitDetailModel{commit: commit}
-					m.commitDetail.Init(m)
-					cmd = RunCheck(commit.id)
 					return m, cmd
 				}
-			case checkResult:
-				var commit Commit
-				var commitIndex int
-				for i, c := range m.commitList.Items() {
-					if c.(Commit).id == msg.commitHash {
-						commit = c.(Commit)
-						commitIndex = i
-						break
-					}
-				}
-				commit.latestCheck = Check{status: msg.status, output: msg.output}
-				m.commitList.SetItem(commitIndex, commit)
-				m.commitList, cmd = m.commitList.Update(msg)
-				m.commitDetail = commitDetailModel{commit: commit}
-				m.commitDetail.Init(m)
+			case key.Matches(msg, keys.NextInput):
+				m.path = issuesEditConfirmationPath
+				m.issueForm.descriptionInput.Blur()
+				return m, cmd
 			}
-		default:
-			m.commitDetail.viewport, cmd = m.commitDetail.viewport.Update(msg)
+		}
+
+		m.issueForm.descriptionInput, cmd = m.issueForm.descriptionInput.Update(msg)
+		return m, cmd
+	case matchRoute(m.path, issuesEditConfirmationPath):
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Back):
+				if m.issueForm.editing {
+					m.path = issuesShowPath
+					return m, cmd
+				} else {
+					m.path = issuesIndexPath
+					return m, cmd
+				}
+			case key.Matches(msg, keys.NextInput):
+				m.path = issuesEditTitlePath
+				cmd = m.issueForm.titleInput.Focus()
+				return m, cmd
+			case key.Matches(msg, keys.Submit):
+				return m, m.issueForm.Submit
+			}
+		}
+
+		m.issueForm, cmd = m.issueForm.Update(componentUpdateMsg)
+		return m, cmd
+	case matchRoute(m.path, checksIndexPath):
+		if m.commitList.SettingFilter() {
+			m.commitList, cmd = m.commitList.Update(msg)
 			return m, cmd
 		}
+
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Down):
+				m.commitList, cmd = m.commitList.Update(msg)
+				return m, cmd
+			case key.Matches(msg, keys.Up):
+				m.commitList, cmd = m.commitList.Update(msg)
+				return m, cmd
+			case key.Matches(msg, keys.RunCheck):
+				commit := m.commitList.SelectedItem().(Commit)
+				commit.latestCheck = Check{status: "running"}
+				m.commitList.SetItem(m.commitList.Index(), commit)
+				m.commitList, cmd = m.commitList.Update(msg)
+				m.commitDetail = commitDetailModel{commit: commit}
+				m.commitDetail.Init(m)
+				cmd = RunCheck(commit.id)
+				return m, cmd
+			case key.Matches(msg, keys.CommitDetailFocus):
+				m.commitDetail = commitDetailModel{commit: m.commitList.SelectedItem().(Commit)}
+				m.commitDetail.Init(m)
+				m.path = checksShowPath
+				return m, cmd
+			case key.Matches(msg, keys.NextPage):
+				return m, nil
+			case key.Matches(msg, keys.PrevPage):
+				m.path = issuesIndexPath
+			case key.Matches(msg, keys.Help):
+				if m.help.ShowAll {
+					m.help.ShowAll = false
+					return m, nil
+				} else {
+					var maxHelpHeight int
+					for _, column := range keys.FullHelp() {
+						if len(column) > maxHelpHeight {
+							maxHelpHeight = len(column)
+						}
+					}
+					m.help.ShowAll = true
+					return m, nil
+				}
+			}
+		case checkResult:
+			var commit Commit
+			var commitIndex int
+			for i, c := range m.commitList.Items() {
+				if c.(Commit).id == msg.commitHash {
+					commit = c.(Commit)
+					commitIndex = i
+					break
+				}
+			}
+			commit.latestCheck = Check{status: msg.status, output: msg.output}
+			m.commitList.SetItem(commitIndex, commit)
+			m.commitList, cmd = m.commitList.Update(msg)
+			m.commitDetail = commitDetailModel{commit: commit}
+			m.commitDetail.Init(m)
+		}
+		m.commitList, cmd = m.commitList.Update(msg)
+    m.commitDetail.viewport, cmd = m.commitDetail.viewport.Update(msg)
+    return m, cmd
+	case matchRoute(m.path, checksShowPath):
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Back):
+				m.path = checksIndexPath
+			case key.Matches(msg, keys.RunCheck):
+				commit := m.commitList.SelectedItem().(Commit)
+				commit.latestCheck = Check{status: "running"}
+				m.commitList.SetItem(m.commitList.Index(), commit)
+				m.commitList, cmd = m.commitList.Update(msg)
+				m.commitDetail = commitDetailModel{commit: commit}
+				m.commitDetail.Init(m)
+				cmd = RunCheck(commit.id)
+				return m, cmd
+			}
+		case checkResult:
+			var commit Commit
+			var commitIndex int
+			for i, c := range m.commitList.Items() {
+				if c.(Commit).id == msg.commitHash {
+					commit = c.(Commit)
+					commitIndex = i
+					break
+				}
+			}
+			commit.latestCheck = Check{status: msg.status, output: msg.output}
+			m.commitList.SetItem(commitIndex, commit)
+			m.commitList, cmd = m.commitList.Update(msg)
+			m.commitDetail = commitDetailModel{commit: commit}
+			m.commitDetail.Init(m)
+		}
+
+    m.commitDetail.viewport, cmd = m.commitDetail.viewport.Update(msg)
+    return m, cmd
 	}
 
 	return m, cmd
@@ -863,7 +863,7 @@ func (m Model) HelpKeys() keyMap {
 	}
 
 	switch {
-	case strings.HasPrefix(m.path, issuesIndexPath):
+	case matchRoute(m.path, issuesIndexPath):
 	case strings.HasSuffix(m.path, "/show"):
 		keys.Up = key.NewBinding(
 			key.WithKeys("up", "k"),
@@ -921,7 +921,7 @@ func (m Model) View() string {
 		}
 
 		switch {
-		case strings.HasSuffix(m.path, "/index"):
+		case matchRoute(m.path, issuesIndexPath):
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -934,7 +934,7 @@ func (m Model) View() string {
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
-		case strings.HasSuffix(m.path, "/show"):
+		case matchRoute(m.path, issuesShowPath):
 			sidebarView = lipgloss.NewStyle().
 				Render(m.issueDetail.View())
 
@@ -950,7 +950,7 @@ func (m Model) View() string {
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
-		case strings.HasSuffix(m.path, "/show/comments/new/content"):
+		case matchRoute(m.path, issuesCommentContentPath):
 			sidebarView = lipgloss.NewStyle().
 				Render(lipgloss.JoinVertical(
 					lipgloss.Left,
@@ -970,7 +970,7 @@ func (m Model) View() string {
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
-		case strings.HasSuffix(m.path, "/show/comments/new/confirmation"):
+		case matchRoute(m.path, issuesCommentConfirmationPath):
 			sidebarView = lipgloss.NewStyle().
 				Render(lipgloss.JoinVertical(
 					lipgloss.Left,
@@ -990,7 +990,7 @@ func (m Model) View() string {
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
-		case strings.HasSuffix(m.path, "/edit/title"):
+		case matchRoute(m.path, issuesEditTitlePath):
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
@@ -1008,7 +1008,7 @@ func (m Model) View() string {
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
-		case strings.HasSuffix(m.path, "/edit/description"):
+		case matchRoute(m.path, issuesEditDescriptionPath):
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
@@ -1026,7 +1026,7 @@ func (m Model) View() string {
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
-		case strings.HasSuffix(m.path, "/edit/confirmation"):
+		case matchRoute(m.path, issuesEditConfirmationPath):
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
@@ -1060,7 +1060,7 @@ func (m Model) View() string {
 			Render(m.commitList.View())
 
 		switch {
-		case strings.HasSuffix(m.path, "/index"):
+		case matchRoute(m.path, checksIndexPath):
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
 				boxStyle(m.HeaderSize).Render(
@@ -1069,7 +1069,7 @@ func (m Model) View() string {
 				boxStyle(m.LeftSize).Render(commitListView),
 				boxStyle(m.FooterSize).Render(help),
 			)
-		case strings.HasSuffix(m.path, "/show"):
+		case matchRoute(m.path, checksShowPath):
 			commitDetailView := lipgloss.NewStyle().
 				Render(m.commitDetail.View())
 			view = lipgloss.JoinVertical(
