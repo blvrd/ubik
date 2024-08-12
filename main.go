@@ -24,14 +24,6 @@ import (
 	bl "github.com/winder/bubblelayout"
 )
 
-type pathChangedMsg string
-
-func NavigateTo(path string) tea.Cmd {
-	return func() tea.Msg {
-		return pathChangedMsg(path)
-	}
-}
-
 type Styles struct {
 	Theme Theme
 }
@@ -333,8 +325,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg {
 			return m.Layout.Resize(msg.Width, msg.Height)
 		}
-	case pathChangedMsg:
-		m.path = string(msg)
 	case IssuesReadyMsg:
 		var listItems []list.Item
 		for _, issue := range msg {
@@ -366,7 +356,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.issueDetail.viewport.GotoBottom()
 
 		m.path = "/issues/show"
-		return m, NavigateTo("/issues/show")
 	case issueFormModel:
 		if msg.editing {
 			currentIndex := m.issueList.Index()
@@ -395,7 +384,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.path = "/issues/show"
-		return m, NavigateTo("/issues/show")
 	}
 
 	switch {
@@ -461,21 +449,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail.Init(m)
 					m.issueDetail.viewport.GotoBottom()
 					m.path = "/issues/show/comments/new/content"
-					return m, NavigateTo("/issues/show/comments/new/content")
 				case key.Matches(msg, keys.IssueDetailFocus):
 					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
 					m.issueDetail.commentForm = NewCommentFormModel()
 					m.issueDetail.commentForm.Init()
 					m.issueDetail.Init(m)
 					m.path = "/issues/show"
-					return m, NavigateTo("/issues/show")
 				case key.Matches(msg, keys.IssueNewForm):
 					m.issueForm = issueFormModel{editing: false}
 					m.issueForm.Init("", "")
 					cmd = m.issueForm.titleInput.Focus()
 				case key.Matches(msg, keys.NextPage):
 					m.path = "/checks/index"
-					return m, NavigateTo("/checks/index")
 				case key.Matches(msg, keys.PrevPage):
 					return m, nil
 				}
@@ -544,7 +529,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, cmd
 				case key.Matches(msg, keys.Back):
 					m.path = "/issues/index"
-					return m, NavigateTo("/issues/index")
 				case key.Matches(msg, keys.IssueCommentFormFocus):
 					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
 					m.issueDetail.commentForm = NewCommentFormModel()
@@ -552,7 +536,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail.Init(m)
 					m.issueDetail.viewport.GotoBottom()
 					m.path = "/issues/show/comments/new/content"
-					return m, NavigateTo("/issues/show/comments/new/content")
 				}
 			}
 
@@ -567,11 +550,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail.commentForm = NewCommentFormModel()
 					m.issueDetail.Init(m)
 					m.path = "/issues/show"
-					return m, NavigateTo("/issues/show")
 				case key.Matches(msg, keys.NextInput):
 					m.issueDetail.commentForm.contentInput.Blur()
 					m.path = "/issues/show/comments/new/confirmation"
-					return m, NavigateTo("/issues/show/comments/new/confirmation")
 				}
 			}
 			m.issueDetail.commentForm.contentInput, cmd = m.issueDetail.commentForm.contentInput.Update(componentUpdateMsg.originalMsg)
@@ -586,7 +567,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail.commentForm = NewCommentFormModel()
 					m.issueDetail.Init(m)
 					m.path = "/issues/show"
-					return m, NavigateTo("/issues/show")
 				case key.Matches(msg, keys.Submit):
 					return m, m.issueDetail.commentForm.Submit
 				}
@@ -693,7 +673,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				case key.Matches(msg, keys.PrevPage):
 					m.path = "/issues/index"
-					return m, NavigateTo("/issues/index")
 				case key.Matches(msg, keys.Help):
 					if m.help.ShowAll {
 						m.help.ShowAll = false
