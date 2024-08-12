@@ -329,7 +329,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
 	keys := m.HelpKeys()
-	componentUpdateMsg := updateMsg{originalMsg: msg, keys: keys}
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -553,7 +552,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		m.issueDetail.viewport, cmd = m.issueDetail.viewport.Update(componentUpdateMsg)
+		m.issueDetail.viewport, cmd = m.issueDetail.viewport.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, issuesCommentContentPath):
 		switch msg := msg.(type) {
@@ -570,7 +569,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.path = issuesCommentConfirmationPath
 			}
 		}
-		m.issueDetail.commentForm.contentInput, cmd = m.issueDetail.commentForm.contentInput.Update(componentUpdateMsg.originalMsg)
+		m.issueDetail.commentForm.contentInput, cmd = m.issueDetail.commentForm.contentInput.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, issuesCommentConfirmationPath):
 		switch msg := msg.(type) {
@@ -650,7 +649,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		m.issueForm, cmd = m.issueForm.Update(componentUpdateMsg)
+		m.issueForm, cmd = m.issueForm.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, checksIndexPath):
 		if m.commitList.SettingFilter() {
@@ -1293,11 +1292,6 @@ func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
 	}
 	m.viewport.SetContent(s.String())
 	return nil
-}
-
-type updateMsg struct {
-	originalMsg tea.Msg
-	keys        keyMap
 }
 
 func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
