@@ -480,6 +480,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.issueList, cmd = m.issueList.Update(msg)
+		return m, cmd
 	case matchRoute(m.path, issuesShowPath):
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -553,6 +554,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.issueDetail.viewport, cmd = m.issueDetail.viewport.Update(componentUpdateMsg)
+		return m, cmd
 	case matchRoute(m.path, issuesCommentContentPath):
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -714,9 +716,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.commitDetail = commitDetailModel{commit: commit}
 			m.commitDetail.Init(m)
 		}
+
 		m.commitList, cmd = m.commitList.Update(msg)
-    m.commitDetail.viewport, cmd = m.commitDetail.viewport.Update(msg)
-    return m, cmd
+		return m, cmd
 	case matchRoute(m.path, checksShowPath):
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -750,8 +752,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.commitDetail.Init(m)
 		}
 
-    m.commitDetail.viewport, cmd = m.commitDetail.viewport.Update(msg)
-    return m, cmd
+		m.commitDetail.viewport, cmd = m.commitDetail.viewport.Update(msg)
+		return m, cmd
 	}
 
 	return m, cmd
