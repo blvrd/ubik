@@ -10,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	// "github.com/charmbracelet/bubbles/help"
 	"github.com/blvrd/ubik/help"
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -22,6 +21,18 @@ import (
 	"github.com/charmbracelet/log"
 	"github.com/google/uuid"
 	bl "github.com/winder/bubblelayout"
+)
+
+const (
+	issuesIndexPath               string = "/issues/index"
+	issuesShowPath                string = "/issues/show"
+	issuesCommentContentPath      string = "/issues/show/comments/new/content"
+	issuesCommentConfirmationPath string = "/issues/show/comments/new/confirmation"
+	issuesEditTitlePath           string = "/issues/edit/title"
+	issuesEditDescriptionPath     string = "/issues/edit/description"
+	issuesEditConfirmationPath    string = "/issues/edit/confirmation"
+	checksIndexPath               string = "/checks/index"
+	checksShowPath                string = "/checks/show"
 )
 
 type Styles struct {
@@ -107,7 +118,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 	var bindings [][]key.Binding
 
 	switch {
-	case strings.HasPrefix(k.Path, "/issues/index"):
+	case strings.HasPrefix(k.Path, issuesIndexPath):
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
@@ -115,7 +126,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 			{k.IssueStatusDone, k.IssueStatusWontDo},
 			{k.IssueStatusInProgress, k.IssueCommentFormFocus},
 		}
-	case strings.HasPrefix(k.Path, "/issues/show"):
+	case strings.HasPrefix(k.Path, issuesShowPath):
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
@@ -124,7 +135,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 			{k.IssueStatusDone, k.IssueStatusWontDo},
 			{k.IssueStatusInProgress, k.IssueCommentFormFocus},
 		}
-	case strings.HasPrefix(k.Path, "/issues/edit"):
+	case strings.HasPrefix(k.Path, issuesEditConfirmationPath):
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
@@ -294,7 +305,7 @@ func InitialModel() Model {
 	helpModel.FullSeparator = "    "
 
 	return Model{
-		path:       "/issues/index",
+		path:       issuesIndexPath,
 		help:       helpModel,
 		styles:     DefaultStyles(),
 		tabs:       []string{"Issues", "Checks"},
@@ -355,7 +366,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.issueDetail.Init(m)
 		m.issueDetail.viewport.GotoBottom()
 
-		m.path = "/issues/show"
+		m.path = issuesShowPath
 	case issueFormModel:
 		if msg.editing {
 			currentIndex := m.issueList.Index()
@@ -383,7 +394,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueDetail.Init(m)
 		}
 
-		m.path = "/issues/show"
+		m.path = issuesShowPath
 	}
 
 	switch {
@@ -448,19 +459,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail.commentForm.Init()
 					m.issueDetail.Init(m)
 					m.issueDetail.viewport.GotoBottom()
-					m.path = "/issues/show/comments/new/content"
+					m.path = issuesCommentContentPath
 				case key.Matches(msg, keys.IssueDetailFocus):
 					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
 					m.issueDetail.commentForm = NewCommentFormModel()
 					m.issueDetail.commentForm.Init()
 					m.issueDetail.Init(m)
-					m.path = "/issues/show"
+					m.path = issuesShowPath
 				case key.Matches(msg, keys.IssueNewForm):
 					m.issueForm = issueFormModel{editing: false}
 					m.issueForm.Init("", "")
 					cmd = m.issueForm.titleInput.Focus()
 				case key.Matches(msg, keys.NextPage):
-					m.path = "/checks/index"
+					m.path = checksIndexPath
 				case key.Matches(msg, keys.PrevPage):
 					return m, nil
 				}
@@ -525,22 +536,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueForm = issueFormModel{editing: true, identifier: selectedIssue.shortcode}
 					cmd = m.issueForm.Init(selectedIssue.title, selectedIssue.description)
 
-					m.path = "/issues/edit/title"
+					m.path = issuesEditTitlePath
 					return m, cmd
 				case key.Matches(msg, keys.Back):
-					m.path = "/issues/index"
+					m.path = issuesIndexPath
 				case key.Matches(msg, keys.IssueCommentFormFocus):
 					m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
 					m.issueDetail.commentForm = NewCommentFormModel()
 					m.issueDetail.commentForm.Init()
 					m.issueDetail.Init(m)
 					m.issueDetail.viewport.GotoBottom()
-					m.path = "/issues/show/comments/new/content"
+					m.path = issuesCommentContentPath
 				}
 			}
 
 			m.issueDetail.viewport, cmd = m.issueDetail.viewport.Update(componentUpdateMsg)
-		case strings.HasSuffix(m.path, "/show/comments/new/content"):
+		case strings.HasSuffix(m.path, issuesCommentContentPath):
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
 				switch {
@@ -549,15 +560,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail = issueDetailModel{issue: currentIssue}
 					m.issueDetail.commentForm = NewCommentFormModel()
 					m.issueDetail.Init(m)
-					m.path = "/issues/show"
+					m.path = issuesShowPath
 				case key.Matches(msg, keys.NextInput):
 					m.issueDetail.commentForm.contentInput.Blur()
-					m.path = "/issues/show/comments/new/confirmation"
+					m.path = issuesCommentConfirmationPath
 				}
 			}
 			m.issueDetail.commentForm.contentInput, cmd = m.issueDetail.commentForm.contentInput.Update(componentUpdateMsg.originalMsg)
 			return m, cmd
-		case strings.HasSuffix(m.path, "/show/comments/new/confirmation"):
+		case strings.HasSuffix(m.path, issuesCommentConfirmationPath):
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
 				switch {
@@ -566,25 +577,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.issueDetail = issueDetailModel{issue: currentIssue}
 					m.issueDetail.commentForm = NewCommentFormModel()
 					m.issueDetail.Init(m)
-					m.path = "/issues/show"
+					m.path = issuesShowPath
 				case key.Matches(msg, keys.Submit):
 					return m, m.issueDetail.commentForm.Submit
 				}
 			}
-		case strings.HasSuffix(m.path, "/edit/title"):
+		case strings.HasSuffix(m.path, issuesEditTitlePath):
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(msg, keys.Back):
 					if m.issueForm.editing {
-						m.path = "/issues/show"
+						m.path = issuesShowPath
 						return m, cmd
 					} else {
-						m.path = "/issues/index"
+						m.path = issuesIndexPath
 						return m, cmd
 					}
 				case key.Matches(msg, keys.NextInput):
-					m.path = "/issues/edit/description"
+					m.path = issuesEditDescriptionPath
 					m.issueForm.titleInput.Blur()
 					cmd = m.issueForm.descriptionInput.Focus()
 					return m, cmd
@@ -593,20 +604,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			m.issueForm.titleInput, cmd = m.issueForm.titleInput.Update(msg)
 			return m, cmd
-		case strings.HasSuffix(m.path, "/edit/description"):
+		case strings.HasSuffix(m.path, issuesEditDescriptionPath):
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(msg, keys.Back):
 					if m.issueForm.editing {
-						m.path = "/issues/show"
+						m.path = issuesShowPath
 						return m, cmd
 					} else {
-						m.path = "/issues/index"
+						m.path = issuesIndexPath
 						return m, cmd
 					}
 				case key.Matches(msg, keys.NextInput):
-					m.path = "/issues/edit/confirmation"
+					m.path = issuesEditConfirmationPath
 					m.issueForm.descriptionInput.Blur()
 					return m, cmd
 				}
@@ -614,20 +625,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			m.issueForm.descriptionInput, cmd = m.issueForm.descriptionInput.Update(msg)
 			return m, cmd
-		case strings.HasSuffix(m.path, "/edit/confirmation"):
+		case strings.HasSuffix(m.path, issuesEditConfirmationPath):
 			switch msg := msg.(type) {
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(msg, keys.Back):
 					if m.issueForm.editing {
-						m.path = "/issues/show"
+						m.path = issuesShowPath
 						return m, cmd
 					} else {
-						m.path = "/issues/index"
+						m.path = issuesIndexPath
 						return m, cmd
 					}
 				case key.Matches(msg, keys.NextInput):
-					m.path = "issues/edit/title"
+					m.path = issuesEditTitlePath
 					cmd = m.issueForm.titleInput.Focus()
 					return m, cmd
 				case key.Matches(msg, keys.Submit):
@@ -667,12 +678,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				case key.Matches(msg, keys.CommitDetailFocus):
 					m.commitDetail = commitDetailModel{commit: m.commitList.SelectedItem().(Commit)}
 					m.commitDetail.Init(m)
-					m.path = "/checks/show"
+					m.path = checksShowPath
 					return m, cmd
 				case key.Matches(msg, keys.NextPage):
 					return m, nil
 				case key.Matches(msg, keys.PrevPage):
-					m.path = "/issues/index"
+					m.path = issuesIndexPath
 				case key.Matches(msg, keys.Help):
 					if m.help.ShowAll {
 						m.help.ShowAll = false
@@ -710,7 +721,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case tea.KeyMsg:
 				switch {
 				case key.Matches(msg, keys.Back):
-					m.path = "/checks/index"
+					m.path = checksIndexPath
 				case key.Matches(msg, keys.RunCheck):
 					commit := m.commitList.SelectedItem().(Commit)
 					commit.latestCheck = Check{status: "running"}
@@ -852,7 +863,7 @@ func (m Model) HelpKeys() keyMap {
 	}
 
 	switch {
-	case strings.HasPrefix(m.path, "/issues/index"):
+	case strings.HasPrefix(m.path, issuesIndexPath):
 	case strings.HasSuffix(m.path, "/show"):
 		keys.Up = key.NewBinding(
 			key.WithKeys("up", "k"),
