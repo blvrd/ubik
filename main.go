@@ -1276,6 +1276,36 @@ type IssuesReadyMsg []Issue
 func getIssues() tea.Msg {
 	issues := seedIssues
 
+	cmd := exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik")
+	b, err := cmd.Output()
+	if err != nil {
+		panic(err)
+	}
+
+	var refHashes []string
+	str := string(b)
+	for _, s := range strings.Split(str, "\n") {
+		noteId := strings.Split(s, " ")[0]
+		if noteId != "" {
+			refHashes = append(refHashes, noteId)
+		}
+	}
+
+	for _, refHash := range refHashes {
+		cmd := exec.Command("git", "cat-file", "-p", refHash)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		err := cmd.Run()
+		if err != nil {
+			continue
+		}
+
+		var issue Issue
+		json.Unmarshal(out.Bytes(), &issue)
+
+		issues = append(issues, issue)
+	}
+
 	return IssuesReadyMsg(issues)
 }
 
