@@ -25,12 +25,12 @@ We need to identify the source of the leak and implement a fix.
 		Status: 2,
 		Comments: []Comment{
 			{
-				author:  "devops@techco.com",
-				content: "I've added memory profiling to the worker. Will analyze the results and report back.",
+				Author:  "devops@techco.com",
+				Content: "I've added memory profiling to the worker. Will analyze the results and report back.",
 			},
 			{
-				author:  "emma@techco.com",
-				content: "Thanks for looking into this. Let me know if you need any additional information.",
+				Author:  "emma@techco.com",
+				Content: "Thanks for looking into this. Let me know if you need any additional information.",
 			},
 		},
 	},
@@ -54,8 +54,8 @@ Actual: All requests are being accepted
 		Status: 1,
 		Comments: []Comment{
 			{
-				author:  "backend@devfirm.com",
-				content: "I've identified the issue. Our Redis cache for storing rate limit data wasn't being updated correctly. Working on a fix now.",
+				Author:  "backend@devfirm.com",
+				Content: "I've identified the issue. Our Redis cache for storing rate limit data wasn't being updated correctly. Working on a fix now.",
 			},
 		},
 	},
@@ -78,16 +78,16 @@ This issue seems to be specific to iPhone 12 models and doesn't occur on other i
 		Status: 3,
 		Comments: []Comment{
 			{
-				author:  "frontend@designstudio.com",
-				content: "I've identified the cause. It's related to the new screen resolution on iPhone 12. Working on a CSS fix.",
+				Author:  "frontend@designstudio.com",
+				Content: "I've identified the cause. It's related to the new screen resolution on iPhone 12. Working on a CSS fix.",
 			},
 			{
-				author:  "ux@designstudio.com",
-				content: "Great, thanks for the quick response. Please let me know when a fix is ready for testing.",
+				Author:  "ux@designstudio.com",
+				Content: "Great, thanks for the quick response. Please let me know when a fix is ready for testing.",
 			},
 			{
-				author:  "frontend@designstudio.com",
-				content: "Fix has been implemented and pushed to staging. Please review and let me know if any further adjustments are needed.",
+				Author:  "frontend@designstudio.com",
+				Content: "Fix has been implemented and pushed to staging. Please review and let me know if any further adjustments are needed.",
 			},
 		},
 	},
@@ -110,8 +110,8 @@ This needs to be addressed urgently to prevent potential data breaches.
 		Status: 1,
 		Comments: []Comment{
 			{
-				author:  "backend@bigcorp.com",
-				content: "Thanks for flagging this. I'm implementing prepared statements for all database queries to prevent SQL injection. Will push a fix for review shortly.",
+				Author:  "backend@bigcorp.com",
+				Content: "Thanks for flagging this. I'm implementing prepared statements for all database queries to prevent SQL injection. Will push a fix for review shortly.",
 			},
 		},
 	},
@@ -134,12 +134,12 @@ This is happening to approximately 5% of login attempts.
 		Status: 2,
 		Comments: []Comment{
 			{
-				author:  "backend@saasplatform.com",
-				content: "I've added additional logging to the authentication process. Will monitor and analyze logs to identify any patterns or issues.",
+				Author:  "backend@saasplatform.com",
+				Content: "I've added additional logging to the authentication process. Will monitor and analyze logs to identify any patterns or issues.",
 			},
 			{
-				author:  "devops@saasplatform.com",
-				content: "Could this be related to cache inconsistencies? I'll check our Redis cluster for any replication delays.",
+				Author:  "devops@saasplatform.com",
+				Content: "Could this be related to cache inconsistencies? I'll check our Redis cluster for any replication delays.",
 			},
 		},
 	},
@@ -163,8 +163,8 @@ This is affecting our clients' decision-making processes and needs to be resolve
 		Status: 2,
 		Comments: []Comment{
 			{
-				author:  "backend@analyticsfirm.com",
-				content: "I'm reviewing the aggregation queries. Initial investigation suggests we might be double-counting some events in the monthly rollup. Will update once I have more information.",
+				Author:  "backend@analyticsfirm.com",
+				Content: "I'm reviewing the aggregation queries. Initial investigation suggests we might be double-counting some events in the monthly rollup. Will update once I have more information.",
 			},
 		},
 	},
@@ -187,12 +187,12 @@ This is blocking some of our enterprise customers from using a key feature of ou
 		Status: 1,
 		Comments: []Comment{
 			{
-				author:  "devops@cloudservice.com",
-				content: "I've checked our Nginx configuration and found that the client_max_body_size was set to 50M. Updating to 200M and will deploy the change.",
+				Author:  "devops@cloudservice.com",
+				Content: "I've checked our Nginx configuration and found that the client_max_body_size was set to 50M. Updating to 200M and will deploy the change.",
 			},
 			{
-				author:  "backend@cloudservice.com",
-				content: "We should also update our client-side validation to match the new limit. I'll make those changes.",
+				Author:  "backend@cloudservice.com",
+				Content: "We should also update our client-side validation to match the new limit. I'll make those changes.",
 			},
 		},
 	},
@@ -215,8 +215,8 @@ This is a critical feature for our app and needs to be fixed ASAP.
 		Status: 2,
 		Comments: []Comment{
 			{
-				author:  "mobile@mobileapp.com",
-				content: "I've reproduced the issue. It seems to be related to the new scoped storage changes in Android 11. I'm working on updating our camera access implementation to comply with the new requirements.",
+				Author:  "mobile@mobileapp.com",
+				Content: "I've reproduced the issue. It seems to be related to the new scoped storage changes in Android 11. I'm working on updating our camera access implementation to comply with the new requirements.",
 			},
 		},
 	},
@@ -241,12 +241,12 @@ This is happening sporadically, affecting roughly 10% of transactions.
 		Status: 1,
 		Comments: []Comment{
 			{
-				author:  "backend@ecommerce.com",
-				content: "I've added additional logging to the payment processing step. Will analyze logs from affected transactions to identify any patterns.",
+				Author:  "backend@ecommerce.com",
+				Content: "I've added additional logging to the payment processing step. Will analyze logs from affected transactions to identify any patterns.",
 			},
 			{
-				author:  "frontend@ecommerce.com",
-				content: "Could this be a frontend issue? I'll check for any JavaScript errors or race conditions in the payment form submission.",
+				Author:  "frontend@ecommerce.com",
+				Content: "Could this be a frontend issue? I'll check for any JavaScript errors or race conditions in the payment form submission.",
 			},
 		},
 	},
@@ -269,12 +269,12 @@ We need to identify the cause of the increased disk usage and implement a soluti
 		Status: 1,
 		Comments: []Comment{
 			{
-				author:  "backend@saas.com",
-				content: "I'm investigating our index management. We might need to optimize our index lifecycle policies or increase our pruning of old data.",
+				Author:  "backend@saas.com",
+				Content: "I'm investigating our index management. We might need to optimize our index lifecycle policies or increase our pruning of old data.",
 			},
 			{
-				author:  "devops@saas.com",
-				content: "As a temporary measure, I'm provisioning additional nodes to the cluster to buy us some time. Will coordinate with backend team on a permanent solution.",
+				Author:  "devops@saas.com",
+				Content: "As a temporary measure, I'm provisioning additional nodes to the cluster to buy us some time. Will coordinate with backend team on a permanent solution.",
 			},
 		},
 	},
@@ -297,8 +297,8 @@ This needs to be addressed immediately to ensure we're not violating any data pr
 		Status: 1,
 		Comments: []Comment{
 			{
-				author:  "backend@fintech.com",
-				content: "I've identified the issue. We're not properly filtering the user object before sending it in the API response. Implementing a fix now and will also audit other endpoints for similar issues.",
+				Author:  "backend@fintech.com",
+				Content: "I've identified the issue. We're not properly filtering the user object before sending it in the API response. Implementing a fix now and will also audit other endpoints for similar issues.",
 			},
 		},
 	},
@@ -321,12 +321,12 @@ The issue is not present on high-end devices or iOS.
 		Status: 2,
 		Comments: []Comment{
 			{
-				author:  "dev@gamedev.com",
-				content: "I've reproduced the issue. It seems to be related to asset loading during level transition. I'm working on implementing asynchronous loading to reduce the impact on the main thread.",
+				Author:  "dev@gamedev.com",
+				Content: "I've reproduced the issue. It seems to be related to asset loading during level transition. I'm working on implementing asynchronous loading to reduce the impact on the main thread.",
 			},
 			{
-				author:  "qa@gamedev.com",
-				content: "Thanks for the update. Please let me know when you have a build ready for testing. I'll verify on a range of low-end devices.",
+				Author:  "qa@gamedev.com",
+				Content: "Thanks for the update. Please let me know when you have a build ready for testing. I'll verify on a range of low-end devices.",
 			},
 		},
 	},
@@ -349,12 +349,12 @@ We need to address these issues to improve accessibility and avoid potential leg
 		Status: 2,
 		Comments: []Comment{
 			{
-				author:  "frontend@webapp.com",
-				content: "I'm working through the issues one by one. Have resolved the color contrast problems and am now adding proper alt text to all images and icons.",
+				Author:  "frontend@webapp.com",
+				Content: "I'm working through the issues one by one. Have resolved the color contrast problems and am now adding proper alt text to all images and icons.",
 			},
 			{
-				author:  "ux@webapp.com",
-				content: "Great progress. For the keyboard navigation, make sure we're using proper ARIA attributes where necessary.",
+				Author:  "ux@webapp.com",
+				Content: "Great progress. For the keyboard navigation, make sure we're using proper ARIA attributes where necessary.",
 			},
 		},
 	},
@@ -377,8 +377,8 @@ This is causing confusion among our users and needs to be resolved.
 		Status: 2,
 		Comments: []Comment{
 			{
-				author:  "backend@streaming.com",
-				content: "I've reviewed our cache invalidation process. We're not properly purging the CDN cache after content updates. I'm implementing a webhook to automatically purge relevant cache entries on content changes.",
+				Author:  "backend@streaming.com",
+				Content: "I've reviewed our cache invalidation process. We're not properly purging the CDN cache after content updates. I'm implementing a webhook to automatically purge relevant cache entries on content changes.",
 			},
 		},
 	},
@@ -401,12 +401,12 @@ This discrepancy is causing billing disputes and needs to be resolved to maintai
 		Status: 2,
 		Comments: []Comment{
 			{
-				author:  "backend@adtech.com",
-				content: "I'm investigating our impression counting logic. Initial findings suggest we might be double-counting some impressions due to a race condition in our event processing pipeline.",
+				Author:  "backend@adtech.com",
+				Content: "I'm investigating our impression counting logic. Initial findings suggest we might be double-counting some impressions due to a race condition in our event processing pipeline.",
 			},
 			{
-				author:  "data@adtech.com",
-				content: "I'll work on reconciling our data with client data to identify patterns in the discrepancies. This might help pinpoint the source of the issue.",
+				Author:  "data@adtech.com",
+				Content: "I'll work on reconciling our data with client data to identify patterns in the discrepancies. This might help pinpoint the source of the issue.",
 			},
 		},
 	},
@@ -447,12 +447,12 @@ The issue seems to occur more frequently during high-load periods.
 		Status: 2,
 		Comments: []Comment{
 			{
-				author:  "netops@cloudprovider.com",
-				content: "I've started investigating the network configuration. Initial findings suggest it might be related to kube-proxy settings. Will update once I have more information.",
+				Author:  "netops@cloudprovider.com",
+				Content: "I've started investigating the network configuration. Initial findings suggest it might be related to kube-proxy settings. Will update once I have more information.",
 			},
 			{
-				author:  "devops@cloudprovider.com",
-				content: "Thanks for looking into this. I've increased the logging on affected services to gather more data on the timeouts.",
+				Author:  "devops@cloudprovider.com",
+				Content: "Thanks for looking into this. I've increased the logging on affected services to gather more data on the timeouts.",
 			},
 		},
 	},
@@ -476,8 +476,8 @@ This is particularly noticeable on lower-end devices.
 		Status: 1,
 		Comments: []Comment{
 			{
-				author:  "frontend@webapp.com",
-				content: "I've started profiling the component. It looks like we're not memoizing some expensive computations, causing unnecessary re-renders. Working on a fix using useMemo and useCallback.",
+				Author:  "frontend@webapp.com",
+				Content: "I've started profiling the component. It looks like we're not memoizing some expensive computations, causing unnecessary re-renders. Working on a fix using useMemo and useCallback.",
 			},
 		},
 	},
@@ -501,12 +501,12 @@ This is undermining our ability to make data-driven decisions.
 		Status: 2,
 		Comments: []Comment{
 			{
-				author:  "backend@analytics.com",
-				content: "I'm reviewing our user segmentation logic. There might be a bias in how we're assigning users to groups. Will update once I've investigated further.",
+				Author:  "backend@analytics.com",
+				Content: "I'm reviewing our user segmentation logic. There might be a bias in how we're assigning users to groups. Will update once I've investigated further.",
 			},
 			{
-				author:  "data@analytics.com",
-				content: "Thanks for looking into this. I'll also double-check our statistical analysis methods to ensure we're not making any incorrect assumptions.",
+				Author:  "data@analytics.com",
+				Content: "Thanks for looking into this. I'll also double-check our statistical analysis methods to ensure we're not making any incorrect assumptions.",
 			},
 		},
 	},
@@ -531,12 +531,12 @@ This vulnerability could allow attackers to inject malicious scripts into our si
 		Status: 1,
 		Comments: []Comment{
 			{
-				author:  "frontend@fintech.com",
-				content: "I'm implementing proper input sanitization and output encoding to prevent XSS attacks. Will also conduct a broader security review of our frontend code.",
+				Author:  "frontend@fintech.com",
+				Content: "I'm implementing proper input sanitization and output encoding to prevent XSS attacks. Will also conduct a broader security review of our frontend code.",
 			},
 			{
-				author:  "security@fintech.com",
-				content: "Great, thanks for the quick response. Please let me know when the fix is ready for testing. We'll need to do a thorough security review before deploying.",
+				Author:  "security@fintech.com",
+				Content: "Great, thanks for the quick response. Please let me know when the fix is ready for testing. We'll need to do a thorough security review before deploying.",
 			},
 		},
 	},
@@ -559,12 +559,12 @@ This misalignment is affecting our revenue recognition and causing customer comp
 		Status: 2,
 		Comments: []Comment{
 			{
-				author:  "backend@saas.com",
-				content: "I'm investigating our billing system. It appears we're not correctly handling mid-month subscription starts. I'll implement a fix to ensure billing dates align with subscription start dates.",
+				Author:  "backend@saas.com",
+				Content: "I'm investigating our billing system. It appears we're not correctly handling mid-month subscription starts. I'll implement a fix to ensure billing dates align with subscription start dates.",
 			},
 			{
-				author:  "finance@saas.com",
-				content: "Once the fix is implemented, we'll need to audit affected accounts and issue corrections where necessary. I'll prepare a plan for this.",
+				Author:  "finance@saas.com",
+				Content: "Once the fix is implemented, we'll need to audit affected accounts and issue corrections where necessary. I'll prepare a plan for this.",
 			},
 		},
 	},

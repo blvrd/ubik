@@ -289,10 +289,10 @@ func (i Issue) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 }
 
 type Comment struct {
-	author    string
-	content   string
-	createdAt time.Time
-	updatedAt time.Time
+	Author    string    `json:"author"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 /* MAIN MODEL */
@@ -429,7 +429,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case commentFormModel:
 		currentIndex := m.issueList.Index()
 		currentIssue := m.issueList.SelectedItem().(Issue)
-		currentIssue.Comments = append(currentIssue.Comments, Comment{author: "garrett@blvrd.co", content: msg.contentInput.Value()})
+		currentIssue.Comments = append(currentIssue.Comments, Comment{Author: "garrett@blvrd.co", Content: msg.contentInput.Value()})
 		m.issueList.SetItem(currentIndex, currentIssue)
 		m.issueDetail = issueDetailModel{issue: currentIssue}
 		m.issueDetail.commentForm = NewCommentFormModel()
@@ -1390,11 +1390,11 @@ func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
 		Width(m.viewport.Width - 2)
 
 	for i, comment := range m.issue.Comments {
-		commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.author, comment.createdAt))
+		commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.Author, comment.CreatedAt))
 		if i == len(m.issue.Comments)-1 { // last comment
-			s.WriteString(commentStyle.MarginBottom(6).Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content)))
+			s.WriteString(commentStyle.MarginBottom(6).Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.Content)))
 		} else {
-			s.WriteString(commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content)))
+			s.WriteString(commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.Content)))
 		}
 	}
 	m.viewport.SetContent(s.String())
