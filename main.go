@@ -25,7 +25,10 @@ import (
 	bl "github.com/winder/bubblelayout"
 )
 
-type issuePersistedMsg Issue
+type issuePersistedMsg struct {
+	Issue    Issue
+	NewIssue bool
+}
 
 func persistIssue(issue Issue) tea.Cmd {
 	return func() tea.Msg {
@@ -68,7 +71,10 @@ func persistIssue(issue Issue) tea.Cmd {
 			panic(err)
 		}
 
-		return issuePersistedMsg(issue)
+		return issuePersistedMsg{
+			Issue:    issue,
+			NewIssue: newIssue,
+		}
 	}
 }
 
@@ -433,14 +439,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.path = issuesShowPath
 	case issueFormModel:
 		if msg.editing {
-			currentIndex := m.issueList.Index()
 			currentIssue := m.issueList.SelectedItem().(Issue)
 			currentIssue.Title = msg.titleInput.Value()
 			currentIssue.Description = msg.descriptionInput.Value()
-			m.issueDetail = issueDetailModel{issue: currentIssue}
-			m.issueDetail.commentForm = NewCommentFormModel()
-			m.issueDetail.Init(m)
-			m.issueList.SetItem(currentIndex, currentIssue)
+			cmd = persistIssue(currentIssue)
 		} else {
 			newIssue := Issue{
 				Shortcode:   "xxxxxx",
@@ -454,13 +456,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, cmd
 	case issuePersistedMsg:
-		log.Debugf("🪚 msg: %#v", msg)
-		m.issueList.InsertItem(0, Issue(msg))
-		m.issueList.Select(0)
-		m.issueDetail = issueDetailModel{issue: Issue(msg)}
-		m.issueDetail.commentForm = NewCommentFormModel()
-		m.issueDetail.Init(m)
-		m.path = issuesShowPath
+		if msg.NewIssue {
+			m.issueList.InsertItem(0, msg.Issue)
+			m.issueList.Select(0)
+			m.issueDetail = issueDetailModel{issue: msg.Issue}
+			m.issueDetail.commentForm = NewCommentFormModel()
+			m.issueDetail.Init(m)
+			m.path = issuesShowPath
+		} else {
+			currentIndex := m.issueList.Index()
+			m.issueDetail = issueDetailModel{issue: msg.Issue}
+			m.issueDetail.commentForm = NewCommentFormModel()
+			m.issueDetail.Init(m)
+			m.issueList.SetItem(currentIndex, msg.Issue)
+			m.path = issuesShowPath
+		}
+		return m, nil
 	}
 
 	switch {
