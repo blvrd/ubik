@@ -7,12 +7,12 @@ import (
 
 var seedIssues = []Issue{
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "emma@techco.com",
-		title:     "Memory leak in background worker process",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "emma@techco.com",
+		Title:     "Memory leak in background worker process",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 Our background worker process is experiencing a memory leak. The process starts with normal memory usage but gradually increases over time, eventually causing the worker to crash.
 
 Steps to reproduce:
@@ -22,8 +22,8 @@ Steps to reproduce:
 
 We need to identify the source of the leak and implement a fix.
         `,
-		status: 2,
-		comments: []Comment{
+		Status: 2,
+		Comments: []Comment{
 			{
 				author:  "devops@techco.com",
 				content: "I've added memory profiling to the worker. Will analyze the results and report back.",
@@ -35,12 +35,12 @@ We need to identify the source of the leak and implement a fix.
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "alex@devfirm.com",
-		title:     "API rate limiting not working correctly",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "alex@devfirm.com",
+		Title:     "API rate limiting not working correctly",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 The rate limiting on our API is not functioning as expected. Users are able to make more requests than the specified limit within the time window.
 
 Steps to reproduce:
@@ -51,8 +51,8 @@ Steps to reproduce:
 Expected: Requests beyond the limit should be rejected
 Actual: All requests are being accepted
         `,
-		status: 1,
-		comments: []Comment{
+		Status: 1,
+		Comments: []Comment{
 			{
 				author:  "backend@devfirm.com",
 				content: "I've identified the issue. Our Redis cache for storing rate limit data wasn't being updated correctly. Working on a fix now.",
@@ -60,12 +60,12 @@ Actual: All requests are being accepted
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "ux@designstudio.com",
-		title:     "Mobile responsive design breaks on iPhone 12",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "ux@designstudio.com",
+		Title:     "Mobile responsive design breaks on iPhone 12",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 Our responsive design is not rendering correctly on iPhone 12 devices. The layout is broken and some elements are overlapping.
 
 Steps to reproduce:
@@ -75,8 +75,8 @@ Steps to reproduce:
 
 This issue seems to be specific to iPhone 12 models and doesn't occur on other iOS devices we've tested.
         `,
-		status: 3,
-		comments: []Comment{
+		Status: 3,
+		Comments: []Comment{
 			{
 				author:  "frontend@designstudio.com",
 				content: "I've identified the cause. It's related to the new screen resolution on iPhone 12. Working on a CSS fix.",
@@ -92,12 +92,12 @@ This issue seems to be specific to iPhone 12 models and doesn't occur on other i
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "security@bigcorp.com",
-		title:     "Potential SQL injection vulnerability in search function",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "security@bigcorp.com",
+		Title:     "Potential SQL injection vulnerability in search function",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 During a routine security audit, we identified a potential SQL injection vulnerability in the product search function.
 
 Steps to reproduce:
@@ -107,8 +107,8 @@ Steps to reproduce:
 
 This needs to be addressed urgently to prevent potential data breaches.
         `,
-		status: 1,
-		comments: []Comment{
+		Status: 1,
+		Comments: []Comment{
 			{
 				author:  "backend@bigcorp.com",
 				content: "Thanks for flagging this. I'm implementing prepared statements for all database queries to prevent SQL injection. Will push a fix for review shortly.",
@@ -116,12 +116,12 @@ This needs to be addressed urgently to prevent potential data breaches.
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "pm@saasplatform.com",
-		title:     "User authentication fails intermittently",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "pm@saasplatform.com",
+		Title:     "User authentication fails intermittently",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 We're receiving reports from users that they're occasionally unable to log in, even with correct credentials. The issue seems to resolve itself after a few minutes.
 
 Steps to reproduce:
@@ -131,8 +131,8 @@ Steps to reproduce:
 
 This is happening to approximately 5% of login attempts.
         `,
-		status: 2,
-		comments: []Comment{
+		Status: 2,
+		Comments: []Comment{
 			{
 				author:  "backend@saasplatform.com",
 				content: "I've added additional logging to the authentication process. Will monitor and analyze logs to identify any patterns or issues.",
@@ -144,12 +144,12 @@ This is happening to approximately 5% of login attempts.
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "data@analyticsfirm.com",
-		title:     "Incorrect data aggregation in monthly reports",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "data@analyticsfirm.com",
+		Title:     "Incorrect data aggregation in monthly reports",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 The monthly aggregated reports are showing inconsistent data compared to daily reports. The discrepancy is approximately 3-5% and appears to be systematic.
 
 Steps to reproduce:
@@ -160,8 +160,8 @@ Steps to reproduce:
 
 This is affecting our clients' decision-making processes and needs to be resolved quickly.
         `,
-		status: 2,
-		comments: []Comment{
+		Status: 2,
+		Comments: []Comment{
 			{
 				author:  "backend@analyticsfirm.com",
 				content: "I'm reviewing the aggregation queries. Initial investigation suggests we might be double-counting some events in the monthly rollup. Will update once I have more information.",
@@ -169,12 +169,12 @@ This is affecting our clients' decision-making processes and needs to be resolve
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "support@cloudservice.com",
-		title:     "File upload failing for files over 50MB",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "support@cloudservice.com",
+		Title:     "File upload failing for files over 50MB",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 Users are reporting that file uploads are failing for any file larger than 50MB. Our system should support uploads up to 200MB.
 
 Steps to reproduce:
@@ -184,8 +184,8 @@ Steps to reproduce:
 
 This is blocking some of our enterprise customers from using a key feature of our platform.
         `,
-		status: 1,
-		comments: []Comment{
+		Status: 1,
+		Comments: []Comment{
 			{
 				author:  "devops@cloudservice.com",
 				content: "I've checked our Nginx configuration and found that the client_max_body_size was set to 50M. Updating to 200M and will deploy the change.",
@@ -197,12 +197,12 @@ This is blocking some of our enterprise customers from using a key feature of ou
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "ux@mobileapp.com",
-		title:     "App crashes when accessing camera on Android 11",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "ux@mobileapp.com",
+		Title:     "App crashes when accessing camera on Android 11",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 Our mobile app is crashing when users try to access the camera feature on devices running Android 11. This doesn't occur on other Android versions.
 
 Steps to reproduce:
@@ -212,8 +212,8 @@ Steps to reproduce:
 
 This is a critical feature for our app and needs to be fixed ASAP.
         `,
-		status: 2,
-		comments: []Comment{
+		Status: 2,
+		Comments: []Comment{
 			{
 				author:  "mobile@mobileapp.com",
 				content: "I've reproduced the issue. It seems to be related to the new scoped storage changes in Android 11. I'm working on updating our camera access implementation to comply with the new requirements.",
@@ -221,12 +221,12 @@ This is a critical feature for our app and needs to be fixed ASAP.
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "pm@ecommerce.com",
-		title:     "Checkout process hangs at payment step",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "pm@ecommerce.com",
+		Title:     "Checkout process hangs at payment step",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 Some users are reporting that the checkout process hangs indefinitely after entering payment information. This is resulting in lost sales.
 
 Steps to reproduce:
@@ -238,8 +238,8 @@ Steps to reproduce:
 
 This is happening sporadically, affecting roughly 10% of transactions.
         `,
-		status: 1,
-		comments: []Comment{
+		Status: 1,
+		Comments: []Comment{
 			{
 				author:  "backend@ecommerce.com",
 				content: "I've added additional logging to the payment processing step. Will analyze logs from affected transactions to identify any patterns.",
@@ -251,12 +251,12 @@ This is happening sporadically, affecting roughly 10% of transactions.
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "devops@saas.com",
-		title:     "Elasticsearch cluster running out of disk space",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "devops@saas.com",
+		Title:     "Elasticsearch cluster running out of disk space",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 Our Elasticsearch cluster is rapidly running out of disk space, much faster than expected based on our data growth projections.
 
 Steps to reproduce:
@@ -266,8 +266,8 @@ Steps to reproduce:
 
 We need to identify the cause of the increased disk usage and implement a solution quickly to avoid service disruption.
         `,
-		status: 1,
-		comments: []Comment{
+		Status: 1,
+		Comments: []Comment{
 			{
 				author:  "backend@saas.com",
 				content: "I'm investigating our index management. We might need to optimize our index lifecycle policies or increase our pruning of old data.",
@@ -279,12 +279,12 @@ We need to identify the cause of the increased disk usage and implement a soluti
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "security@fintech.com",
-		title:     "Possible data leak in API response",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "security@fintech.com",
+		Title:     "Possible data leak in API response",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 We've identified a potential data leak in one of our API endpoints. The endpoint is returning more user data than it should, possibly exposing sensitive information.
 
 Steps to reproduce:
@@ -294,8 +294,8 @@ Steps to reproduce:
 
 This needs to be addressed immediately to ensure we're not violating any data protection regulations.
         `,
-		status: 1,
-		comments: []Comment{
+		Status: 1,
+		Comments: []Comment{
 			{
 				author:  "backend@fintech.com",
 				content: "I've identified the issue. We're not properly filtering the user object before sending it in the API response. Implementing a fix now and will also audit other endpoints for similar issues.",
@@ -303,12 +303,12 @@ This needs to be addressed immediately to ensure we're not violating any data pr
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "qa@gamedev.com",
-		title:     "Game freezes during level transition on low-end devices",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "qa@gamedev.com",
+		Title:     "Game freezes during level transition on low-end devices",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 Our mobile game is freezing during level transitions on low-end Android devices. This is causing a poor user experience and increasing our churn rate.
 
 Steps to reproduce:
@@ -318,8 +318,8 @@ Steps to reproduce:
 
 The issue is not present on high-end devices or iOS.
         `,
-		status: 2,
-		comments: []Comment{
+		Status: 2,
+		Comments: []Comment{
 			{
 				author:  "dev@gamedev.com",
 				content: "I've reproduced the issue. It seems to be related to asset loading during level transition. I'm working on implementing asynchronous loading to reduce the impact on the main thread.",
@@ -331,12 +331,12 @@ The issue is not present on high-end devices or iOS.
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "ux@webapp.com",
-		title:     "WCAG compliance issues on main dashboard",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "ux@webapp.com",
+		Title:     "WCAG compliance issues on main dashboard",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 An accessibility audit has revealed several WCAG 2.1 compliance issues on our main dashboard, potentially making the app unusable for users with disabilities.
 
 Key issues:
@@ -346,8 +346,8 @@ Key issues:
 
 We need to address these issues to improve accessibility and avoid potential legal issues.
         `,
-		status: 2,
-		comments: []Comment{
+		Status: 2,
+		Comments: []Comment{
 			{
 				author:  "frontend@webapp.com",
 				content: "I'm working through the issues one by one. Have resolved the color contrast problems and am now adding proper alt text to all images and icons.",
@@ -359,12 +359,12 @@ We need to address these issues to improve accessibility and avoid potential leg
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "devops@streaming.com",
-		title:     "CDN caching issue causing stale content delivery",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "devops@streaming.com",
+		Title:     "CDN caching issue causing stale content delivery",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 Users are reporting that they're sometimes seeing outdated content, even after we've pushed updates to our site. This appears to be a caching issue with our CDN.
 
 Steps to reproduce:
@@ -374,8 +374,8 @@ Steps to reproduce:
 
 This is causing confusion among our users and needs to be resolved.
         `,
-		status: 2,
-		comments: []Comment{
+		Status: 2,
+		Comments: []Comment{
 			{
 				author:  "backend@streaming.com",
 				content: "I've reviewed our cache invalidation process. We're not properly purging the CDN cache after content updates. I'm implementing a webhook to automatically purge relevant cache entries on content changes.",
@@ -383,12 +383,12 @@ This is causing confusion among our users and needs to be resolved.
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "pm@adtech.com",
-		title:     "Discrepancy in ad impression counting",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "pm@adtech.com",
+		Title:     "Discrepancy in ad impression counting",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 We've noticed a discrepancy between our ad impression counts and those reported by our clients' systems. Our numbers are consistently 5-8% higher.
 
 Steps to reproduce:
@@ -398,8 +398,8 @@ Steps to reproduce:
 
 This discrepancy is causing billing disputes and needs to be resolved to maintain client trust.
         `,
-		status: 2,
-		comments: []Comment{
+		Status: 2,
+		Comments: []Comment{
 			{
 				author:  "backend@adtech.com",
 				content: "I'm investigating our impression counting logic. Initial findings suggest we might be double-counting some impressions due to a race condition in our event processing pipeline.",
@@ -411,12 +411,12 @@ This discrepancy is causing billing disputes and needs to be resolved to maintai
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "security@bank.com",
-		title:     "Potential timing attack vulnerability in login process",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "security@bank.com",
+		Title:     "Potential timing attack vulnerability in login process",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 Our security team has identified a potential timing attack vulnerability in our login process. The response time for login attempts varies noticeably depending on whether the username exists or not.
 
 Steps to reproduce:
@@ -426,15 +426,15 @@ Steps to reproduce:
 
 This could potentially be exploited to enumerate valid usernames, which is a security risk.
         `,
-		status: 1,
+		Status: 1,
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "devops@cloudprovider.com",
-		title:     "Intermittent network timeouts in Kubernetes cluster",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "devops@cloudprovider.com",
+		Title:     "Intermittent network timeouts in Kubernetes cluster",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 We're experiencing intermittent network timeouts between pods in our Kubernetes cluster. This is causing sporadic failures in inter-service communication.
 
 Steps to reproduce:
@@ -444,8 +444,8 @@ Steps to reproduce:
 
 The issue seems to occur more frequently during high-load periods.
         `,
-		status: 2,
-		comments: []Comment{
+		Status: 2,
+		Comments: []Comment{
 			{
 				author:  "netops@cloudprovider.com",
 				content: "I've started investigating the network configuration. Initial findings suggest it might be related to kube-proxy settings. Will update once I have more information.",
@@ -457,12 +457,12 @@ The issue seems to occur more frequently during high-load periods.
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "frontend@webapp.com",
-		title:     "React component re-rendering excessively",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "frontend@webapp.com",
+		Title:     "React component re-rendering excessively",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 We've identified a performance issue in our React application where a specific component is re-rendering much more frequently than necessary, causing noticeable UI lag.
 
 Steps to reproduce:
@@ -473,8 +473,8 @@ Steps to reproduce:
 
 This is particularly noticeable on lower-end devices.
         `,
-		status: 1,
-		comments: []Comment{
+		Status: 1,
+		Comments: []Comment{
 			{
 				author:  "frontend@webapp.com",
 				content: "I've started profiling the component. It looks like we're not memoizing some expensive computations, causing unnecessary re-renders. Working on a fix using useMemo and useCallback.",
@@ -482,12 +482,12 @@ This is particularly noticeable on lower-end devices.
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "data@analytics.com",
-		title:     "Inconsistent results in A/B testing framework",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "data@analytics.com",
+		Title:     "Inconsistent results in A/B testing framework",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 Our A/B testing framework is producing inconsistent results. We're seeing statistically significant differences in metrics between A and B groups even when no changes have been made.
 
 Steps to reproduce:
@@ -498,8 +498,8 @@ Steps to reproduce:
 
 This is undermining our ability to make data-driven decisions.
         `,
-		status: 2,
-		comments: []Comment{
+		Status: 2,
+		Comments: []Comment{
 			{
 				author:  "backend@analytics.com",
 				content: "I'm reviewing our user segmentation logic. There might be a bias in how we're assigning users to groups. Will update once I've investigated further.",
@@ -511,12 +511,12 @@ This is undermining our ability to make data-driven decisions.
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "security@fintech.com",
-		title:     "Potential XSS vulnerability in user profile page",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "security@fintech.com",
+		Title:     "Potential XSS vulnerability in user profile page",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 A security audit has revealed a potential Cross-Site Scripting (XSS) vulnerability on the user profile page. User-supplied content is being rendered without proper sanitization.
 
 Steps to reproduce:
@@ -528,8 +528,8 @@ Steps to reproduce:
 
 This vulnerability could allow attackers to inject malicious scripts into our site.
         `,
-		status: 1,
-		comments: []Comment{
+		Status: 1,
+		Comments: []Comment{
 			{
 				author:  "frontend@fintech.com",
 				content: "I'm implementing proper input sanitization and output encoding to prevent XSS attacks. Will also conduct a broader security review of our frontend code.",
@@ -541,12 +541,12 @@ This vulnerability could allow attackers to inject malicious scripts into our si
 		},
 	},
 	{
-		id:        uuid.NewString(),
-    shortcode: StringToShortcode(uuid.NewString()),
-		author:    "pm@saas.com",
-		title:     "Billing cycle not aligning with subscription dates",
-		createdAt: time.Now().UTC(),
-		description: `
+		Id:        uuid.NewString(),
+    Shortcode: StringToShortcode(uuid.NewString()),
+		Author:    "pm@saas.com",
+		Title:     "Billing cycle not aligning with subscription dates",
+		CreatedAt: time.Now().UTC(),
+		Description: `
 We've received reports from customers that their billing cycles are not aligning with their subscription dates. This is causing confusion and in some cases, incorrect billing.
 
 Steps to reproduce:
@@ -556,8 +556,8 @@ Steps to reproduce:
 
 This misalignment is affecting our revenue recognition and causing customer complaints.
         `,
-		status: 2,
-		comments: []Comment{
+		Status: 2,
+		Comments: []Comment{
 			{
 				author:  "backend@saas.com",
 				content: "I'm investigating our billing system. It appears we're not correctly handling mid-month subscription starts. I'll implement a fix to ensure billing dates align with subscription start dates.",

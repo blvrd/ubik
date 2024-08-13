@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -22,6 +24,39 @@ import (
 	"github.com/google/uuid"
 	bl "github.com/winder/bubblelayout"
 )
+
+func createIssue(issue Issue) error {
+	id := uuid.NewString()
+	// shortcodeCache := make(map[string]bool)
+	shortcode := StringToShortcode(id)
+	issue.Id = id
+	issue.Shortcode = shortcode
+
+	jsonData, err := json.Marshal(issue)
+	if err != nil {
+		return err
+	}
+
+	cmd := exec.Command("git", "hash-object", "--stdin", "-w")
+	cmd.Stdin = bytes.NewReader(jsonData)
+
+	b, err := cmd.Output()
+	if err != nil {
+		return err
+	}
+
+	hash := strings.TrimSpace(string(b))
+
+	cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash)
+	err = cmd.Run()
+
+	if err != nil {
+		log.Fatalf("%#v", err.Error())
+		return err
+	}
+
+	return nil
+}
 
 const (
 	issuesIndexPath               string = "/issues/index"
@@ -50,8 +85,6 @@ func matchRoute(currentRoute, route string) bool {
 // func (IssuesController) Index() {
 //
 // }
-
-
 
 type Styles struct {
 	Theme Theme
@@ -177,19 +210,19 @@ func (k keyMap) FullHelp() [][]key.Binding {
 }
 
 type Issue struct {
-	id          string
-	shortcode   string
-	author      string
-	title       string
-	description string
-	status      status
-	comments    []Comment
-	createdAt   time.Time
-	updatedAt   time.Time
+	Id          string    `json:"id"`
+	Shortcode   string    `json:"shortcode"`
+	Author      string    `json:"author"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Status      status    `json:"status"`
+	Comments    []Comment `json:"comments"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }
 
 func (i Issue) FilterValue() string {
-	return i.title
+	return i.Title
 }
 
 func (i Issue) Height() int                             { return 2 }
@@ -207,7 +240,7 @@ func (i Issue) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 
 	var status string
 
-	switch i.status {
+	switch i.Status {
 	case todo:
 		status = "[·]"
 	case inProgress:
@@ -227,9 +260,9 @@ func (i Issue) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 				Render(strings.Join(s, " "))
 		}
 	}
-	title := fmt.Sprintf("%s %s", status, titleFn(i.shortcode, i.title))
+	title := fmt.Sprintf("%s %s", status, titleFn(i.Shortcode, i.Title))
 
-	description := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("created by %s at %s", i.author, i.createdAt.Format(time.RFC822)))
+	description := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("created by %s at %s", i.Author, i.CreatedAt.Format(time.RFC822)))
 	item := lipgloss.JoinVertical(lipgloss.Left, title, description)
 
 	fmt.Fprintf(w, item)
@@ -376,7 +409,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case commentFormModel:
 		currentIndex := m.issueList.Index()
 		currentIssue := m.issueList.SelectedItem().(Issue)
-		currentIssue.comments = append(currentIssue.comments, Comment{author: "garrett@blvrd.co", content: msg.contentInput.Value()})
+		currentIssue.Comments = append(currentIssue.Comments, Comment{author: "garrett@blvrd.co", content: msg.contentInput.Value()})
 		m.issueList.SetItem(currentIndex, currentIssue)
 		m.issueDetail = issueDetailModel{issue: currentIssue}
 		m.issueDetail.commentForm = NewCommentFormModel()
@@ -388,8 +421,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.editing {
 			currentIndex := m.issueList.Index()
 			currentIssue := m.issueList.SelectedItem().(Issue)
-			currentIssue.title = msg.titleInput.Value()
-			currentIssue.description = msg.descriptionInput.Value()
+			currentIssue.Title = msg.titleInput.Value()
+			currentIssue.Description = msg.descriptionInput.Value()
 			m.issueDetail = issueDetailModel{issue: currentIssue}
 			m.issueDetail.commentForm = NewCommentFormModel()
 			m.issueDetail.Init(m)
@@ -397,13 +430,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			id := uuid.NewString()
 			newIssue := Issue{
-				id:          id,
-				shortcode:   StringToShortcode(id),
-				title:       msg.titleInput.Value(),
-				description: msg.descriptionInput.Value(),
-				status:      todo,
-				author:      "garrett@blvrd.co",
+				Id:          id,
+				Shortcode:   StringToShortcode(id),
+				Title:       msg.titleInput.Value(),
+				Description: msg.descriptionInput.Value(),
+				Status:      todo,
+				Author:      "garrett@blvrd.co",
 			}
+			createIssue(newIssue)
 			m.issueList.InsertItem(0, newIssue)
 			m.issueList.Select(0)
 			m.issueDetail = issueDetailModel{issue: newIssue}
@@ -412,6 +446,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		m.path = issuesShowPath
+		return m, cmd
 	}
 
 	switch {
@@ -441,30 +476,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.IssueStatusDone):
 				currentIndex := m.issueList.Index()
 				currentIssue := m.issueList.SelectedItem().(Issue)
-				if currentIssue.status == todo {
-					currentIssue.status = done
+				if currentIssue.Status == todo {
+					currentIssue.Status = done
 				} else {
-					currentIssue.status = todo
+					currentIssue.Status = todo
 				}
 				cmd = m.issueList.SetItem(currentIndex, currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueStatusWontDo):
 				currentIndex := m.issueList.Index()
 				currentIssue := m.issueList.SelectedItem().(Issue)
-				if currentIssue.status == todo {
-					currentIssue.status = wontDo
+				if currentIssue.Status == todo {
+					currentIssue.Status = wontDo
 				} else {
-					currentIssue.status = todo
+					currentIssue.Status = todo
 				}
 				cmd = m.issueList.SetItem(currentIndex, currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueStatusInProgress):
 				currentIndex := m.issueList.Index()
 				currentIssue := m.issueList.SelectedItem().(Issue)
-				if currentIssue.status == todo {
-					currentIssue.status = inProgress
+				if currentIssue.Status == todo {
+					currentIssue.Status = inProgress
 				} else {
-					currentIssue.status = todo
+					currentIssue.Status = todo
 				}
 				cmd = m.issueList.SetItem(currentIndex, currentIssue)
 				return m, cmd
@@ -485,6 +520,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.issueForm = issueFormModel{editing: false}
 				m.issueForm.Init("", "")
 				cmd = m.issueForm.titleInput.Focus()
+				m.path = issuesEditTitlePath
 			case key.Matches(msg, keys.NextPage):
 				m.path = checksIndexPath
 			case key.Matches(msg, keys.PrevPage):
@@ -508,10 +544,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.IssueStatusDone):
 				currentIndex := m.issueList.Index()
 				currentIssue := m.issueList.SelectedItem().(Issue)
-				if currentIssue.status == todo {
-					currentIssue.status = done
+				if currentIssue.Status == todo {
+					currentIssue.Status = done
 				} else {
-					currentIssue.status = todo
+					currentIssue.Status = todo
 				}
 				m.issueDetail = issueDetailModel{issue: currentIssue}
 				m.issueDetail.commentForm = NewCommentFormModel()
@@ -522,10 +558,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.IssueStatusWontDo):
 				currentIndex := m.issueList.Index()
 				currentIssue := m.issueList.SelectedItem().(Issue)
-				if currentIssue.status == todo {
-					currentIssue.status = wontDo
+				if currentIssue.Status == todo {
+					currentIssue.Status = wontDo
 				} else {
-					currentIssue.status = todo
+					currentIssue.Status = todo
 				}
 				m.issueDetail = issueDetailModel{issue: currentIssue}
 				m.issueDetail.commentForm = NewCommentFormModel()
@@ -536,10 +572,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.IssueStatusInProgress):
 				currentIndex := m.issueList.Index()
 				currentIssue := m.issueList.SelectedItem().(Issue)
-				if currentIssue.status == todo {
-					currentIssue.status = inProgress
+				if currentIssue.Status == todo {
+					currentIssue.Status = inProgress
 				} else {
-					currentIssue.status = todo
+					currentIssue.Status = todo
 				}
 				m.issueDetail = issueDetailModel{issue: currentIssue}
 				m.issueDetail.commentForm = NewCommentFormModel()
@@ -549,8 +585,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			case key.Matches(msg, keys.IssueEditForm):
 				selectedIssue := m.issueList.SelectedItem().(Issue)
-				m.issueForm = issueFormModel{editing: true, identifier: selectedIssue.shortcode}
-				cmd = m.issueForm.Init(selectedIssue.title, selectedIssue.description)
+				m.issueForm = issueFormModel{editing: true, identifier: selectedIssue.Shortcode}
+				cmd = m.issueForm.Init(selectedIssue.Title, selectedIssue.Description)
 
 				m.path = issuesEditTitlePath
 				return m, cmd
@@ -1213,7 +1249,9 @@ func getCommits() tea.Msg {
 type IssuesReadyMsg []Issue
 
 func getIssues() tea.Msg {
-	return IssuesReadyMsg(seedIssues)
+	issues := seedIssues
+
+	return IssuesReadyMsg(issues)
 }
 
 type commitDetailModel struct {
@@ -1270,7 +1308,7 @@ func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
 	m.layout = ctx.Layout
 	var s strings.Builder
 	var status string
-	switch m.issue.status {
+	switch m.issue.Status {
 	case todo:
 		status = "todo"
 	case inProgress:
@@ -1280,10 +1318,10 @@ func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
 	case done:
 		status = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("done")
 	}
-	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", m.issue.shortcode))
-	header := fmt.Sprintf("%s %s\nStatus: %s", identifier, m.issue.title, status)
+	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", m.issue.Shortcode))
+	header := fmt.Sprintf("%s %s\nStatus: %s", identifier, m.issue.Title, status)
 	s.WriteString(lipgloss.NewStyle().Render(header))
-	s.WriteString(m.issue.description + "\n")
+	s.WriteString(m.issue.Description + "\n")
 
 	commentStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
@@ -1296,9 +1334,9 @@ func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
 		BorderForeground(styles.Theme.SecondaryBorder).
 		Width(m.viewport.Width - 2)
 
-	for i, comment := range m.issue.comments {
+	for i, comment := range m.issue.Comments {
 		commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.author, comment.createdAt))
-		if i == len(m.issue.comments)-1 { // last comment
+		if i == len(m.issue.Comments)-1 { // last comment
 			s.WriteString(commentStyle.MarginBottom(0).Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content)))
 		} else {
 			s.WriteString(commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content)))
