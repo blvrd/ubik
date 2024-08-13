@@ -1362,7 +1362,7 @@ func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
 	for i, comment := range m.issue.Comments {
 		commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.author, comment.createdAt))
 		if i == len(m.issue.Comments)-1 { // last comment
-			s.WriteString(commentStyle.MarginBottom(0).Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content)))
+			s.WriteString(commentStyle.MarginBottom(6).Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content)))
 		} else {
 			s.WriteString(commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.content)))
 		}
