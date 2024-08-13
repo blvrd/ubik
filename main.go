@@ -25,37 +25,51 @@ import (
 	bl "github.com/winder/bubblelayout"
 )
 
-func createIssue(issue Issue) error {
-	id := uuid.NewString()
-	// shortcodeCache := make(map[string]bool)
-	shortcode := StringToShortcode(id)
-	issue.Id = id
-	issue.Shortcode = shortcode
+type issuePersistedMsg Issue
 
-	jsonData, err := json.Marshal(issue)
-	if err != nil {
-		return err
+func persistIssue(issue Issue) tea.Cmd {
+	return func() tea.Msg {
+		var newIssue bool
+
+		if issue.Id == "" {
+			newIssue = true
+		} else {
+			newIssue = false
+		}
+
+		if newIssue {
+			id := uuid.NewString()
+			// shortcodeCache := make(map[string]bool)
+			shortcode := StringToShortcode(id)
+			issue.Id = id
+			issue.Shortcode = shortcode
+		}
+
+		jsonData, err := json.Marshal(issue)
+		if err != nil {
+			return err
+		}
+
+		cmd := exec.Command("git", "hash-object", "--stdin", "-w")
+		cmd.Stdin = bytes.NewReader(jsonData)
+
+		b, err := cmd.Output()
+		if err != nil {
+			return err
+		}
+
+		hash := strings.TrimSpace(string(b))
+
+		cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash)
+		err = cmd.Run()
+
+		if err != nil {
+			log.Fatalf("%#v", err.Error())
+			panic(err)
+		}
+
+		return issuePersistedMsg(issue)
 	}
-
-	cmd := exec.Command("git", "hash-object", "--stdin", "-w")
-	cmd.Stdin = bytes.NewReader(jsonData)
-
-	b, err := cmd.Output()
-	if err != nil {
-		return err
-	}
-
-	hash := strings.TrimSpace(string(b))
-
-	cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash)
-	err = cmd.Run()
-
-	if err != nil {
-		log.Fatalf("%#v", err.Error())
-		return err
-	}
-
-	return nil
 }
 
 const (
@@ -428,25 +442,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueDetail.Init(m)
 			m.issueList.SetItem(currentIndex, currentIssue)
 		} else {
-			id := uuid.NewString()
 			newIssue := Issue{
-				Id:          id,
-				Shortcode:   StringToShortcode(id),
+				Shortcode:   "xxxxxx",
 				Title:       msg.titleInput.Value(),
 				Description: msg.descriptionInput.Value(),
 				Status:      todo,
 				Author:      "garrett@blvrd.co",
 			}
-			createIssue(newIssue)
-			m.issueList.InsertItem(0, newIssue)
-			m.issueList.Select(0)
-			m.issueDetail = issueDetailModel{issue: newIssue}
-			m.issueDetail.commentForm = NewCommentFormModel()
-			m.issueDetail.Init(m)
+			cmd = persistIssue(newIssue)
 		}
 
-		m.path = issuesShowPath
 		return m, cmd
+	case issuePersistedMsg:
+		log.Debugf("🪚 msg: %#v", msg)
+		m.issueList.InsertItem(0, Issue(msg))
+		m.issueList.Select(0)
+		m.issueDetail = issueDetailModel{issue: Issue(msg)}
+		m.issueDetail.commentForm = NewCommentFormModel()
+		m.issueDetail.Init(m)
+		m.path = issuesShowPath
 	}
 
 	switch {
