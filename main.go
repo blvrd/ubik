@@ -470,7 +470,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			currentIndex := m.issueList.Index()
 			m.issueList.RemoveItem(currentIndex)
 			m.path = issuesIndexPath
-			m.issueList.Select(currentIndex - 1)
+			m.issueList.Select(clamp(currentIndex-1, 0, len(m.issueList.Items())))
+			m.issueList, cmd = m.issueList.Update(msg)
 		} else {
 			currentIndex := m.issueList.Index()
 			m.issueDetail = issueDetailModel{issue: msg.Issue}
@@ -479,7 +480,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueList.SetItem(currentIndex, msg.Issue)
 			m.path = issuesShowPath
 		}
-		return m, nil
+		return m, cmd
 	}
 
 	switch {
