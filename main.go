@@ -212,13 +212,13 @@ func (k keyMap) FullHelp() [][]key.Binding {
 			{k.Up, k.Down},
 			{k.NextInput, k.Back},
 		}
-	case matchRoute(k.Path, "/commits/index"):
+	case matchRoute(k.Path, checksIndexPath):
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
 			{k.CommitDetailFocus},
 		}
-	case matchRoute(k.Path, "/commits/show"):
+	case matchRoute(k.Path, checksShowPath):
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
