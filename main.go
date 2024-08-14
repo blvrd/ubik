@@ -1296,7 +1296,7 @@ func getCommits() tea.Msg {
 type IssuesReadyMsg []Issue
 
 func getIssues() tea.Msg {
-	issues := seedIssues
+	var issues []Issue
 
 	cmd := exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik")
 	b, err := cmd.Output()
