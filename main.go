@@ -42,7 +42,6 @@ func persistIssue(issue Issue) tea.Cmd {
 
 		if newIssue {
 			id := uuid.NewString()
-			// shortcodeCache := make(map[string]bool)
 			shortcode := StringToShortcode(id)
 			issue.Id = id
 			issue.Shortcode = shortcode
