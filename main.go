@@ -470,6 +470,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			currentIndex := m.issueList.Index()
 			m.issueList.RemoveItem(currentIndex)
 			m.path = issuesIndexPath
+			m.issueList.Select(currentIndex - 1)
 		} else {
 			currentIndex := m.issueList.Index()
 			m.issueDetail = issueDetailModel{issue: msg.Issue}
@@ -557,6 +558,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				issue := m.issueList.SelectedItem().(Issue)
 				issue.DeletedAt = time.Now().UTC()
 				cmd = persistIssue(issue)
+				return m, cmd
 			case key.Matches(msg, keys.NextPage):
 				m.path = checksIndexPath
 			case key.Matches(msg, keys.PrevPage):
@@ -1318,7 +1320,9 @@ func getIssues() tea.Msg {
 		var issue Issue
 		json.Unmarshal(out.Bytes(), &issue)
 
-		issues = append(issues, issue)
+		if issue.DeletedAt.IsZero() {
+			issues = append(issues, issue)
+		}
 	}
 
 	return IssuesReadyMsg(issues)
