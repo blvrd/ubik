@@ -169,6 +169,7 @@ type keyMap struct {
 	IssueStatusWontDo     key.Binding
 	IssueStatusInProgress key.Binding
 	IssueCommentFormFocus key.Binding
+	IssueDelete           key.Binding
 	CommitDetailFocus     key.Binding
 	NextInput             key.Binding
 	Submit                key.Binding
@@ -196,6 +197,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 			{k.IssueNewForm, k.IssueDetailFocus},
 			{k.IssueStatusDone, k.IssueStatusWontDo},
 			{k.IssueStatusInProgress, k.IssueCommentFormFocus},
+			{k.IssueDelete},
 		}
 	case matchRoute(k.Path, issuesShowPath):
 		bindings = [][]key.Binding{
@@ -240,6 +242,7 @@ type Issue struct {
 	Comments    []Comment `json:"comments"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
+	DeletedAt   time.Time `json:"deleted_at"`
 }
 
 func (i Issue) FilterValue() string {
@@ -464,6 +467,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueDetail.commentForm = NewCommentFormModel()
 			m.issueDetail.Init(m)
 			m.path = issuesShowPath
+		} else if !msg.Issue.DeletedAt.IsZero() {
+			currentIndex := m.issueList.Index()
+			m.issueList.RemoveItem(currentIndex)
+			m.path = issuesIndexPath
 		} else {
 			currentIndex := m.issueList.Index()
 			m.issueDetail = issueDetailModel{issue: msg.Issue}
@@ -547,6 +554,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.issueForm.Init("", "")
 				cmd = m.issueForm.titleInput.Focus()
 				m.path = issuesEditTitlePath
+			case key.Matches(msg, keys.IssueDelete):
+				issue := m.issueList.SelectedItem().(Issue)
+				issue.DeletedAt = time.Now().UTC()
+				cmd = persistIssue(issue)
 			case key.Matches(msg, keys.NextPage):
 				m.path = checksIndexPath
 			case key.Matches(msg, keys.PrevPage):
@@ -912,6 +923,10 @@ func (m Model) HelpKeys() keyMap {
 		IssueNewForm: key.NewBinding(
 			key.WithKeys("n"),
 			key.WithHelp("n", "new issue"),
+		),
+		IssueDelete: key.NewBinding(
+			key.WithKeys("backspace"),
+			key.WithHelp("backspace", "delete issue"),
 		),
 		NextInput: key.NewBinding(
 			key.WithKeys("tab"),
