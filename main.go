@@ -1398,7 +1398,7 @@ func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
 		status = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("done")
 	}
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", m.issue.Shortcode))
-	header := fmt.Sprintf("%s %s\nStatus: %s", identifier, m.issue.Title, status)
+	header := fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, m.issue.Title, status)
 	s.WriteString(lipgloss.NewStyle().Render(header))
 	s.WriteString(m.issue.Description + "\n")
 
