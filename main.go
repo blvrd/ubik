@@ -315,17 +315,17 @@ type Layout struct {
 }
 
 type Model struct {
-	loaded       bool
-	path         string
-	issueList    list.Model
-	issueDetail  issueDetailModel
-	issueForm    issueFormModel
-	commitList   list.Model
-	commitDetail commitDetailModel
-	err          error
-	help         help.Model
-	styles       Styles
-	tabs         []string
+	loaded      bool
+	path        string
+	issueIndex  list.Model
+	issueShow   issueShowModel
+	issueEdit   issueEditModel
+	commitIndex list.Model
+	commitShow  commitShowModel
+	err         error
+	help        help.Model
+	styles      Styles
+	tabs        []string
 	Layout
 }
 
@@ -379,13 +379,13 @@ func InitialModel() Model {
 	helpModel.FullSeparator = "    "
 
 	return Model{
-		path:       issuesIndexPath,
-		help:       helpModel,
-		styles:     DefaultStyles(),
-		tabs:       []string{"Issues", "Checks"},
-		Layout:     layout,
-		issueList:  issueList,
-		commitList: commitList,
+		path:        issuesIndexPath,
+		help:        helpModel,
+		styles:      DefaultStyles(),
+		tabs:        []string{"Issues", "Checks"},
+		Layout:      layout,
+		issueIndex:  issueList,
+		commitIndex: commitList,
 	}
 }
 
@@ -414,35 +414,35 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		for _, issue := range msg {
 			listItems = append(listItems, issue)
 		}
-		m.issueList.SetItems(listItems)
+		m.issueIndex.SetItems(listItems)
 	case CommitListReadyMsg:
 		var listItems []list.Item
 		for _, commit := range msg {
 			listItems = append(listItems, commit)
 		}
-		m.commitList.SetItems(listItems)
+		m.commitIndex.SetItems(listItems)
 	case bl.BubbleLayoutMsg:
 		m.LeftSize, _ = msg.Size(m.LeftID)
 		m.RightSize, _ = msg.Size(m.RightID)
 		m.HeaderSize, _ = msg.Size(m.HeaderID)
 		m.FooterSize, _ = msg.Size(m.FooterID)
 
-		m.issueList.SetSize(m.LeftSize.Width, m.LeftSize.Height)
-		m.commitList.SetSize(m.LeftSize.Width, m.LeftSize.Height)
+		m.issueIndex.SetSize(m.LeftSize.Width, m.LeftSize.Height)
+		m.commitIndex.SetSize(m.LeftSize.Width, m.LeftSize.Height)
 	case commentFormModel:
-		currentIndex := m.issueList.Index()
-		currentIssue := m.issueList.SelectedItem().(Issue)
+		currentIndex := m.issueIndex.Index()
+		currentIssue := m.issueIndex.SelectedItem().(Issue)
 		currentIssue.Comments = append(currentIssue.Comments, Comment{Author: "garrett@blvrd.co", Content: msg.contentInput.Value()})
-		m.issueList.SetItem(currentIndex, currentIssue)
-		m.issueDetail = issueDetailModel{issue: currentIssue}
-		m.issueDetail.commentForm = NewCommentFormModel()
-		m.issueDetail.Init(m)
-		m.issueDetail.viewport.GotoBottom()
+		m.issueIndex.SetItem(currentIndex, currentIssue)
+		m.issueShow = issueShowModel{issue: currentIssue}
+		m.issueShow.commentForm = NewCommentFormModel()
+		m.issueShow.Init(m)
+		m.issueShow.viewport.GotoBottom()
 
 		m.path = issuesShowPath
-	case issueFormModel:
+	case issueEditModel:
 		if msg.editing {
-			currentIssue := m.issueList.SelectedItem().(Issue)
+			currentIssue := m.issueIndex.SelectedItem().(Issue)
 			currentIssue.Title = msg.titleInput.Value()
 			currentIssue.Description = msg.descriptionInput.Value()
 			cmd = persistIssue(currentIssue)
@@ -460,24 +460,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	case issuePersistedMsg:
 		if msg.IsNewIssue {
-			m.issueList.InsertItem(0, msg.Issue)
-			m.issueList.Select(0)
-			m.issueDetail = issueDetailModel{issue: msg.Issue}
-			m.issueDetail.commentForm = NewCommentFormModel()
-			m.issueDetail.Init(m)
+			m.issueIndex.InsertItem(0, msg.Issue)
+			m.issueIndex.Select(0)
+			m.issueShow = issueShowModel{issue: msg.Issue}
+			m.issueShow.commentForm = NewCommentFormModel()
+			m.issueShow.Init(m)
 			m.path = issuesShowPath
 		} else if !msg.Issue.DeletedAt.IsZero() {
-			currentIndex := m.issueList.Index()
-			m.issueList.RemoveItem(currentIndex)
+			currentIndex := m.issueIndex.Index()
+			m.issueIndex.RemoveItem(currentIndex)
 			m.path = issuesIndexPath
-			m.issueList.Select(clamp(currentIndex-1, 0, len(m.issueList.Items())))
-			m.issueList, cmd = m.issueList.Update(msg)
+			m.issueIndex.Select(clamp(currentIndex-1, 0, len(m.issueIndex.Items())))
+			m.issueIndex, cmd = m.issueIndex.Update(msg)
 		} else {
-			currentIndex := m.issueList.Index()
-			m.issueDetail = issueDetailModel{issue: msg.Issue}
-			m.issueDetail.commentForm = NewCommentFormModel()
-			m.issueDetail.Init(m)
-			m.issueList.SetItem(currentIndex, msg.Issue)
+			currentIndex := m.issueIndex.Index()
+			m.issueShow = issueShowModel{issue: msg.Issue}
+			m.issueShow.commentForm = NewCommentFormModel()
+			m.issueShow.Init(m)
+			m.issueIndex.SetItem(currentIndex, msg.Issue)
 			m.path = issuesShowPath
 		}
 		return m, cmd
@@ -485,8 +485,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch {
 	case matchRoute(m.path, issuesIndexPath):
-		if m.issueList.SettingFilter() {
-			m.issueList, cmd = m.issueList.Update(msg)
+		if m.issueIndex.SettingFilter() {
+			m.issueIndex, cmd = m.issueIndex.Update(msg)
 			return m, cmd
 		}
 
@@ -508,55 +508,55 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 			case key.Matches(msg, keys.IssueStatusDone):
-				currentIndex := m.issueList.Index()
-				currentIssue := m.issueList.SelectedItem().(Issue)
+				currentIndex := m.issueIndex.Index()
+				currentIssue := m.issueIndex.SelectedItem().(Issue)
 				if currentIssue.Status == todo {
 					currentIssue.Status = done
 				} else {
 					currentIssue.Status = todo
 				}
-				cmd = m.issueList.SetItem(currentIndex, currentIssue)
+				cmd = m.issueIndex.SetItem(currentIndex, currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueStatusWontDo):
-				currentIndex := m.issueList.Index()
-				currentIssue := m.issueList.SelectedItem().(Issue)
+				currentIndex := m.issueIndex.Index()
+				currentIssue := m.issueIndex.SelectedItem().(Issue)
 				if currentIssue.Status == todo {
 					currentIssue.Status = wontDo
 				} else {
 					currentIssue.Status = todo
 				}
-				cmd = m.issueList.SetItem(currentIndex, currentIssue)
+				cmd = m.issueIndex.SetItem(currentIndex, currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueStatusInProgress):
-				currentIndex := m.issueList.Index()
-				currentIssue := m.issueList.SelectedItem().(Issue)
+				currentIndex := m.issueIndex.Index()
+				currentIssue := m.issueIndex.SelectedItem().(Issue)
 				if currentIssue.Status == todo {
 					currentIssue.Status = inProgress
 				} else {
 					currentIssue.Status = todo
 				}
-				cmd = m.issueList.SetItem(currentIndex, currentIssue)
+				cmd = m.issueIndex.SetItem(currentIndex, currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueCommentFormFocus):
-				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
-				m.issueDetail.commentForm = NewCommentFormModel()
-				m.issueDetail.commentForm.Init()
-				m.issueDetail.Init(m)
-				m.issueDetail.viewport.GotoBottom()
+				m.issueShow = issueShowModel{issue: m.issueIndex.SelectedItem().(Issue)}
+				m.issueShow.commentForm = NewCommentFormModel()
+				m.issueShow.commentForm.Init()
+				m.issueShow.Init(m)
+				m.issueShow.viewport.GotoBottom()
 				m.path = issuesCommentContentPath
 			case key.Matches(msg, keys.IssueDetailFocus):
-				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
-				m.issueDetail.commentForm = NewCommentFormModel()
-				m.issueDetail.commentForm.Init()
-				m.issueDetail.Init(m)
+				m.issueShow = issueShowModel{issue: m.issueIndex.SelectedItem().(Issue)}
+				m.issueShow.commentForm = NewCommentFormModel()
+				m.issueShow.commentForm.Init()
+				m.issueShow.Init(m)
 				m.path = issuesShowPath
 			case key.Matches(msg, keys.IssueNewForm):
-				m.issueForm = issueFormModel{editing: false}
-				m.issueForm.Init("", "")
-				cmd = m.issueForm.titleInput.Focus()
+				m.issueEdit = issueEditModel{editing: false}
+				m.issueEdit.Init("", "")
+				cmd = m.issueEdit.titleInput.Focus()
 				m.path = issuesEditTitlePath
 			case key.Matches(msg, keys.IssueDelete):
-				selectedItem := m.issueList.SelectedItem()
+				selectedItem := m.issueIndex.SelectedItem()
 				if selectedItem == nil {
 					return m, nil
 				}
@@ -571,7 +571,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		m.issueList, cmd = m.issueList.Update(msg)
+		m.issueIndex, cmd = m.issueIndex.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, issuesShowPath):
 		switch msg := msg.(type) {
@@ -585,97 +585,97 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			case key.Matches(msg, keys.IssueStatusDone):
-				currentIndex := m.issueList.Index()
-				currentIssue := m.issueList.SelectedItem().(Issue)
+				currentIndex := m.issueIndex.Index()
+				currentIssue := m.issueIndex.SelectedItem().(Issue)
 				if currentIssue.Status == todo {
 					currentIssue.Status = done
 				} else {
 					currentIssue.Status = todo
 				}
-				m.issueDetail = issueDetailModel{issue: currentIssue}
-				m.issueDetail.commentForm = NewCommentFormModel()
-				m.issueDetail.commentForm.Init()
-				m.issueDetail.Init(m)
-				cmd = m.issueList.SetItem(currentIndex, currentIssue)
+				m.issueShow = issueShowModel{issue: currentIssue}
+				m.issueShow.commentForm = NewCommentFormModel()
+				m.issueShow.commentForm.Init()
+				m.issueShow.Init(m)
+				cmd = m.issueIndex.SetItem(currentIndex, currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueStatusWontDo):
-				currentIndex := m.issueList.Index()
-				currentIssue := m.issueList.SelectedItem().(Issue)
+				currentIndex := m.issueIndex.Index()
+				currentIssue := m.issueIndex.SelectedItem().(Issue)
 				if currentIssue.Status == todo {
 					currentIssue.Status = wontDo
 				} else {
 					currentIssue.Status = todo
 				}
-				m.issueDetail = issueDetailModel{issue: currentIssue}
-				m.issueDetail.commentForm = NewCommentFormModel()
-				m.issueDetail.commentForm.Init()
-				m.issueDetail.Init(m)
-				cmd = m.issueList.SetItem(currentIndex, currentIssue)
+				m.issueShow = issueShowModel{issue: currentIssue}
+				m.issueShow.commentForm = NewCommentFormModel()
+				m.issueShow.commentForm.Init()
+				m.issueShow.Init(m)
+				cmd = m.issueIndex.SetItem(currentIndex, currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueStatusInProgress):
-				currentIndex := m.issueList.Index()
-				currentIssue := m.issueList.SelectedItem().(Issue)
+				currentIndex := m.issueIndex.Index()
+				currentIssue := m.issueIndex.SelectedItem().(Issue)
 				if currentIssue.Status == todo {
 					currentIssue.Status = inProgress
 				} else {
 					currentIssue.Status = todo
 				}
-				m.issueDetail = issueDetailModel{issue: currentIssue}
-				m.issueDetail.commentForm = NewCommentFormModel()
-				m.issueDetail.commentForm.Init()
-				m.issueDetail.Init(m)
-				cmd = m.issueList.SetItem(currentIndex, currentIssue)
+				m.issueShow = issueShowModel{issue: currentIssue}
+				m.issueShow.commentForm = NewCommentFormModel()
+				m.issueShow.commentForm.Init()
+				m.issueShow.Init(m)
+				cmd = m.issueIndex.SetItem(currentIndex, currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueEditForm):
-				selectedIssue := m.issueList.SelectedItem().(Issue)
-				m.issueForm = issueFormModel{editing: true, identifier: selectedIssue.Shortcode}
-				cmd = m.issueForm.Init(selectedIssue.Title, selectedIssue.Description)
+				selectedIssue := m.issueIndex.SelectedItem().(Issue)
+				m.issueEdit = issueEditModel{editing: true, identifier: selectedIssue.Shortcode}
+				cmd = m.issueEdit.Init(selectedIssue.Title, selectedIssue.Description)
 
 				m.path = issuesEditTitlePath
 				return m, cmd
 			case key.Matches(msg, keys.Back):
 				m.path = issuesIndexPath
 			case key.Matches(msg, keys.IssueCommentFormFocus):
-				m.issueDetail = issueDetailModel{issue: m.issueList.SelectedItem().(Issue)}
-				m.issueDetail.commentForm = NewCommentFormModel()
-				m.issueDetail.commentForm.Init()
-				m.issueDetail.Init(m)
-				m.issueDetail.viewport.GotoBottom()
+				m.issueShow = issueShowModel{issue: m.issueIndex.SelectedItem().(Issue)}
+				m.issueShow.commentForm = NewCommentFormModel()
+				m.issueShow.commentForm.Init()
+				m.issueShow.Init(m)
+				m.issueShow.viewport.GotoBottom()
 				m.path = issuesCommentContentPath
 			}
 		}
 
-		m.issueDetail.viewport, cmd = m.issueDetail.viewport.Update(msg)
+		m.issueShow.viewport, cmd = m.issueShow.viewport.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, issuesCommentContentPath):
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, keys.Back):
-				currentIssue := m.issueList.SelectedItem().(Issue)
-				m.issueDetail = issueDetailModel{issue: currentIssue}
-				m.issueDetail.commentForm = NewCommentFormModel()
-				m.issueDetail.Init(m)
+				currentIssue := m.issueIndex.SelectedItem().(Issue)
+				m.issueShow = issueShowModel{issue: currentIssue}
+				m.issueShow.commentForm = NewCommentFormModel()
+				m.issueShow.Init(m)
 				m.path = issuesShowPath
 			case key.Matches(msg, keys.NextInput):
-				m.issueDetail.commentForm.contentInput.Blur()
+				m.issueShow.commentForm.contentInput.Blur()
 				m.path = issuesCommentConfirmationPath
 			}
 		}
-		m.issueDetail.commentForm.contentInput, cmd = m.issueDetail.commentForm.contentInput.Update(msg)
+		m.issueShow.commentForm.contentInput, cmd = m.issueShow.commentForm.contentInput.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, issuesCommentConfirmationPath):
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, keys.Back):
-				currentIssue := m.issueList.SelectedItem().(Issue)
-				m.issueDetail = issueDetailModel{issue: currentIssue}
-				m.issueDetail.commentForm = NewCommentFormModel()
-				m.issueDetail.Init(m)
+				currentIssue := m.issueIndex.SelectedItem().(Issue)
+				m.issueShow = issueShowModel{issue: currentIssue}
+				m.issueShow.commentForm = NewCommentFormModel()
+				m.issueShow.Init(m)
 				m.path = issuesShowPath
 			case key.Matches(msg, keys.Submit):
-				return m, m.issueDetail.commentForm.Submit
+				return m, m.issueShow.commentForm.Submit
 			}
 		}
 	case matchRoute(m.path, issuesEditTitlePath):
@@ -683,7 +683,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, keys.Back):
-				if m.issueForm.editing {
+				if m.issueEdit.editing {
 					m.path = issuesShowPath
 					return m, cmd
 				} else {
@@ -692,20 +692,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case key.Matches(msg, keys.NextInput):
 				m.path = issuesEditDescriptionPath
-				m.issueForm.titleInput.Blur()
-				cmd = m.issueForm.descriptionInput.Focus()
+				m.issueEdit.titleInput.Blur()
+				cmd = m.issueEdit.descriptionInput.Focus()
 				return m, cmd
 			}
 		}
 
-		m.issueForm.titleInput, cmd = m.issueForm.titleInput.Update(msg)
+		m.issueEdit.titleInput, cmd = m.issueEdit.titleInput.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, issuesEditDescriptionPath):
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, keys.Back):
-				if m.issueForm.editing {
+				if m.issueEdit.editing {
 					m.path = issuesShowPath
 					return m, cmd
 				} else {
@@ -714,19 +714,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case key.Matches(msg, keys.NextInput):
 				m.path = issuesEditConfirmationPath
-				m.issueForm.descriptionInput.Blur()
+				m.issueEdit.descriptionInput.Blur()
 				return m, cmd
 			}
 		}
 
-		m.issueForm.descriptionInput, cmd = m.issueForm.descriptionInput.Update(msg)
+		m.issueEdit.descriptionInput, cmd = m.issueEdit.descriptionInput.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, issuesEditConfirmationPath):
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, keys.Back):
-				if m.issueForm.editing {
+				if m.issueEdit.editing {
 					m.path = issuesShowPath
 					return m, cmd
 				} else {
@@ -735,18 +735,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case key.Matches(msg, keys.NextInput):
 				m.path = issuesEditTitlePath
-				cmd = m.issueForm.titleInput.Focus()
+				cmd = m.issueEdit.titleInput.Focus()
 				return m, cmd
 			case key.Matches(msg, keys.Submit):
-				return m, m.issueForm.Submit
+				return m, m.issueEdit.Submit
 			}
 		}
 
-		m.issueForm, cmd = m.issueForm.Update(msg)
+		m.issueEdit, cmd = m.issueEdit.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, checksIndexPath):
-		if m.commitList.SettingFilter() {
-			m.commitList, cmd = m.commitList.Update(msg)
+		if m.commitIndex.SettingFilter() {
+			m.commitIndex, cmd = m.commitIndex.Update(msg)
 			return m, cmd
 		}
 
@@ -754,23 +754,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, keys.Down):
-				m.commitList, cmd = m.commitList.Update(msg)
+				m.commitIndex, cmd = m.commitIndex.Update(msg)
 				return m, cmd
 			case key.Matches(msg, keys.Up):
-				m.commitList, cmd = m.commitList.Update(msg)
+				m.commitIndex, cmd = m.commitIndex.Update(msg)
 				return m, cmd
 			case key.Matches(msg, keys.RunCheck):
-				commit := m.commitList.SelectedItem().(Commit)
+				commit := m.commitIndex.SelectedItem().(Commit)
 				commit.latestCheck = Check{status: "running"}
-				m.commitList.SetItem(m.commitList.Index(), commit)
-				m.commitList, cmd = m.commitList.Update(msg)
-				m.commitDetail = commitDetailModel{commit: commit}
-				m.commitDetail.Init(m)
+				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
+				m.commitIndex, cmd = m.commitIndex.Update(msg)
+				m.commitShow = commitShowModel{commit: commit}
+				m.commitShow.Init(m)
 				cmd = RunCheck(commit.id)
 				return m, cmd
 			case key.Matches(msg, keys.CommitDetailFocus):
-				m.commitDetail = commitDetailModel{commit: m.commitList.SelectedItem().(Commit)}
-				m.commitDetail.Init(m)
+				m.commitShow = commitShowModel{commit: m.commitIndex.SelectedItem().(Commit)}
+				m.commitShow.Init(m)
 				m.path = checksShowPath
 				return m, cmd
 			case key.Matches(msg, keys.NextPage):
@@ -795,7 +795,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case checkResult:
 			var commit Commit
 			var commitIndex int
-			for i, c := range m.commitList.Items() {
+			for i, c := range m.commitIndex.Items() {
 				if c.(Commit).id == msg.commitHash {
 					commit = c.(Commit)
 					commitIndex = i
@@ -803,13 +803,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			commit.latestCheck = Check{status: msg.status, output: msg.output}
-			m.commitList.SetItem(commitIndex, commit)
-			m.commitList, cmd = m.commitList.Update(msg)
-			m.commitDetail = commitDetailModel{commit: commit}
-			m.commitDetail.Init(m)
+			m.commitIndex.SetItem(commitIndex, commit)
+			m.commitIndex, cmd = m.commitIndex.Update(msg)
+			m.commitShow = commitShowModel{commit: commit}
+			m.commitShow.Init(m)
 		}
 
-		m.commitList, cmd = m.commitList.Update(msg)
+		m.commitIndex, cmd = m.commitIndex.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, checksShowPath):
 		switch msg := msg.(type) {
@@ -818,19 +818,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.Back):
 				m.path = checksIndexPath
 			case key.Matches(msg, keys.RunCheck):
-				commit := m.commitList.SelectedItem().(Commit)
+				commit := m.commitIndex.SelectedItem().(Commit)
 				commit.latestCheck = Check{status: "running"}
-				m.commitList.SetItem(m.commitList.Index(), commit)
-				m.commitList, cmd = m.commitList.Update(msg)
-				m.commitDetail = commitDetailModel{commit: commit}
-				m.commitDetail.Init(m)
+				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
+				m.commitIndex, cmd = m.commitIndex.Update(msg)
+				m.commitShow = commitShowModel{commit: commit}
+				m.commitShow.Init(m)
 				cmd = RunCheck(commit.id)
 				return m, cmd
 			}
 		case checkResult:
 			var commit Commit
 			var commitIndex int
-			for i, c := range m.commitList.Items() {
+			for i, c := range m.commitIndex.Items() {
 				if c.(Commit).id == msg.commitHash {
 					commit = c.(Commit)
 					commitIndex = i
@@ -838,13 +838,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 			commit.latestCheck = Check{status: msg.status, output: msg.output}
-			m.commitList.SetItem(commitIndex, commit)
-			m.commitList, cmd = m.commitList.Update(msg)
-			m.commitDetail = commitDetailModel{commit: commit}
-			m.commitDetail.Init(m)
+			m.commitIndex.SetItem(commitIndex, commit)
+			m.commitIndex, cmd = m.commitIndex.Update(msg)
+			m.commitShow = commitShowModel{commit: commit}
+			m.commitShow.Init(m)
 		}
 
-		m.commitDetail.viewport, cmd = m.commitDetail.viewport.Update(msg)
+		m.commitShow.viewport, cmd = m.commitShow.viewport.Update(msg)
 		return m, cmd
 	}
 
@@ -1028,13 +1028,13 @@ func (m Model) View() string {
 				),
 				lipgloss.JoinHorizontal(
 					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueList.View()),
+					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
 		case matchRoute(m.path, issuesShowPath):
 			sidebarView = lipgloss.NewStyle().
-				Render(m.issueDetail.View())
+				Render(m.issueShow.View())
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -1043,7 +1043,7 @@ func (m Model) View() string {
 				),
 				lipgloss.JoinHorizontal(
 					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueList.View()),
+					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
 					boxStyle(m.RightSize).Render(sidebarView),
 				),
 				boxStyle(m.FooterSize).Render(help),
@@ -1052,8 +1052,8 @@ func (m Model) View() string {
 			sidebarView = lipgloss.NewStyle().
 				Render(lipgloss.JoinVertical(
 					lipgloss.Left,
-					m.issueDetail.View(),
-					m.issueDetail.commentForm.View("content"),
+					m.issueShow.View(),
+					m.issueShow.commentForm.View("content"),
 				))
 
 			view = lipgloss.JoinVertical(
@@ -1063,7 +1063,7 @@ func (m Model) View() string {
 				),
 				lipgloss.JoinHorizontal(
 					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueList.View()),
+					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
 					boxStyle(m.RightSize).Render(sidebarView),
 				),
 				boxStyle(m.FooterSize).Render(help),
@@ -1072,8 +1072,8 @@ func (m Model) View() string {
 			sidebarView = lipgloss.NewStyle().
 				Render(lipgloss.JoinVertical(
 					lipgloss.Left,
-					m.issueDetail.View(),
-					m.issueDetail.commentForm.View("confirmation"),
+					m.issueShow.View(),
+					m.issueShow.commentForm.View("confirmation"),
 				))
 
 			view = lipgloss.JoinVertical(
@@ -1083,7 +1083,7 @@ func (m Model) View() string {
 				),
 				lipgloss.JoinHorizontal(
 					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueList.View()),
+					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
 					boxStyle(m.RightSize).Render(sidebarView),
 				),
 				boxStyle(m.FooterSize).Render(help),
@@ -1092,7 +1092,7 @@ func (m Model) View() string {
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
-				Render(m.issueForm.View("title", true))
+				Render(m.issueEdit.View("title", true))
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -1101,7 +1101,7 @@ func (m Model) View() string {
 				),
 				lipgloss.JoinHorizontal(
 					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueList.View()),
+					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
 					boxStyle(m.RightSize).Render(sidebarView),
 				),
 				boxStyle(m.FooterSize).Render(help),
@@ -1110,7 +1110,7 @@ func (m Model) View() string {
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
-				Render(m.issueForm.View("description", true))
+				Render(m.issueEdit.View("description", true))
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -1119,7 +1119,7 @@ func (m Model) View() string {
 				),
 				lipgloss.JoinHorizontal(
 					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueList.View()),
+					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
 					boxStyle(m.RightSize).Render(sidebarView),
 				),
 				boxStyle(m.FooterSize).Render(help),
@@ -1128,7 +1128,7 @@ func (m Model) View() string {
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
-				Render(m.issueForm.View("confirmation", true))
+				Render(m.issueEdit.View("confirmation", true))
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -1137,7 +1137,7 @@ func (m Model) View() string {
 				),
 				lipgloss.JoinHorizontal(
 					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueList.View()),
+					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
 					boxStyle(m.RightSize).Render(sidebarView),
 				),
 				boxStyle(m.FooterSize).Render(help),
@@ -1155,7 +1155,7 @@ func (m Model) View() string {
 			renderedTabs = append(renderedTabs, style.Render(t))
 		}
 		commitListView := lipgloss.NewStyle().
-			Render(m.commitList.View())
+			Render(m.commitIndex.View())
 
 		switch {
 		case matchRoute(m.path, checksIndexPath):
@@ -1169,7 +1169,7 @@ func (m Model) View() string {
 			)
 		case matchRoute(m.path, checksShowPath):
 			commitDetailView := lipgloss.NewStyle().
-				Render(m.commitDetail.View())
+				Render(m.commitShow.View())
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
 				boxStyle(m.HeaderSize).Render(
@@ -1333,12 +1333,12 @@ func getIssues() tea.Msg {
 	return IssuesReadyMsg(issues)
 }
 
-type commitDetailModel struct {
+type commitShowModel struct {
 	commit   Commit
 	viewport viewport.Model
 }
 
-func (m *commitDetailModel) Init(ctx Model) tea.Cmd {
+func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 	var s strings.Builder
 	var status string
 	switch m.commit.latestCheck.status {
@@ -1362,24 +1362,24 @@ func (m *commitDetailModel) Init(ctx Model) tea.Cmd {
 	return nil
 }
 
-func (m commitDetailModel) Update(msg tea.Msg) (commitDetailModel, tea.Cmd) {
+func (m commitShowModel) Update(msg tea.Msg) (commitShowModel, tea.Cmd) {
 	return m, nil
 }
 
-func (m commitDetailModel) View() string {
+func (m commitShowModel) View() string {
 	var s strings.Builder
 	s.WriteString(m.viewport.View())
 	return s.String()
 }
 
-type issueDetailModel struct {
+type issueShowModel struct {
 	layout      Layout
 	issue       Issue
 	viewport    viewport.Model
 	commentForm commentFormModel
 }
 
-func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
+func (m *issueShowModel) Init(ctx Model) tea.Cmd {
 	m.viewport = viewport.New(
 		ctx.Layout.RightSize.Width,
 		ctx.Layout.RightSize.Height-len(strings.Split(m.commentForm.View("content"), "\n")),
@@ -1425,36 +1425,36 @@ func (m *issueDetailModel) Init(ctx Model) tea.Cmd {
 	return nil
 }
 
-func (m issueDetailModel) Update(msg tea.Msg) (issueDetailModel, tea.Cmd) {
+func (m issueShowModel) Update(msg tea.Msg) (issueShowModel, tea.Cmd) {
 	return m, nil
 }
 
-func (m issueDetailModel) View() string {
+func (m issueShowModel) View() string {
 	return m.viewport.View()
 }
 
-type issueFormModel struct {
+type issueEditModel struct {
 	titleInput       textinput.Model
 	descriptionInput textarea.Model
 	identifier       string
 	editing          bool
 }
 
-func (m issueFormModel) Submit() tea.Msg {
+func (m issueEditModel) Submit() tea.Msg {
 	return m
 }
 
-func (m *issueFormModel) Init(title, description string) tea.Cmd {
+func (m *issueEditModel) Init(title, description string) tea.Cmd {
 	m.SetTitle(title)
 	m.SetDescription(description)
 	return m.titleInput.Focus()
 }
 
-func (m issueFormModel) Update(msg tea.Msg) (issueFormModel, tea.Cmd) {
+func (m issueEditModel) Update(msg tea.Msg) (issueEditModel, tea.Cmd) {
 	return m, nil
 }
 
-func (m issueFormModel) View(focus string, editing bool) string {
+func (m issueEditModel) View(focus string, editing bool) string {
 	var s strings.Builder
 
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", m.identifier))
@@ -1481,14 +1481,14 @@ func (m issueFormModel) View(focus string, editing bool) string {
 	return s.String()
 }
 
-func (m *issueFormModel) SetTitle(title string) {
+func (m *issueEditModel) SetTitle(title string) {
 	m.titleInput = textinput.New()
 	m.titleInput.CharLimit = 120
 	m.titleInput.Width = 80
 	m.titleInput.SetValue(title)
 }
 
-func (m *issueFormModel) SetDescription(description string) {
+func (m *issueEditModel) SetDescription(description string) {
 	m.descriptionInput = textarea.New()
 	m.descriptionInput.CharLimit = 0 // unlimited
 	m.descriptionInput.MaxHeight = 0 // unlimited
