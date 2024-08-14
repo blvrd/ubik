@@ -556,7 +556,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = m.issueForm.titleInput.Focus()
 				m.path = issuesEditTitlePath
 			case key.Matches(msg, keys.IssueDelete):
-				issue := m.issueList.SelectedItem().(Issue)
+				selectedItem := m.issueList.SelectedItem()
+				if selectedItem == nil {
+					return m, nil
+				}
+				issue := selectedItem.(Issue)
 				issue.DeletedAt = time.Now().UTC()
 				cmd = persistIssue(issue)
 				return m, cmd
