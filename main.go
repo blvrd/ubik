@@ -26,8 +26,8 @@ import (
 )
 
 type issuePersistedMsg struct {
-	Issue    Issue
-	NewIssue bool
+	Issue      Issue
+	IsNewIssue bool
 }
 
 func persistIssue(issue Issue) tea.Cmd {
@@ -72,8 +72,8 @@ func persistIssue(issue Issue) tea.Cmd {
 		}
 
 		return issuePersistedMsg{
-			Issue:    issue,
-			NewIssue: newIssue,
+			Issue:      issue,
+			IsNewIssue: newIssue,
 		}
 	}
 }
@@ -460,7 +460,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, cmd
 	case issuePersistedMsg:
-		if msg.NewIssue {
+		if msg.IsNewIssue {
 			m.issueList.InsertItem(0, msg.Issue)
 			m.issueList.Select(0)
 			m.issueDetail = issueDetailModel{issue: msg.Issue}
