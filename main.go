@@ -26,11 +26,47 @@ import (
 )
 
 type checkPersistedMsg struct {
-	Check Check
+	Check      Check
+	IsNewCheck bool
 }
 
 func persistCheck(check Check) tea.Cmd {
 	return func() tea.Msg {
+		var newCheck bool
+
+		if check.Id == "" {
+			newCheck = true
+		} else {
+			newCheck = false
+		}
+
+		if newCheck {
+			id := uuid.NewString()
+			check.Id = id
+		}
+
+		jsonData, err := json.Marshal(check)
+		if err != nil {
+			return err
+		}
+
+		cmd := exec.Command("git", "hash-object", "--stdin", "-w")
+		cmd.Stdin = bytes.NewReader(jsonData)
+
+		b, err := cmd.Output()
+		if err != nil {
+			return err
+		}
+
+		hash := strings.TrimSpace(string(b))
+
+		cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/checks/%s", check.Id), hash)
+		err = cmd.Run()
+
+		if err != nil {
+			log.Fatalf("%#v", err.Error())
+			panic(err)
+		}
 		return checkPersistedMsg{Check: check}
 	}
 }
@@ -429,6 +465,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var listItems []list.Item
 		for _, commit := range msg {
 			listItems = append(listItems, commit)
+			if commit.LatestCheck.Id != "" {
+			}
 		}
 		m.commitIndex.SetItems(listItems)
 	case bl.BubbleLayoutMsg:
@@ -771,12 +809,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			case key.Matches(msg, keys.RunCheck):
 				commit := m.commitIndex.SelectedItem().(Commit)
-				commit.latestCheck = Check{status: "running"}
+				commit.LatestCheck = Check{Status: "running", CommitId: commit.Id}
 				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
 				m.commitIndex, cmd = m.commitIndex.Update(msg)
 				m.commitShow = commitShowModel{commit: commit}
 				m.commitShow.Init(m)
-				cmd = RunCheck(commit.id)
+				cmd = RunCheck(commit.Id)
 				return m, cmd
 			case key.Matches(msg, keys.CommitDetailFocus):
 				m.commitShow = commitShowModel{commit: m.commitIndex.SelectedItem().(Commit)}
@@ -806,25 +844,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			var commit Commit
 			var commitIndex int
 			for i, c := range m.commitIndex.Items() {
-				if c.(Commit).id == msg.Check.commitId {
+				if c.(Commit).Id == msg.Check.CommitId {
 					commit = c.(Commit)
 					commitIndex = i
 					break
 				}
 			}
-			commit.latestCheck = Check{status: msg.Check.status, output: msg.Check.output}
+			commit.LatestCheck = Check{Status: msg.Check.Status, Output: msg.Check.Output, CommitId: commit.Id}
 			m.commitIndex.SetItem(commitIndex, commit)
 			m.commitIndex, cmd = m.commitIndex.Update(msg)
 			m.commitShow = commitShowModel{commit: commit}
 			m.commitShow.Init(m)
 		case checkResult:
 			check := Check{
-			  status: msg.status,
-			  commitId: msg.commitHash,
-			  output: msg.output,
+				Status:   msg.status,
+				CommitId: msg.commitHash,
+				Output:   msg.output,
 			}
 
-      return m, persistCheck(check)
+			return m, persistCheck(check)
 		}
 
 		m.commitIndex, cmd = m.commitIndex.Update(msg)
@@ -837,25 +875,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.path = checksIndexPath
 			case key.Matches(msg, keys.RunCheck):
 				commit := m.commitIndex.SelectedItem().(Commit)
-				commit.latestCheck = Check{status: "running"}
+				commit.LatestCheck = Check{Status: "running", CommitId: commit.Id}
 				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
 				m.commitIndex, cmd = m.commitIndex.Update(msg)
 				m.commitShow = commitShowModel{commit: commit}
 				m.commitShow.Init(m)
-				cmd = RunCheck(commit.id)
+				cmd = RunCheck(commit.Id)
 				return m, cmd
 			}
 		case checkResult:
 			var commit Commit
 			var commitIndex int
 			for i, c := range m.commitIndex.Items() {
-				if c.(Commit).id == msg.commitHash {
+				if c.(Commit).Id == msg.commitHash {
 					commit = c.(Commit)
 					commitIndex = i
 					break
 				}
 			}
-			commit.latestCheck = Check{status: msg.status, output: msg.output}
+			commit.LatestCheck = Check{Status: msg.status, Output: msg.output, CommitId: commit.Id}
 			m.commitIndex.SetItem(commitIndex, commit)
 			m.commitIndex, cmd = m.commitIndex.Update(msg)
 			m.commitShow = commitShowModel{commit: commit}
@@ -1205,26 +1243,26 @@ func (m Model) View() string {
 }
 
 type Commit struct {
-	id            string
-	abbreviatedId string
-	author        string
-	description   string
-	timestamp     time.Time
-	latestCheck   Check
+	Id            string    `json:"id"`
+	AbbreviatedId string    `json:"abbreviatedId"`
+	Author        string    `json:"author"`
+	Description   string    `json:"description"`
+	Timestamp     time.Time `json:"timestamp"`
+	LatestCheck   Check     `json:"latestCheck"`
 }
 
 type Check struct {
-	id         string
-	commitId   string
-	status     string
-	checker    string
-	output     string
-	startedAt  time.Time
-	finishedAt time.Time
+	Id         string    `json:"id"`
+	CommitId   string    `json:"commitId"`
+	Status     string    `json:"status"`
+	Checker    string    `json:"checker"`
+	Output     string    `json:"output"`
+	StartedAt  time.Time `json:"startedAt"`
+	FinishedAt time.Time `json:"finishedAt"`
 }
 
 func (c Commit) FilterValue() string {
-	return c.id
+	return c.Id
 }
 
 func (c Commit) Height() int  { return 2 }
@@ -1244,10 +1282,10 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 
 	var author string
 
-	if c.author == "" {
+	if c.Author == "" {
 		author = "unknown"
 	} else {
-		author = c.author
+		author = c.Author
 	}
 
 	titleFn := defaultItemStyles.NormalTitle.Padding(0).Render
@@ -1260,18 +1298,19 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 		}
 	}
 
-	title := fmt.Sprintf("%s", titleFn(c.abbreviatedId, truncate(c.description, 50)))
-	if c.latestCheck.status == "running" {
+	title := fmt.Sprintf("%s", titleFn(c.AbbreviatedId, truncate(c.Description, 50)))
+
+	if c.LatestCheck.Status == "running" {
 		title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]"))
 	}
-	if c.latestCheck.status == "failed" {
+	if c.LatestCheck.Status == "failed" {
 		title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]"))
 	}
-	if c.latestCheck.status == "succeeded" {
+	if c.LatestCheck.Status == "succeeded" {
 		title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]"))
 	}
 
-	description := fmt.Sprintf("committed at %s by %s", c.timestamp.Format(time.RFC822), author)
+	description := fmt.Sprintf("committed at %s by %s", c.Timestamp.Format(time.RFC822), author)
 	item := lipgloss.JoinVertical(lipgloss.Left, title, description)
 
 	fmt.Fprintf(w, item)
@@ -1280,7 +1319,7 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 type CommitListReadyMsg []Commit
 
 func getCommits() tea.Msg {
-	var commits []Commit
+	var commits []*Commit
 
 	cmd := exec.Command(
 		"git",
@@ -1300,16 +1339,55 @@ func getCommits() tea.Msg {
 		if err != nil {
 			log.Errorf("Error parsing timestamp: %v", err)
 		}
-		commits = append(commits, Commit{
-			id:            parts[0],
-			abbreviatedId: parts[1],
-			author:        parts[2],
-			timestamp:     timestamp,
-			description:   parts[4],
+		commits = append(commits, &Commit{
+			Id:            parts[0],
+			AbbreviatedId: parts[1],
+			Author:        parts[2],
+			Timestamp:     timestamp,
+			Description:   parts[4],
 		})
 	}
 
-	return CommitListReadyMsg(commits)
+	cmd = exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik/checks")
+	b, err := cmd.Output()
+	if err != nil {
+		panic(err)
+	}
+
+	var refHashes []string
+	str := string(b)
+	for _, s := range strings.Split(str, "\n") {
+		noteId := strings.Split(s, " ")[0]
+		if noteId != "" {
+			refHashes = append(refHashes, noteId)
+		}
+	}
+
+	var readyCommits []Commit
+	for _, refHash := range refHashes {
+		cmd := exec.Command("git", "cat-file", "-p", refHash)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		err := cmd.Run()
+		if err != nil {
+			continue
+		}
+
+		var check Check
+		json.Unmarshal(out.Bytes(), &check)
+
+		for _, commit := range commits {
+			if check.CommitId == commit.Id {
+				commit.LatestCheck = check
+			}
+		}
+	}
+
+	for _, commit := range commits {
+		readyCommits = append(readyCommits, *commit)
+	}
+
+	return CommitListReadyMsg(readyCommits)
 }
 
 type IssuesReadyMsg []Issue
@@ -1317,7 +1395,7 @@ type IssuesReadyMsg []Issue
 func getIssues() tea.Msg {
 	var issues []Issue
 
-	cmd := exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik")
+	cmd := exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik/issues")
 	b, err := cmd.Output()
 	if err != nil {
 		panic(err)
@@ -1360,7 +1438,7 @@ type commitShowModel struct {
 func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 	var s strings.Builder
 	var status string
-	switch m.commit.latestCheck.status {
+	switch m.commit.LatestCheck.Status {
 	case "running":
 		status = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]")
 	case "failed":
@@ -1368,14 +1446,14 @@ func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 	case "succeeded":
 		status = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]")
 	}
-	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.commit.abbreviatedId))
-	header := fmt.Sprintf("%s %s\nStatus: %s", identifier, m.commit.description, status)
+	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.commit.AbbreviatedId))
+	header := fmt.Sprintf("%s %s\nStatus: %s", identifier, m.commit.Description, status)
 	s.WriteString(lipgloss.NewStyle().BorderBottom(true).BorderStyle(lipgloss.NormalBorder()).PaddingTop(0).Render(header))
 	s.WriteString("\n")
 
 	m.viewport = viewport.New(ctx.Layout.RightSize.Width, ctx.Layout.RightSize.Height)
-	s.WriteString(m.commit.description)
-	s.WriteString(fmt.Sprintf("\n\n%s", m.commit.latestCheck.output))
+	s.WriteString(m.commit.Description)
+	s.WriteString(fmt.Sprintf("\n\n%s", m.commit.LatestCheck.Output))
 
 	m.viewport.SetContent(s.String())
 	return nil
