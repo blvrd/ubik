@@ -25,6 +25,16 @@ import (
 	bl "github.com/winder/bubblelayout"
 )
 
+type checkPersistedMsg struct {
+	Check Check
+}
+
+func persistCheck(check Check) tea.Cmd {
+	return func() tea.Msg {
+		return checkPersistedMsg{Check: check}
+	}
+}
+
 type issuePersistedMsg struct {
 	Issue      Issue
 	IsNewIssue bool
@@ -792,21 +802,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 			}
-		case checkResult:
+		case checkPersistedMsg:
 			var commit Commit
 			var commitIndex int
 			for i, c := range m.commitIndex.Items() {
-				if c.(Commit).id == msg.commitHash {
+				if c.(Commit).id == msg.Check.commitId {
 					commit = c.(Commit)
 					commitIndex = i
 					break
 				}
 			}
-			commit.latestCheck = Check{status: msg.status, output: msg.output}
+			commit.latestCheck = Check{status: msg.Check.status, output: msg.Check.output}
 			m.commitIndex.SetItem(commitIndex, commit)
 			m.commitIndex, cmd = m.commitIndex.Update(msg)
 			m.commitShow = commitShowModel{commit: commit}
 			m.commitShow.Init(m)
+		case checkResult:
+			check := Check{
+			  status: msg.status,
+			  commitId: msg.commitHash,
+			  output: msg.output,
+			}
+
+      return m, persistCheck(check)
 		}
 
 		m.commitIndex, cmd = m.commitIndex.Update(msg)
@@ -876,6 +894,7 @@ func RunCheck(commitId string) tea.Cmd {
 			log.Debugf("%#v", err)
 			return checkResult{commitHash: commitId, status: "failed", output: string(output)}
 		}
+
 		return checkResult{commitHash: commitId, status: "succeeded", output: string(output)}
 	}
 }
