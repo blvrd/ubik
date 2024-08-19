@@ -465,8 +465,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var listItems []list.Item
 		for _, commit := range msg {
 			listItems = append(listItems, commit)
-			if commit.LatestCheck.Id != "" {
-			}
 		}
 		m.commitIndex.SetItems(listItems)
 	case bl.BubbleLayoutMsg:
@@ -809,13 +807,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			case key.Matches(msg, keys.RunCheck):
 				commit := m.commitIndex.SelectedItem().(Commit)
-				commit.LatestCheck = Check{Status: "running", CommitId: commit.Id}
+				commit.LatestChecks = []Check{}
 				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
 				m.commitIndex, cmd = m.commitIndex.Update(msg)
 				m.commitShow = commitShowModel{commit: commit}
 				m.commitShow.Init(m)
-				cmd = RunCheck(commit.Id)
-				return m, cmd
+				checkCommands := []*exec.Cmd{
+					exec.Command("go", "test"),
+					exec.Command("./check.sh"),
+				}
+				var cmds []tea.Cmd
+				for _, command := range checkCommands {
+					commit.LatestChecks = append(commit.LatestChecks, Check{Status: "running", CommitId: commit.Id, Name: command.String()})
+					cmds = append(cmds, RunCheck(commit.Id, command))
+				}
+				return m, tea.Batch(cmds...)
 			case key.Matches(msg, keys.CommitDetailFocus):
 				m.commitShow = commitShowModel{commit: m.commitIndex.SelectedItem().(Commit)}
 				m.commitShow.Init(m)
@@ -850,7 +856,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					break
 				}
 			}
-			commit.LatestCheck = Check{Status: msg.Check.Status, Output: msg.Check.Output, CommitId: commit.Id}
+			commit.LatestChecks = append(commit.LatestChecks, Check{Status: msg.Check.Status, Output: msg.Check.Output, CommitId: commit.Id})
 			m.commitIndex.SetItem(commitIndex, commit)
 			m.commitIndex, cmd = m.commitIndex.Update(msg)
 			m.commitShow = commitShowModel{commit: commit}
@@ -875,13 +881,21 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.path = checksIndexPath
 			case key.Matches(msg, keys.RunCheck):
 				commit := m.commitIndex.SelectedItem().(Commit)
-				commit.LatestCheck = Check{Status: "running", CommitId: commit.Id}
+				commit.LatestChecks = []Check{}
 				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
 				m.commitIndex, cmd = m.commitIndex.Update(msg)
 				m.commitShow = commitShowModel{commit: commit}
 				m.commitShow.Init(m)
-				cmd = RunCheck(commit.Id)
-				return m, cmd
+				checkCommands := []*exec.Cmd{
+					exec.Command("go", "test"),
+					exec.Command("./check.sh"),
+				}
+				var cmds []tea.Cmd
+				for _, command := range checkCommands {
+					commit.LatestChecks = append(commit.LatestChecks, Check{Status: "running", CommitId: commit.Id, Name: command.String()})
+					cmds = append(cmds, RunCheck(commit.Id, command))
+				}
+				return m, tea.Batch(cmds...)
 			}
 		case checkResult:
 			var commit Commit
@@ -893,7 +907,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					break
 				}
 			}
-			commit.LatestCheck = Check{Status: msg.status, Output: msg.output, CommitId: commit.Id}
+			commit.LatestChecks = append(commit.LatestChecks, Check{Status: msg.status, Output: msg.output, CommitId: commit.Id})
 			m.commitIndex.SetItem(commitIndex, commit)
 			m.commitIndex, cmd = m.commitIndex.Update(msg)
 			m.commitShow = commitShowModel{commit: commit}
@@ -913,23 +927,22 @@ type checkResult struct {
 	output     string
 }
 
-func RunCheck(commitId string) tea.Cmd {
+func RunCheck(commitId string, command *exec.Cmd) tea.Cmd {
 	return func() tea.Msg {
 		randomString := uuid.NewString()
 		path := "tmp/ci-" + randomString
-		command := exec.Command("git", "worktree", "add", "--detach", path, commitId)
+		worktreeCommand := exec.Command("git", "worktree", "add", "--detach", path, commitId)
 		removeWorktree := exec.Command("git", "worktree", "remove", path)
 		defer removeWorktree.Run()
 
-		_, err := command.Output()
+		_, err := worktreeCommand.Output()
 		if err != nil {
 			log.Fatal(err)
 		}
-		command = exec.Command("go", "test")
 		command.Dir = path
 		output, err := command.Output()
 		if err != nil {
-			log.Debugf("%#v", err)
+			log.Debugf("%#s", err)
 			return checkResult{commitHash: commitId, status: "failed", output: string(output)}
 		}
 
@@ -1248,7 +1261,7 @@ type Commit struct {
 	Author        string    `json:"author"`
 	Description   string    `json:"description"`
 	Timestamp     time.Time `json:"timestamp"`
-	LatestCheck   Check     `json:"latestCheck"`
+	LatestChecks  []Check   `json:"latestCheck"`
 }
 
 type Check struct {
@@ -1256,6 +1269,7 @@ type Check struct {
 	CommitId   string    `json:"commitId"`
 	Status     string    `json:"status"`
 	Checker    string    `json:"checker"`
+	Name       string    `json:"name"`
 	Output     string    `json:"output"`
 	StartedAt  time.Time `json:"startedAt"`
 	FinishedAt time.Time `json:"finishedAt"`
@@ -1300,13 +1314,22 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 
 	title := fmt.Sprintf("%s", titleFn(c.AbbreviatedId, truncate(c.Description, 50)))
 
-	if c.LatestCheck.Status == "running" {
+	var aggregateStatus string
+
+	for _, check := range c.LatestChecks {
+		aggregateStatus = check.Status
+		if aggregateStatus == "failed" || aggregateStatus == "running" {
+			break
+		}
+	}
+
+	if aggregateStatus == "running" {
 		title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]"))
 	}
-	if c.LatestCheck.Status == "failed" {
+	if aggregateStatus == "failed" {
 		title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]"))
 	}
-	if c.LatestCheck.Status == "succeeded" {
+	if aggregateStatus == "succeeded" {
 		title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]"))
 	}
 
@@ -1378,7 +1401,7 @@ func getCommits() tea.Msg {
 
 		for _, commit := range commits {
 			if check.CommitId == commit.Id {
-				commit.LatestCheck = check
+				commit.LatestChecks = append(commit.LatestChecks, check)
 			}
 		}
 	}
@@ -1438,7 +1461,15 @@ type commitShowModel struct {
 func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 	var s strings.Builder
 	var status string
-	switch m.commit.LatestCheck.Status {
+	var aggregateStatus string
+
+	for _, check := range m.commit.LatestChecks {
+		aggregateStatus = check.Status
+		if aggregateStatus == "failed" || aggregateStatus == "running" {
+			break
+		}
+	}
+	switch aggregateStatus {
 	case "running":
 		status = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]")
 	case "failed":
@@ -1453,7 +1484,10 @@ func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 
 	m.viewport = viewport.New(ctx.Layout.RightSize.Width, ctx.Layout.RightSize.Height)
 	s.WriteString(m.commit.Description)
-	s.WriteString(fmt.Sprintf("\n\n%s", m.commit.LatestCheck.Output))
+	for _, check := range m.commit.LatestChecks {
+		s.WriteString(fmt.Sprintf("\n\n%s", check.Output))
+		s.WriteString(fmt.Sprintf("\n\n%s", check.Status))
+	}
 
 	m.viewport.SetContent(s.String())
 	return nil
