@@ -1054,8 +1054,8 @@ func (m Model) HelpKeys() keyMap {
 
 func boxStyle(size bl.Size) lipgloss.Style {
 	style := lipgloss.NewStyle().
-		Width(size.Width).
-		Height(size.Height)
+		Width(size.Width - 2).
+		Height(size.Height - 2)
 
 	return style
 }
@@ -1114,7 +1114,7 @@ func (m Model) View() string {
 				lipgloss.JoinHorizontal(
 					lipgloss.Top,
 					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-					boxStyle(m.RightSize).Render(sidebarView),
+					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
@@ -1134,7 +1134,7 @@ func (m Model) View() string {
 				lipgloss.JoinHorizontal(
 					lipgloss.Top,
 					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-					boxStyle(m.RightSize).Render(sidebarView),
+					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
@@ -1154,7 +1154,7 @@ func (m Model) View() string {
 				lipgloss.JoinHorizontal(
 					lipgloss.Top,
 					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-					boxStyle(m.RightSize).Render(sidebarView),
+					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
@@ -1172,7 +1172,7 @@ func (m Model) View() string {
 				lipgloss.JoinHorizontal(
 					lipgloss.Top,
 					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-					boxStyle(m.RightSize).Render(sidebarView),
+					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
@@ -1190,7 +1190,7 @@ func (m Model) View() string {
 				lipgloss.JoinHorizontal(
 					lipgloss.Top,
 					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-					boxStyle(m.RightSize).Render(sidebarView),
+					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
@@ -1208,7 +1208,7 @@ func (m Model) View() string {
 				lipgloss.JoinHorizontal(
 					lipgloss.Top,
 					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-					boxStyle(m.RightSize).Render(sidebarView),
+					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
@@ -1245,7 +1245,11 @@ func (m Model) View() string {
 				boxStyle(m.HeaderSize).Render(
 					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
 				),
-				lipgloss.JoinHorizontal(lipgloss.Top, commitListView, commitDetailView),
+				lipgloss.JoinHorizontal(
+				  lipgloss.Top,
+				  commitListView,
+				  boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(commitDetailView),
+				),
 				help,
 			)
 		}
@@ -1512,7 +1516,7 @@ type issueShowModel struct {
 
 func (m *issueShowModel) Init(ctx Model) tea.Cmd {
 	m.viewport = viewport.New(
-		ctx.Layout.RightSize.Width,
+		ctx.Layout.RightSize.Width-2,
 		ctx.Layout.RightSize.Height-len(strings.Split(m.commentForm.View("content"), "\n")),
 	)
 	m.layout = ctx.Layout
