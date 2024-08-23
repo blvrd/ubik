@@ -329,7 +329,7 @@ func (i Issue) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 				Render(strings.Join(s, " "))
 		}
 	}
-	title := fmt.Sprintf("%s %s", status, titleFn(i.Shortcode, truncate(i.Title, 50)))
+	title := fmt.Sprintf("%s %s", status, titleFn(fmt.Sprintf("#%s", i.Shortcode), truncate(i.Title, 50)))
 
 	description := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("created by %s at %s", i.Author, i.CreatedAt.Format(time.RFC822)))
 	item := lipgloss.JoinVertical(lipgloss.Left, title, description)
