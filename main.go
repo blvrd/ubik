@@ -91,7 +91,9 @@ func persistIssue(issue Issue) tea.Cmd {
 			shortcode := StringToShortcode(id)
 			issue.Id = id
 			issue.Shortcode = shortcode
+			issue.CreatedAt = time.Now().UTC()
 		}
+		issue.UpdatedAt = time.Now().UTC()
 
 		jsonData, err := json.Marshal(issue)
 		if err != nil {
