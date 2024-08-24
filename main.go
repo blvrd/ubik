@@ -526,7 +526,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueShow.commentForm = NewCommentFormModel()
 			m.issueShow.Init(m)
 			m.issueIndex.SetItem(currentIndex, msg.Issue)
-			m.path = issuesShowPath
+			if m.path != issuesIndexPath {
+				m.path = issuesShowPath
+			}
 		}
 		return m, cmd
 	}
@@ -562,8 +564,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					currentIssue.Status = todo
 				}
-        cmd = persistIssue(currentIssue)
-        return m, cmd
+				cmd = persistIssue(currentIssue)
+				return m, cmd
 			case key.Matches(msg, keys.IssueStatusWontDo):
 				currentIssue := m.issueIndex.SelectedItem().(Issue)
 				if currentIssue.Status == todo {
@@ -571,7 +573,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					currentIssue.Status = todo
 				}
-        cmd = persistIssue(currentIssue)
+				cmd = persistIssue(currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueStatusInProgress):
 				currentIssue := m.issueIndex.SelectedItem().(Issue)
@@ -580,7 +582,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					currentIssue.Status = todo
 				}
-        cmd = persistIssue(currentIssue)
+				cmd = persistIssue(currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueCommentFormFocus):
 				m.issueShow = issueShowModel{issue: m.issueIndex.SelectedItem().(Issue)}
@@ -640,7 +642,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.issueShow.commentForm = NewCommentFormModel()
 				m.issueShow.commentForm.Init()
 				m.issueShow.Init(m)
-        cmd = persistIssue(currentIssue)
+				cmd = persistIssue(currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueStatusWontDo):
 				currentIssue := m.issueIndex.SelectedItem().(Issue)
@@ -653,7 +655,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.issueShow.commentForm = NewCommentFormModel()
 				m.issueShow.commentForm.Init()
 				m.issueShow.Init(m)
-        cmd = persistIssue(currentIssue)
+				cmd = persistIssue(currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueStatusInProgress):
 				currentIssue := m.issueIndex.SelectedItem().(Issue)
@@ -666,7 +668,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.issueShow.commentForm = NewCommentFormModel()
 				m.issueShow.commentForm.Init()
 				m.issueShow.Init(m)
-        cmd = persistIssue(currentIssue)
+				cmd = persistIssue(currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueEditForm):
 				selectedIssue := m.issueIndex.SelectedItem().(Issue)
