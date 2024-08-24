@@ -1246,9 +1246,9 @@ func (m Model) View() string {
 					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
 				),
 				lipgloss.JoinHorizontal(
-				  lipgloss.Top,
-				  commitListView,
-				  boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(commitDetailView),
+					lipgloss.Top,
+					commitListView,
+					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(commitDetailView),
 				),
 				help,
 			)
@@ -1517,7 +1517,7 @@ type issueShowModel struct {
 func (m *issueShowModel) Init(ctx Model) tea.Cmd {
 	m.viewport = viewport.New(
 		ctx.Layout.RightSize.Width-2,
-		ctx.Layout.RightSize.Height-len(strings.Split(m.commentForm.View("content"), "\n")),
+		ctx.Layout.RightSize.Height-len(strings.Split(m.commentForm.View("content"), "\n"))-3,
 	)
 	m.layout = ctx.Layout
 	var s strings.Builder
