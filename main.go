@@ -514,36 +514,40 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, cmd
 	case issuePersistedMsg:
-		if msg.IsNewIssue {
+		if !msg.Issue.DeletedAt.IsZero() {
+			currentIndex := m.issueIndex.Index()
+			m.issueIndex.RemoveItem(currentIndex)
+			m.issueIndex.Select(clamp(currentIndex-1, 0, len(m.issueIndex.Items())))
+			m.issueIndex, cmd = m.issueIndex.Update(msg)
+		} else {
+			var listIdx int
 			issues := convertSlice(m.issueIndex.Items(), func(item list.Item) Issue {
 				return item.(Issue)
 			})
-			issues = append(issues, msg.Issue)
+			for i, issue := range issues {
+				if issue.Id == msg.Issue.Id {
+					listIdx = i
+					issues[i] = msg.Issue
+				}
+			}
+
+			if msg.IsNewIssue {
+				issues = append(issues, msg.Issue)
+			}
+
 			sortedIssues := SortIssues(issues)
 			items := convertSlice(sortedIssues, func(issue Issue) list.Item {
 				return list.Item(issue)
 			})
 			m.issueIndex.SetItems(items)
-			m.issueIndex.Select(0)
+			m.issueIndex.Select(listIdx)
 			m.issueShow = issueShowModel{issue: msg.Issue}
 			m.issueShow.commentForm = NewCommentFormModel()
 			m.issueShow.Init(m)
+		}
+
+		if m.path != issuesIndexPath {
 			m.path = issuesShowPath
-		} else if !msg.Issue.DeletedAt.IsZero() {
-			currentIndex := m.issueIndex.Index()
-			m.issueIndex.RemoveItem(currentIndex)
-			m.path = issuesIndexPath
-			m.issueIndex.Select(clamp(currentIndex-1, 0, len(m.issueIndex.Items())))
-			m.issueIndex, cmd = m.issueIndex.Update(msg)
-		} else {
-			currentIndex := m.issueIndex.Index()
-			m.issueShow = issueShowModel{issue: msg.Issue}
-			m.issueShow.commentForm = NewCommentFormModel()
-			m.issueShow.Init(m)
-			m.issueIndex.SetItem(currentIndex, msg.Issue)
-			if m.path != issuesIndexPath {
-				m.path = issuesShowPath
-			}
 		}
 		return m, cmd
 	}
@@ -1473,10 +1477,30 @@ func getIssues() tea.Msg {
 }
 
 func SortIssues(issues []Issue) []Issue {
-	slices.SortFunc(issues, func(a, b Issue) int {
-		return a.UpdatedAt.Compare(b.UpdatedAt)
+	var openIssues []Issue
+	var closedIssues []Issue
+	for _, issue := range issues {
+		if !issue.DeletedAt.IsZero() {
+			continue
+		}
+
+		if issue.Status == done {
+			closedIssues = append(closedIssues, issue)
+			continue
+		}
+
+		openIssues = append(openIssues, issue)
+	}
+
+	slices.SortFunc(openIssues, func(a, b Issue) int {
+		return b.UpdatedAt.Compare(a.UpdatedAt)
 	})
-	return issues
+
+	slices.SortFunc(closedIssues, func(a, b Issue) int {
+		return b.UpdatedAt.Compare(a.UpdatedAt)
+	})
+
+	return append(openIssues, closedIssues...)
 }
 
 type commitShowModel struct {
