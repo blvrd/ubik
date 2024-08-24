@@ -486,6 +486,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.issueShow.viewport.GotoBottom()
 
 		m.path = issuesShowPath
+		cmd = persistIssue(currentIssue)
+		return m, cmd
 	case issueEditModel:
 		if msg.editing {
 			currentIssue := m.issueIndex.SelectedItem().(Issue)
