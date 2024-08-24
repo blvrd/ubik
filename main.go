@@ -480,7 +480,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case commentFormModel:
 		currentIndex := m.issueIndex.Index()
 		currentIssue := m.issueIndex.SelectedItem().(Issue)
-		currentIssue.Comments = append(currentIssue.Comments, Comment{Author: "garrett@blvrd.co", Content: msg.contentInput.Value()})
+		currentIssue.Comments = append(currentIssue.Comments, Comment{
+			Author:    "garrett@blvrd.co",
+			Content:   msg.contentInput.Value(),
+			CreatedAt: time.Now().UTC(),
+		})
 		m.issueIndex.SetItem(currentIndex, currentIssue)
 		m.issueShow = issueShowModel{issue: currentIssue}
 		m.issueShow.commentForm = NewCommentFormModel()
