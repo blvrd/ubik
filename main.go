@@ -559,28 +559,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case key.Matches(msg, keys.IssueStatusDone):
 				currentIssue := m.issueIndex.SelectedItem().(Issue)
-				if currentIssue.Status == todo {
-					currentIssue.Status = done
-				} else {
+				if currentIssue.Status == done {
 					currentIssue.Status = todo
+				} else {
+					currentIssue.Status = done
 				}
 				cmd = persistIssue(currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueStatusWontDo):
 				currentIssue := m.issueIndex.SelectedItem().(Issue)
-				if currentIssue.Status == todo {
-					currentIssue.Status = wontDo
-				} else {
+				if currentIssue.Status == wontDo {
 					currentIssue.Status = todo
+				} else {
+					currentIssue.Status = wontDo
 				}
 				cmd = persistIssue(currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueStatusInProgress):
 				currentIssue := m.issueIndex.SelectedItem().(Issue)
-				if currentIssue.Status == todo {
-					currentIssue.Status = inProgress
-				} else {
+				if currentIssue.Status == inProgress {
 					currentIssue.Status = todo
+				} else {
+					currentIssue.Status = inProgress
 				}
 				cmd = persistIssue(currentIssue)
 				return m, cmd
@@ -646,10 +646,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			case key.Matches(msg, keys.IssueStatusWontDo):
 				currentIssue := m.issueIndex.SelectedItem().(Issue)
-				if currentIssue.Status == todo {
-					currentIssue.Status = wontDo
-				} else {
+				if currentIssue.Status == wontDo {
 					currentIssue.Status = todo
+				} else {
+					currentIssue.Status = wontDo
 				}
 				m.issueShow = issueShowModel{issue: currentIssue}
 				m.issueShow.commentForm = NewCommentFormModel()
@@ -659,10 +659,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			case key.Matches(msg, keys.IssueStatusInProgress):
 				currentIssue := m.issueIndex.SelectedItem().(Issue)
-				if currentIssue.Status == todo {
-					currentIssue.Status = inProgress
-				} else {
+				if currentIssue.Status == inProgress {
 					currentIssue.Status = todo
+				} else {
+					currentIssue.Status = inProgress
 				}
 				m.issueShow = issueShowModel{issue: currentIssue}
 				m.issueShow.commentForm = NewCommentFormModel()
