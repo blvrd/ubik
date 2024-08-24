@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"time"
 
@@ -514,7 +515,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	case issuePersistedMsg:
 		if msg.IsNewIssue {
-			m.issueIndex.InsertItem(0, msg.Issue)
+			issues := convertSlice(m.issueIndex.Items(), func(item list.Item) Issue {
+				return item.(Issue)
+			})
+			issues = append(issues, msg.Issue)
+			sortedIssues := SortIssues(issues)
+			items := convertSlice(sortedIssues, func(issue Issue) list.Item {
+				return list.Item(issue)
+			})
+			m.issueIndex.SetItems(items)
 			m.issueIndex.Select(0)
 			m.issueShow = issueShowModel{issue: msg.Issue}
 			m.issueShow.commentForm = NewCommentFormModel()
@@ -1458,7 +1467,16 @@ func getIssues() tea.Msg {
 		}
 	}
 
-	return IssuesReadyMsg(issues)
+	sortedIssues := SortIssues(issues)
+
+	return IssuesReadyMsg(sortedIssues)
+}
+
+func SortIssues(issues []Issue) []Issue {
+	slices.SortFunc(issues, func(a, b Issue) int {
+		return a.UpdatedAt.Compare(b.UpdatedAt)
+	})
+	return issues
 }
 
 type commitShowModel struct {
@@ -1730,4 +1748,12 @@ func truncate(s string, maxLength int) string {
 		return s
 	}
 	return s[:maxLength-3] + "..."
+}
+
+func convertSlice[T, U any](input []T, convert func(T) U) []U {
+	result := make([]U, len(input))
+	for i, v := range input {
+		result[i] = convert(v)
+	}
+	return result
 }
