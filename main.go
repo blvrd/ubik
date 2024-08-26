@@ -530,13 +530,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueIndex.Select(clamp(currentIndex-1, 0, len(m.issueIndex.Items())))
 			m.issueIndex, cmd = m.issueIndex.Update(msg)
 		} else {
-			var listIdx int
 			issues := convertSlice(m.issueIndex.Items(), func(item list.Item) Issue {
 				return item.(Issue)
 			})
 			for i, issue := range issues {
 				if issue.Id == msg.Issue.Id {
-					listIdx = i
 					issues[i] = msg.Issue
 				}
 			}
@@ -546,11 +544,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			sortedIssues := SortIssues(issues)
+
+			var listIndexToFocus int
+			for i, issue := range sortedIssues {
+				if issue.Id == msg.Issue.Id {
+					listIndexToFocus = i
+				}
+			}
 			items := convertSlice(sortedIssues, func(issue Issue) list.Item {
 				return list.Item(issue)
 			})
 			m.issueIndex.SetItems(items)
-			m.issueIndex.Select(listIdx)
+			m.issueIndex.Select(listIndexToFocus)
 			m.issueShow = issueShowModel{issue: msg.Issue}
 			m.issueShow.commentForm = NewCommentFormModel()
 			m.issueShow.Init(m)
