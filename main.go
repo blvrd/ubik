@@ -152,6 +152,9 @@ const (
 	issuesEditTitlePath           string = "/issues/edit/title"
 	issuesEditDescriptionPath     string = "/issues/edit/description"
 	issuesEditConfirmationPath    string = "/issues/edit/confirmation"
+	issuesNewTitlePath            string = "/issues/new/title"
+	issuesNewDescriptionPath      string = "/issues/new/description"
+	issuesNewConfirmationPath     string = "/issues/new/confirmation"
 	checksIndexPath               string = "/checks/index"
 	checksShowPath                string = "/checks/show"
 )
@@ -638,7 +641,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.issueForm = issueFormModel{editing: false}
 				m.issueForm.Init("", "")
 				cmd = m.issueForm.titleInput.Focus()
-				m.path = issuesEditTitlePath
+				m.path = issuesNewTitlePath
 			case key.Matches(msg, keys.IssueDelete):
 				selectedItem := m.issueIndex.SelectedItem()
 				if selectedItem == nil {
@@ -816,6 +819,72 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case key.Matches(msg, keys.NextInput):
 				m.path = issuesEditTitlePath
+				cmd = m.issueForm.titleInput.Focus()
+				return m, cmd
+			case key.Matches(msg, keys.Submit):
+				return m, m.issueForm.Submit
+			}
+		}
+
+		m.issueForm, cmd = m.issueForm.Update(msg)
+		return m, cmd
+	case matchRoute(m.path, issuesNewTitlePath):
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Back):
+				if m.issueForm.editing {
+					m.path = issuesShowPath
+					return m, cmd
+				} else {
+					m.path = issuesIndexPath
+					return m, cmd
+				}
+			case key.Matches(msg, keys.NextInput):
+				m.path = issuesNewDescriptionPath
+				m.issueForm.titleInput.Blur()
+				cmd = m.issueForm.descriptionInput.Focus()
+				return m, cmd
+			}
+		}
+
+		m.issueForm.titleInput, cmd = m.issueForm.titleInput.Update(msg)
+		return m, cmd
+	case matchRoute(m.path, issuesNewDescriptionPath):
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Back):
+				if m.issueForm.editing {
+					m.path = issuesShowPath
+					return m, cmd
+				} else {
+					m.path = issuesIndexPath
+					return m, cmd
+				}
+			case key.Matches(msg, keys.NextInput):
+				m.path = issuesNewConfirmationPath
+				m.issueForm.descriptionInput.Blur()
+				return m, cmd
+			}
+		}
+
+		m.issueForm.descriptionInput, cmd = m.issueForm.descriptionInput.Update(msg)
+		return m, cmd
+	case matchRoute(m.path, issuesNewConfirmationPath):
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Back):
+				if m.issueForm.editing {
+					m.path = issuesShowPath
+					return m, cmd
+				} else {
+					m.path = issuesIndexPath
+					return m, cmd
+				}
+			case key.Matches(msg, keys.NextInput):
+				m.path = issuesNewTitlePath
 				cmd = m.issueForm.titleInput.Focus()
 				return m, cmd
 			case key.Matches(msg, keys.Submit):
@@ -1247,6 +1316,60 @@ func (m Model) View() string {
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
+		case matchRoute(m.path, issuesNewTitlePath):
+			style := lipgloss.NewStyle()
+
+			sidebarView = style.
+				Render(m.issueForm.View("title", false))
+
+			view = lipgloss.JoinVertical(
+				lipgloss.Left,
+				boxStyle(m.HeaderSize).Render(
+					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+				),
+				lipgloss.JoinHorizontal(
+					lipgloss.Top,
+					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
+					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
+				),
+				boxStyle(m.FooterSize).Render(help),
+			)
+		case matchRoute(m.path, issuesNewDescriptionPath):
+			style := lipgloss.NewStyle()
+
+			sidebarView = style.
+				Render(m.issueForm.View("description", false))
+
+			view = lipgloss.JoinVertical(
+				lipgloss.Left,
+				boxStyle(m.HeaderSize).Render(
+					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+				),
+				lipgloss.JoinHorizontal(
+					lipgloss.Top,
+					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
+					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
+				),
+				boxStyle(m.FooterSize).Render(help),
+			)
+		case matchRoute(m.path, issuesNewConfirmationPath):
+			style := lipgloss.NewStyle()
+
+			sidebarView = style.
+				Render(m.issueForm.View("confirmation", false))
+
+			view = lipgloss.JoinVertical(
+				lipgloss.Left,
+				boxStyle(m.HeaderSize).Render(
+					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+				),
+				lipgloss.JoinHorizontal(
+					lipgloss.Top,
+					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
+					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
+				),
+				boxStyle(m.FooterSize).Render(help),
+			)
 		}
 	case strings.HasPrefix(m.path, "/checks"):
 		for _, t := range m.tabs {
@@ -1658,7 +1781,6 @@ func (m issueFormModel) View(focus string, editing bool) string {
 
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", m.identifier))
 
-  log.Debugf("🪚 editing: %#v", editing)
 	if editing {
 		s.WriteString(fmt.Sprintf("Editing issue %s\n\n", identifier))
 	} else {
