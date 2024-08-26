@@ -96,6 +96,14 @@ func persistIssue(issue Issue) tea.Cmd {
 		}
 		issue.UpdatedAt = time.Now().UTC()
 
+		for i, comment := range issue.Comments {
+			if comment.CreatedAt.IsZero() {
+				comment.CreatedAt = time.Now().UTC()
+				comment.UpdatedAt = time.Now().UTC()
+				issue.Comments[i] = comment
+			}
+		}
+
 		jsonData, err := json.Marshal(issue)
 		if err != nil {
 			return err
@@ -482,9 +490,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		currentIndex := m.issueIndex.Index()
 		currentIssue := m.issueIndex.SelectedItem().(Issue)
 		currentIssue.Comments = append(currentIssue.Comments, Comment{
-			Author:    "garrett@blvrd.co",
-			Content:   msg.contentInput.Value(),
-			CreatedAt: time.Now().UTC(),
+			Author:  "garrett@blvrd.co",
+			Content: msg.contentInput.Value(),
 		})
 		m.issueIndex.SetItem(currentIndex, currentIssue)
 		m.issueShow = issueShowModel{issue: currentIssue}
