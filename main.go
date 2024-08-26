@@ -1702,6 +1702,7 @@ func NewCommentFormModel() commentFormModel {
 	t.Prompt = "┃"
 	t.FocusedStyle.CursorLine = lipgloss.NewStyle().Background(lipgloss.Color("transparent"))
 	t.SetCursor(0)
+	t.SetWidth(75)
 	t.Focus()
 
 	return commentFormModel{
