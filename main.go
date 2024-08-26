@@ -73,8 +73,9 @@ func persistCheck(check Check) tea.Cmd {
 }
 
 type issuePersistedMsg struct {
-	Issue      Issue
-	IsNewIssue bool
+	Issue          Issue
+	IsNewIssue     bool
+	ScrollToBottom bool
 }
 
 func persistIssue(issue Issue) tea.Cmd {
@@ -96,12 +97,20 @@ func persistIssue(issue Issue) tea.Cmd {
 		}
 		issue.UpdatedAt = time.Now().UTC()
 
+		var issueHasNewComment bool
+
 		for i, comment := range issue.Comments {
 			if comment.CreatedAt.IsZero() {
+				issueHasNewComment = true
 				comment.CreatedAt = time.Now().UTC()
 				comment.UpdatedAt = time.Now().UTC()
 				issue.Comments[i] = comment
 			}
+		}
+
+		var scrollToBottom bool
+		if issueHasNewComment {
+			scrollToBottom = true
 		}
 
 		jsonData, err := json.Marshal(issue)
@@ -128,8 +137,9 @@ func persistIssue(issue Issue) tea.Cmd {
 		}
 
 		return issuePersistedMsg{
-			Issue:      issue,
-			IsNewIssue: newIssue,
+			Issue:          issue,
+			IsNewIssue:     newIssue,
+			ScrollToBottom: scrollToBottom,
 		}
 	}
 }
@@ -487,19 +497,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.issueIndex.SetSize(m.LeftSize.Width, m.LeftSize.Height)
 		m.commitIndex.SetSize(m.LeftSize.Width, m.LeftSize.Height)
 	case commentFormModel:
-		currentIndex := m.issueIndex.Index()
 		currentIssue := m.issueIndex.SelectedItem().(Issue)
 		currentIssue.Comments = append(currentIssue.Comments, Comment{
 			Author:  "garrett@blvrd.co",
 			Content: msg.contentInput.Value(),
 		})
-		m.issueIndex.SetItem(currentIndex, currentIssue)
-		m.issueShow = issueShowModel{issue: currentIssue}
-		m.issueShow.commentForm = NewCommentFormModel()
-		m.issueShow.Init(m)
-		m.issueShow.viewport.GotoBottom()
 
-		m.path = issuesShowPath
 		cmd = persistIssue(currentIssue)
 		return m, cmd
 	case issueEditModel:
@@ -551,6 +554,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueShow = issueShowModel{issue: msg.Issue}
 			m.issueShow.commentForm = NewCommentFormModel()
 			m.issueShow.Init(m)
+			if msg.ScrollToBottom {
+				m.issueShow.viewport.GotoBottom()
+			}
 		}
 
 		if m.path != issuesIndexPath {
