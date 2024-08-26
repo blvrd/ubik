@@ -386,7 +386,7 @@ type Model struct {
 	path        string
 	issueIndex  list.Model
 	issueShow   issueShowModel
-	issueEdit   issueEditModel
+	issueForm   issueFormModel
 	commitIndex list.Model
 	commitShow  commitShowModel
 	err         error
@@ -505,7 +505,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		cmd = persistIssue(currentIssue)
 		return m, cmd
-	case issueEditModel:
+	case issueFormModel:
 		if msg.editing {
 			currentIssue := m.issueIndex.SelectedItem().(Issue)
 			currentIssue.Title = msg.titleInput.Value()
@@ -635,9 +635,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.issueShow.Init(m)
 				m.path = issuesShowPath
 			case key.Matches(msg, keys.IssueNewForm):
-				m.issueEdit = issueEditModel{editing: false}
-				m.issueEdit.Init("", "")
-				cmd = m.issueEdit.titleInput.Focus()
+				m.issueForm = issueFormModel{editing: false}
+				m.issueForm.Init("", "")
+				cmd = m.issueForm.titleInput.Focus()
 				m.path = issuesEditTitlePath
 			case key.Matches(msg, keys.IssueDelete):
 				selectedItem := m.issueIndex.SelectedItem()
@@ -709,8 +709,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			case key.Matches(msg, keys.IssueEditForm):
 				selectedIssue := m.issueIndex.SelectedItem().(Issue)
-				m.issueEdit = issueEditModel{editing: true, identifier: selectedIssue.Shortcode}
-				cmd = m.issueEdit.Init(selectedIssue.Title, selectedIssue.Description)
+				m.issueForm = issueFormModel{editing: true, identifier: selectedIssue.Shortcode}
+				cmd = m.issueForm.Init(selectedIssue.Title, selectedIssue.Description)
 
 				m.path = issuesEditTitlePath
 				return m, cmd
@@ -764,7 +764,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, keys.Back):
-				if m.issueEdit.editing {
+				if m.issueForm.editing {
 					m.path = issuesShowPath
 					return m, cmd
 				} else {
@@ -773,20 +773,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case key.Matches(msg, keys.NextInput):
 				m.path = issuesEditDescriptionPath
-				m.issueEdit.titleInput.Blur()
-				cmd = m.issueEdit.descriptionInput.Focus()
+				m.issueForm.titleInput.Blur()
+				cmd = m.issueForm.descriptionInput.Focus()
 				return m, cmd
 			}
 		}
 
-		m.issueEdit.titleInput, cmd = m.issueEdit.titleInput.Update(msg)
+		m.issueForm.titleInput, cmd = m.issueForm.titleInput.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, issuesEditDescriptionPath):
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, keys.Back):
-				if m.issueEdit.editing {
+				if m.issueForm.editing {
 					m.path = issuesShowPath
 					return m, cmd
 				} else {
@@ -795,19 +795,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case key.Matches(msg, keys.NextInput):
 				m.path = issuesEditConfirmationPath
-				m.issueEdit.descriptionInput.Blur()
+				m.issueForm.descriptionInput.Blur()
 				return m, cmd
 			}
 		}
 
-		m.issueEdit.descriptionInput, cmd = m.issueEdit.descriptionInput.Update(msg)
+		m.issueForm.descriptionInput, cmd = m.issueForm.descriptionInput.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, issuesEditConfirmationPath):
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, keys.Back):
-				if m.issueEdit.editing {
+				if m.issueForm.editing {
 					m.path = issuesShowPath
 					return m, cmd
 				} else {
@@ -816,14 +816,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			case key.Matches(msg, keys.NextInput):
 				m.path = issuesEditTitlePath
-				cmd = m.issueEdit.titleInput.Focus()
+				cmd = m.issueForm.titleInput.Focus()
 				return m, cmd
 			case key.Matches(msg, keys.Submit):
-				return m, m.issueEdit.Submit
+				return m, m.issueForm.Submit
 			}
 		}
 
-		m.issueEdit, cmd = m.issueEdit.Update(msg)
+		m.issueForm, cmd = m.issueForm.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, checksIndexPath):
 		if m.commitIndex.SettingFilter() {
@@ -1197,7 +1197,7 @@ func (m Model) View() string {
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
-				Render(m.issueEdit.View("title", true))
+				Render(m.issueForm.View("title", true))
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -1215,7 +1215,7 @@ func (m Model) View() string {
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
-				Render(m.issueEdit.View("description", true))
+				Render(m.issueForm.View("description", true))
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -1233,7 +1233,7 @@ func (m Model) View() string {
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
-				Render(m.issueEdit.View("confirmation", true))
+				Render(m.issueForm.View("confirmation", true))
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -1632,32 +1632,33 @@ func (m issueShowModel) View() string {
 	return m.viewport.View()
 }
 
-type issueEditModel struct {
+type issueFormModel struct {
 	titleInput       textinput.Model
 	descriptionInput textarea.Model
 	identifier       string
 	editing          bool
 }
 
-func (m issueEditModel) Submit() tea.Msg {
+func (m issueFormModel) Submit() tea.Msg {
 	return m
 }
 
-func (m *issueEditModel) Init(title, description string) tea.Cmd {
+func (m *issueFormModel) Init(title, description string) tea.Cmd {
 	m.SetTitle(title)
 	m.SetDescription(description)
 	return m.titleInput.Focus()
 }
 
-func (m issueEditModel) Update(msg tea.Msg) (issueEditModel, tea.Cmd) {
+func (m issueFormModel) Update(msg tea.Msg) (issueFormModel, tea.Cmd) {
 	return m, nil
 }
 
-func (m issueEditModel) View(focus string, editing bool) string {
+func (m issueFormModel) View(focus string, editing bool) string {
 	var s strings.Builder
 
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", m.identifier))
 
+  log.Debugf("🪚 editing: %#v", editing)
 	if editing {
 		s.WriteString(fmt.Sprintf("Editing issue %s\n\n", identifier))
 	} else {
@@ -1680,14 +1681,14 @@ func (m issueEditModel) View(focus string, editing bool) string {
 	return s.String()
 }
 
-func (m *issueEditModel) SetTitle(title string) {
+func (m *issueFormModel) SetTitle(title string) {
 	m.titleInput = textinput.New()
 	m.titleInput.CharLimit = 120
 	m.titleInput.Width = 80
 	m.titleInput.SetValue(title)
 }
 
-func (m *issueEditModel) SetDescription(description string) {
+func (m *issueFormModel) SetDescription(description string) {
 	m.descriptionInput = textarea.New()
 	m.descriptionInput.CharLimit = 0 // unlimited
 	m.descriptionInput.MaxHeight = 0 // unlimited
