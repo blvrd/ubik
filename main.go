@@ -230,6 +230,7 @@ type keyMap struct {
 	Right                 key.Binding
 	Help                  key.Binding
 	Quit                  key.Binding
+	Suspend               key.Binding
 	Back                  key.Binding
 	IssueNewForm          key.Binding
 	IssueEditForm         key.Binding
@@ -471,6 +472,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	keys := m.HelpKeys()
 
 	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keys.Quit):
+			return m, tea.Quit
+		case key.Matches(msg, keys.Suspend):
+			return m, tea.Suspend
+		}
 	case tea.WindowSizeMsg:
 		if !m.loaded {
 			m.loaded = true
@@ -1071,6 +1079,9 @@ func (m Model) HelpKeys() keyMap {
 		Quit: key.NewBinding(
 			key.WithKeys("q", "ctrl+c"),
 			key.WithHelp("q", "quit"),
+		),
+		Suspend: key.NewBinding(
+			key.WithKeys("ctrl+z"),
 		),
 		Back: key.NewBinding(
 			key.WithKeys("esc"),
