@@ -487,6 +487,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg {
 			return m.Layout.Resize(msg.Width, msg.Height)
 		}
+	case tea.FocusMsg:
+		return m, tea.Batch(getIssues, getCommits)
 	case IssuesReadyMsg:
 		var listItems []list.Item
 		for _, issue := range msg {
@@ -1875,7 +1877,7 @@ func (m commentFormModel) View(focus string) string {
 
 func main() {
 	_ = lipgloss.HasDarkBackground()
-	p := tea.NewProgram(InitialModel(), tea.WithAltScreen())
+	p := tea.NewProgram(InitialModel(), tea.WithAltScreen(), tea.WithReportFocus())
 
 	var logFile *os.File
 	if isDebugEnabled() {
