@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
@@ -1054,13 +1055,49 @@ func RunCheck(commitId string, command *exec.Cmd) tea.Cmd {
 			log.Fatal(err)
 		}
 		command.Dir = path
-		output, err := command.Output()
+
+		stdout, err := command.StdoutPipe()
 		if err != nil {
-			log.Debugf("%#s", err)
-			return checkResult{commitHash: commitId, status: "failed", output: string(output)}
+			log.Fatal(err)
+		}
+		stderr, err := command.StderrPipe()
+		if err != nil {
+			log.Fatal(err)
 		}
 
-		return checkResult{commitHash: commitId, status: "succeeded", output: string(output)}
+		if err := command.Start(); err != nil {
+			log.Fatal(err)
+		}
+
+		outputChan := make(chan string)
+		done := make(chan bool)
+
+		go func() {
+			var output strings.Builder
+			scanner := bufio.NewScanner(io.MultiReader(stdout, stderr))
+			for scanner.Scan() {
+				line := scanner.Text()
+				output.WriteString(line + "\n")
+				outputChan <- output.String()
+			}
+			close(outputChan)
+			done <- true
+		}()
+
+		var finalOutput string
+		for output := range outputChan {
+			finalOutput = output
+		}
+		err = command.Wait()
+
+		<-done
+
+		if err != nil {
+			log.Debugf("%#s", err)
+			return checkResult{commitHash: commitId, status: "failed", output: string(finalOutput)}
+		}
+
+		return checkResult{commitHash: commitId, status: "succeeded", output: string(finalOutput)}
 	}
 }
 
