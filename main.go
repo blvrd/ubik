@@ -1876,25 +1876,42 @@ func (m commentFormModel) View(focus string) string {
 func main() {
 	_ = lipgloss.HasDarkBackground()
 	p := tea.NewProgram(InitialModel(), tea.WithAltScreen())
-	f, err := os.OpenFile("debug.log", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600) //nolint:gomnd
+
+	var logFile *os.File
+	if isDebugEnabled() {
+		var err error
+		logFile, err = setupLogging()
+		if err != nil {
+			fmt.Printf("Error setting up logging: %v\n", err)
+			os.Exit(1)
+		}
+		defer logFile.Close()
+	}
+
+	_, err := p.Run()
 	if err != nil {
-		fmt.Printf("error opening file for logging: %s", err)
+		if isDebugEnabled() {
+			log.Debug(err)
+		} else {
+			fmt.Printf("Error: %v\n", err)
+		}
 		os.Exit(1)
+	}
+}
+
+func isDebugEnabled() bool {
+	return os.Getenv("DEBUG") != ""
+}
+
+func setupLogging() (*os.File, error) {
+	f, err := os.OpenFile("debug.log", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("error opening file for logging: %w", err)
 	}
 	log.SetOutput(f)
 	log.SetLevel(log.DebugLevel)
 	log.SetReportCaller(true)
-
-	if err != nil {
-		log.Print("fatal:", err)
-		os.Exit(1)
-	}
-	defer f.Close()
-	_, err = p.Run()
-	if err != nil {
-		log.Debug(err)
-		os.Exit(1)
-	}
+	return f, nil
 }
 
 // UTILS
