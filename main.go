@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
@@ -1044,62 +1043,119 @@ type checkResult struct {
 
 func RunCheck(commitId string, command *exec.Cmd) tea.Cmd {
 	return func() tea.Msg {
-		randomString := uuid.NewString()
-		path := "tmp/ci-" + randomString
-		worktreeCommand := exec.Command("git", "worktree", "add", "--detach", path, commitId)
-		removeWorktree := exec.Command("git", "worktree", "remove", path)
-		defer removeWorktree.Run()
-
-		_, err := worktreeCommand.Output()
+		result, err := executeCheckInWorktree(commitId, command)
 		if err != nil {
-			log.Fatal(err)
+			log.Debugf("Check failed: %v", err)
+			return checkResult{commitHash: commitId, status: "failed", output: result}
 		}
-		command.Dir = path
-
-		stdout, err := command.StdoutPipe()
-		if err != nil {
-			log.Fatal(err)
-		}
-		stderr, err := command.StderrPipe()
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		if err := command.Start(); err != nil {
-			log.Fatal(err)
-		}
-
-		outputChan := make(chan string)
-		done := make(chan bool)
-
-		go func() {
-			var output strings.Builder
-			scanner := bufio.NewScanner(io.MultiReader(stdout, stderr))
-			for scanner.Scan() {
-				line := scanner.Text()
-				output.WriteString(line + "\n")
-				outputChan <- output.String()
-			}
-			close(outputChan)
-			done <- true
-		}()
-
-		var finalOutput string
-		for output := range outputChan {
-			finalOutput = output
-		}
-		err = command.Wait()
-
-		<-done
-
-		if err != nil {
-			log.Debugf("%#s", err)
-			return checkResult{commitHash: commitId, status: "failed", output: string(finalOutput)}
-		}
-
-		return checkResult{commitHash: commitId, status: "succeeded", output: string(finalOutput)}
+		return checkResult{commitHash: commitId, status: "succeeded", output: result}
 	}
 }
+
+func executeCheckInWorktree(commitId string, command *exec.Cmd) (string, error) {
+	path, cleanup, err := setupWorktree(commitId)
+	if err != nil {
+		return "", fmt.Errorf("failed to setup worktree: %w", err)
+	}
+	defer cleanup()
+
+	command.Dir = path
+	output, err := runCommandWithOutput(command)
+	if err != nil {
+		return output, fmt.Errorf("command execution failed: %w", err)
+	}
+
+	return output, nil
+}
+
+func setupWorktree(commitId string) (string, func(), error) {
+	path := fmt.Sprintf("tmp/ci-%s", uuid.NewString())
+	worktreeCommand := exec.Command("git", "worktree", "add", "--detach", path, commitId)
+
+	if _, err := worktreeCommand.Output(); err != nil {
+		return "", nil, fmt.Errorf("failed to create worktree: %w", err)
+	}
+
+	cleanup := func() {
+		removeWorktree := exec.Command("git", "worktree", "remove", path)
+		if err := removeWorktree.Run(); err != nil {
+			log.Debugf("Failed to remove worktree: %v", err)
+		}
+	}
+
+	return path, cleanup, nil
+}
+
+func runCommandWithOutput(command *exec.Cmd) (string, error) {
+	var outputBuffer bytes.Buffer
+	command.Stdout = &outputBuffer
+	command.Stderr = &outputBuffer
+
+	if err := command.Run(); err != nil {
+		return outputBuffer.String(), err
+	}
+
+	return outputBuffer.String(), nil
+}
+
+// func RunCheck(commitId string, command *exec.Cmd) tea.Cmd {
+// 	return func() tea.Msg {
+// 		randomString := uuid.NewString()
+// 		path := "tmp/ci-" + randomString
+// 		worktreeCommand := exec.Command("git", "worktree", "add", "--detach", path, commitId)
+// 		removeWorktree := exec.Command("git", "worktree", "remove", path)
+// 		defer removeWorktree.Run()
+//
+// 		_, err := worktreeCommand.Output()
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
+// 		command.Dir = path
+//
+// 		stdout, err := command.StdoutPipe()
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
+// 		stderr, err := command.StderrPipe()
+// 		if err != nil {
+// 			log.Fatal(err)
+// 		}
+//
+// 		if err := command.Start(); err != nil {
+// 			log.Fatal(err)
+// 		}
+//
+// 		outputChan := make(chan string)
+// 		done := make(chan bool)
+//
+// 		go func() {
+// 			var output strings.Builder
+// 			scanner := bufio.NewScanner(io.MultiReader(stdout, stderr))
+// 			for scanner.Scan() {
+// 				line := scanner.Text()
+// 				output.WriteString(line + "\n")
+// 				outputChan <- output.String()
+// 			}
+// 			close(outputChan)
+// 			done <- true
+// 		}()
+//
+// 		var finalOutput string
+// 		for output := range outputChan {
+// 			finalOutput = output
+// 		}
+// 		err = command.Wait()
+//
+// 		<-done
+//
+// 		if err != nil {
+// 			log.Debugf("%#s", err)
+// 			return checkResult{commitHash: commitId, status: "failed", output: string(finalOutput)}
+// 		}
+//
+// 		return checkResult{commitHash: commitId, status: "succeeded", output: string(finalOutput)}
+// 	}
+// }
 
 func (m Model) HelpKeys() keyMap {
 	keys := keyMap{
