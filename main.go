@@ -1493,6 +1493,17 @@ type Commit struct {
 	LatestChecks  []Check   `json:"latestCheck"`
 }
 
+func (c Commit) AggregateCheckStatus() CheckStatus {
+  var aggregateStatus CheckStatus
+	for _, check := range c.LatestChecks {
+		aggregateStatus = check.Status
+		if aggregateStatus == failed || aggregateStatus == running {
+			break
+		}
+	}
+  return aggregateStatus
+}
+
 type CheckStatus string
 
 const (
@@ -1741,13 +1752,8 @@ type commitShowModel struct {
 func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 	var s strings.Builder
 	var aggregateStatus CheckStatus
+  aggregateStatus = m.commit.AggregateCheckStatus()
 
-	for _, check := range m.commit.LatestChecks {
-		aggregateStatus = check.Status
-		if aggregateStatus == failed || aggregateStatus == running {
-			break
-		}
-	}
 	icon := statusToIcon(aggregateStatus)
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.commit.AbbreviatedId))
 	header := fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, m.commit.Description, icon)
