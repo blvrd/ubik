@@ -1740,7 +1740,6 @@ type commitShowModel struct {
 
 func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 	var s strings.Builder
-	var status string
 	var aggregateStatus CheckStatus
 
 	for _, check := range m.commit.LatestChecks {
@@ -1749,24 +1748,15 @@ func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 			break
 		}
 	}
-	switch aggregateStatus {
-	case running:
-		status = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]")
-	case failed:
-		status = lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]")
-	case succeeded:
-		status = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]")
-	}
+	icon := statusToIcon(aggregateStatus)
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.commit.AbbreviatedId))
-	header := fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, m.commit.Description, status)
+	header := fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, m.commit.Description, icon)
 	s.WriteString(lipgloss.NewStyle().Render(header))
 	s.WriteString("\n")
 
 	m.viewport = viewport.New(ctx.Layout.RightSize.Width-2, ctx.Layout.RightSize.Height-2)
-	s.WriteString(m.commit.Description)
 	for _, check := range m.commit.LatestChecks {
-		s.WriteString(fmt.Sprintf("\n\n%s", check.Output))
-		s.WriteString(fmt.Sprintf("\n\n%s", check.Status))
+		s.WriteString(fmt.Sprintf("\n\n%s %s", check.Name, statusToIcon(check.Status)))
 	}
 
 	m.viewport.SetContent(s.String())
@@ -2028,4 +2018,19 @@ func convertSlice[T, U any](input []T, convert func(T) U) []U {
 		result[i] = convert(v)
 	}
 	return result
+}
+
+func statusToIcon(status CheckStatus) string {
+	var icon string
+
+	switch status {
+	case running:
+		icon = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]")
+	case failed:
+		icon = lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]")
+	case succeeded:
+		icon = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]")
+	}
+
+	return icon
 }
