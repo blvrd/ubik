@@ -1482,6 +1482,21 @@ func (c CheckStatus) Icon() string {
 	return icon
 }
 
+func (c CheckStatus) PrettyString() string {
+	var prettyString string
+
+	switch c {
+	case running:
+		prettyString = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render(string(c))
+	case failed:
+		prettyString = lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render(string(c))
+	case succeeded:
+		prettyString = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render(string(c))
+	}
+
+	return prettyString
+}
+
 const (
 	failed    CheckStatus = "failed"
 	succeeded CheckStatus = "succeeded"
@@ -1700,9 +1715,8 @@ type commitShowModel struct {
 func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 	var s strings.Builder
 
-	icon := m.commit.AggregateCheckStatus().Icon()
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.commit.AbbreviatedId))
-	header := fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, m.commit.Description, icon)
+	header := fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, m.commit.Description, m.commit.AggregateCheckStatus().PrettyString())
 	s.WriteString(lipgloss.NewStyle().Render(header))
 	s.WriteString("\n")
 
