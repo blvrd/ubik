@@ -1021,7 +1021,7 @@ type checkResult Check
 
 func RunCheck(check Check) tea.Cmd {
 	return func() tea.Msg {
-		result, err := executeCheckUsingArchive(check.CommitId, check.Command)
+		result, err := executeCheckUsingArchive(check)
 		check.Output = result
 		if err != nil {
 			log.Debugf("Check failed: %v", err)
@@ -1033,14 +1033,14 @@ func RunCheck(check Check) tea.Cmd {
 	}
 }
 
-func executeCheckUsingArchive(commitId string, command *exec.Cmd) (string, error) {
+func executeCheckUsingArchive(check Check) (string, error) {
 	tempDir, err := os.MkdirTemp("", "check-archive-")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp directory: %w", err)
 	}
 	defer os.RemoveAll(tempDir)
 
-	archiveCmd := exec.Command("git", "archive", "--format=tar", commitId)
+	archiveCmd := exec.Command("git", "archive", "--format=tar", check.CommitId)
 	archive, err := archiveCmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("failed to create archive: %w", err)
@@ -1053,8 +1053,8 @@ func executeCheckUsingArchive(commitId string, command *exec.Cmd) (string, error
 		return "", fmt.Errorf("failed to extract archive: %w", err)
 	}
 
-	command.Dir = tempDir
-	output, err := runCommandWithOutput(command)
+	check.Command.Dir = tempDir
+	output, err := runCommandWithOutput(check.Command)
 	if err != nil {
 		return output, fmt.Errorf("command execution failed: %w", err)
 	}
