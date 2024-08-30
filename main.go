@@ -1463,33 +1463,25 @@ func (c Commit) AggregateCheckStatus() CheckStatus {
 type CheckStatus string
 
 func (c CheckStatus) Icon() string {
-	var icon string
-
-	switch c {
-	case running:
-		icon = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]")
-	case failed:
-		icon = lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]")
-	case succeeded:
-		icon = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]")
+	icons := map[CheckStatus]string{
+		running:   "[⋯]",
+		failed:    "[×]",
+		succeeded: "[✓]",
 	}
-
-	return icon
+	return lipgloss.NewStyle().Foreground(c.color()).Render(icons[c])
 }
 
 func (c CheckStatus) PrettyString() string {
-	var prettyString string
+	return lipgloss.NewStyle().Foreground(c.color()).Render(string(c))
+}
 
-	switch c {
-	case running:
-		prettyString = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render(string(c))
-	case failed:
-		prettyString = lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render(string(c))
-	case succeeded:
-		prettyString = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render(string(c))
+func (c CheckStatus) color() lipgloss.AdaptiveColor {
+	colors := map[CheckStatus]lipgloss.AdaptiveColor{
+		running:   styles.Theme.YellowText,
+		failed:    styles.Theme.RedText,
+		succeeded: styles.Theme.GreenText,
 	}
-
-	return prettyString
+	return colors[c]
 }
 
 const (
