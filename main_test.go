@@ -46,3 +46,51 @@ func TestClamp(t *testing.T) {
 		})
 	}
 }
+
+func TestCommitAggregateCheckStatus(t *testing.T) {
+	tests := []struct {
+		name     string
+		checks   []Check
+		expected CheckStatus
+	}{
+		{
+			name:     "No checks",
+			checks:   []Check{},
+			expected: "",
+		},
+		{
+			name: "All succeeded",
+			checks: []Check{
+				{Status: succeeded},
+				{Status: succeeded},
+			},
+			expected: succeeded,
+		},
+		{
+			name: "One running",
+			checks: []Check{
+				{Status: succeeded},
+				{Status: running},
+			},
+			expected: running,
+		},
+		{
+			name: "One failed",
+			checks: []Check{
+				{Status: succeeded},
+				{Status: failed},
+			},
+			expected: failed,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			commit := Commit{LatestChecks: tt.checks}
+			result := commit.AggregateCheckStatus()
+			if result != tt.expected {
+				t.Errorf("Expected status %v, got %v", tt.expected, result)
+			}
+		})
+	}
+}
