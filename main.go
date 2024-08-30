@@ -1494,14 +1494,14 @@ type Commit struct {
 }
 
 func (c Commit) AggregateCheckStatus() CheckStatus {
-  var aggregateStatus CheckStatus
+	var aggregateStatus CheckStatus
 	for _, check := range c.LatestChecks {
 		aggregateStatus = check.Status
-		if aggregateStatus == failed || aggregateStatus == running {
+		if aggregateStatus == running {
 			break
 		}
 	}
-  return aggregateStatus
+	return aggregateStatus
 }
 
 type CheckStatus string
@@ -1564,35 +1564,7 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 	title := fmt.Sprintf("%s", titleFn(c.AbbreviatedId, truncate(c.Description, 50)))
 
 	if len(c.LatestChecks) > 0 {
-		aggregateStatus := running
-		anyStillRunning := false
-		failing := false
-		for _, check := range c.LatestChecks {
-			switch check.Status {
-			case running:
-				anyStillRunning = true
-			case failed:
-				failing = true
-			}
-		}
-
-		if !anyStillRunning {
-			if failing {
-				aggregateStatus = failed
-			} else {
-				aggregateStatus = succeeded
-			}
-		}
-
-		if aggregateStatus == running {
-			title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]"))
-		}
-		if aggregateStatus == failed {
-			title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]"))
-		}
-		if aggregateStatus == succeeded {
-			title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]"))
-		}
+		title = fmt.Sprintf("%s %s", title, statusToIcon(c.AggregateCheckStatus()))
 	}
 
 	description := fmt.Sprintf("committed at %s by %s", c.Timestamp.Format(time.RFC822), author)
@@ -1751,10 +1723,8 @@ type commitShowModel struct {
 
 func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 	var s strings.Builder
-	var aggregateStatus CheckStatus
-  aggregateStatus = m.commit.AggregateCheckStatus()
 
-	icon := statusToIcon(aggregateStatus)
+	icon := statusToIcon(m.commit.AggregateCheckStatus())
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.commit.AbbreviatedId))
 	header := fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, m.commit.Description, icon)
 	s.WriteString(lipgloss.NewStyle().Render(header))
