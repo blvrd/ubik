@@ -995,33 +995,54 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.path = checksIndexPath
 			case key.Matches(msg, keys.RunCheck):
 				commit := m.commitIndex.SelectedItem().(Commit)
-				commit.LatestChecks = []Check{}
+				var cmds []tea.Cmd
+				checks := []Check{
+					Check{
+						Id:       uuid.NewString(),
+						Status:   "running",
+						CommitId: commit.Id,
+						Command:  exec.Command("go", "test"),
+						Name:     "tests",
+					},
+					Check{
+						Id:       uuid.NewString(),
+						Status:   "running",
+						CommitId: commit.Id,
+						Command:  exec.Command("./check.sh"),
+						Name:     "another check",
+					},
+				}
+
+				commit.LatestChecks = checks
+
+				for _, check := range commit.LatestChecks {
+					cmds = append(cmds, RunCheck(check))
+				}
 				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
 				m.commitIndex, cmd = m.commitIndex.Update(msg)
 				m.commitShow = commitShowModel{commit: commit}
 				m.commitShow.Init(m)
-				checkCommands := []*exec.Cmd{
-					exec.Command("go", "test"),
-					exec.Command("./check.sh"),
-				}
-				var cmds []tea.Cmd
-				for _, command := range checkCommands {
-					commit.LatestChecks = append(commit.LatestChecks, Check{Status: "running", CommitId: commit.Id, Name: command.String()})
-					cmds = append(cmds, RunCheck(commit.Id, command))
-				}
 				return m, tea.Batch(cmds...)
 			}
 		case checkResult:
 			var commit Commit
 			var commitIndex int
 			for i, c := range m.commitIndex.Items() {
-				if c.(Commit).Id == msg.commitHash {
+				if c.(Commit).Id == msg.CommitId {
 					commit = c.(Commit)
 					commitIndex = i
 					break
 				}
 			}
-			commit.LatestChecks = append(commit.LatestChecks, Check{Status: msg.status, Output: msg.output, CommitId: commit.Id})
+			updatedChecks := make([]Check, len(commit.LatestChecks))
+			for i, c := range commit.LatestChecks {
+				if msg.Id == c.Id {
+					updatedChecks[i] = Check(msg)
+				} else {
+					updatedChecks[i] = c
+				}
+			}
+			commit.LatestChecks = updatedChecks
 			m.commitIndex.SetItem(commitIndex, commit)
 			m.commitIndex, cmd = m.commitIndex.Update(msg)
 			m.commitShow = commitShowModel{commit: commit}
@@ -1035,20 +1056,19 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-type checkResult struct {
-	status     string
-	commitHash string
-	output     string
-}
+type checkResult Check
 
-func RunCheck(commitId string, command *exec.Cmd) tea.Cmd {
+func RunCheck(check Check) tea.Cmd {
 	return func() tea.Msg {
-		result, err := executeCheckInWorktree(commitId, command)
+		result, err := executeCheckInWorktree(check.CommitId, check.Command)
+		check.Output = result
 		if err != nil {
 			log.Debugf("Check failed: %v", err)
-			return checkResult{commitHash: commitId, status: "failed", output: result}
+			check.Status = "failed"
+			return checkResult(check)
 		}
-		return checkResult{commitHash: commitId, status: "succeeded", output: result}
+		check.Status = "succeeded"
+		return checkResult(check)
 	}
 }
 
@@ -1474,6 +1494,7 @@ type Commit struct {
 }
 
 type Check struct {
+	Command    *exec.Cmd
 	Id         string    `json:"id"`
 	CommitId   string    `json:"commitId"`
 	Status     string    `json:"status"`
@@ -1523,23 +1544,38 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 
 	title := fmt.Sprintf("%s", titleFn(c.AbbreviatedId, truncate(c.Description, 50)))
 
-	var aggregateStatus string
-
-	for _, check := range c.LatestChecks {
-		aggregateStatus = check.Status
-		if aggregateStatus == "failed" || aggregateStatus == "running" {
-			break
+	if len(c.LatestChecks) > 0 {
+		aggregateStatus := "running"
+		anyStillRunning := false
+		failing := false
+		// log.Debugf("🪚 LatestChecks: %#v", c.LatestChecks)
+		for _, check := range c.LatestChecks {
+			switch check.Status {
+			case "running":
+				anyStillRunning = true
+			case "failed":
+				failing = true
+			}
 		}
-	}
 
-	if aggregateStatus == "running" {
-		title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]"))
-	}
-	if aggregateStatus == "failed" {
-		title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]"))
-	}
-	if aggregateStatus == "succeeded" {
-		title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]"))
+		if !anyStillRunning {
+			if failing {
+				aggregateStatus = "failed"
+			} else {
+				aggregateStatus = "succeeded"
+			}
+			// for _, check :=
+		}
+
+		if aggregateStatus == "running" {
+			title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]"))
+		}
+		if aggregateStatus == "failed" {
+			title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]"))
+		}
+		if aggregateStatus == "succeeded" {
+			title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]"))
+		}
 	}
 
 	description := fmt.Sprintf("committed at %s by %s", c.Timestamp.Format(time.RFC822), author)
