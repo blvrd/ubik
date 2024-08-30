@@ -1021,7 +1021,7 @@ type checkResult Check
 
 func RunCheck(check Check) tea.Cmd {
 	return func() tea.Msg {
-		result, err := executeCheckInWorktree(check.CommitId, check.Command)
+		result, err := executeCheckUsingArchive(check.CommitId, check.Command)
 		check.Output = result
 		if err != nil {
 			log.Debugf("Check failed: %v", err)
@@ -1033,38 +1033,33 @@ func RunCheck(check Check) tea.Cmd {
 	}
 }
 
-func executeCheckInWorktree(commitId string, command *exec.Cmd) (string, error) {
-	path, cleanup, err := setupWorktree(commitId)
+func executeCheckUsingArchive(commitId string, command *exec.Cmd) (string, error) {
+	tempDir, err := os.MkdirTemp("", "check-archive-")
 	if err != nil {
-		return "", fmt.Errorf("failed to setup worktree: %w", err)
+		return "", fmt.Errorf("failed to create temp directory: %w", err)
 	}
-	defer cleanup()
+	defer os.RemoveAll(tempDir)
 
-	command.Dir = path
+	archiveCmd := exec.Command("git", "archive", "--format=tar", commitId)
+	archive, err := archiveCmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to create archive: %w", err)
+	}
+
+	extractCmd := exec.Command("tar", "-xf", "-")
+	extractCmd.Dir = tempDir
+	extractCmd.Stdin = bytes.NewReader(archive)
+	if err := extractCmd.Run(); err != nil {
+		return "", fmt.Errorf("failed to extract archive: %w", err)
+	}
+
+	command.Dir = tempDir
 	output, err := runCommandWithOutput(command)
 	if err != nil {
 		return output, fmt.Errorf("command execution failed: %w", err)
 	}
 
 	return output, nil
-}
-
-func setupWorktree(commitId string) (string, func(), error) {
-	path := fmt.Sprintf("tmp/ci-%s", uuid.NewString())
-	worktreeCommand := exec.Command("git", "worktree", "add", "--detach", path, commitId)
-
-	if _, err := worktreeCommand.Output(); err != nil {
-		return "", nil, fmt.Errorf("failed to create worktree: %w", err)
-	}
-
-	cleanup := func() {
-		removeWorktree := exec.Command("git", "worktree", "remove", path)
-		if err := removeWorktree.Run(); err != nil {
-			log.Debugf("Failed to remove worktree: %v", err)
-		}
-	}
-
-	return path, cleanup, nil
 }
 
 func runCommandWithOutput(command *exec.Cmd) (string, error) {
