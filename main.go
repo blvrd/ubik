@@ -932,7 +932,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// }
 				// var cmds []tea.Cmd
 				// for _, command := range checkCommands {
-				// 	commit.LatestChecks = append(commit.LatestChecks, Check{Status: "running", CommitId: commit.Id, Name: command.String()})
+				// 	commit.LatestChecks = append(commit.LatestChecks, Check{Status: running, CommitId: commit.Id, Name: command.String()})
 				// 	cmds = append(cmds, RunCheck(commit.Id, command))
 				// }
 				// return m, tea.Batch(cmds...)
@@ -999,14 +999,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				checks := []Check{
 					Check{
 						Id:       uuid.NewString(),
-						Status:   "running",
+						Status:   running,
 						CommitId: commit.Id,
 						Command:  exec.Command("go", "test"),
 						Name:     "tests",
 					},
 					Check{
 						Id:       uuid.NewString(),
-						Status:   "running",
+						Status:   running,
 						CommitId: commit.Id,
 						Command:  exec.Command("./check.sh"),
 						Name:     "another check",
@@ -1064,10 +1064,10 @@ func RunCheck(check Check) tea.Cmd {
 		check.Output = result
 		if err != nil {
 			log.Debugf("Check failed: %v", err)
-			check.Status = "failed"
+			check.Status = failed
 			return checkResult(check)
 		}
-		check.Status = "succeeded"
+		check.Status = succeeded
 		return checkResult(check)
 	}
 }
@@ -1493,16 +1493,24 @@ type Commit struct {
 	LatestChecks  []Check   `json:"latestCheck"`
 }
 
+type CheckStatus string
+
+const (
+	failed    CheckStatus = "failed"
+	succeeded CheckStatus = "succeeded"
+	running   CheckStatus = "running"
+)
+
 type Check struct {
 	Command    *exec.Cmd
-	Id         string    `json:"id"`
-	CommitId   string    `json:"commitId"`
-	Status     string    `json:"status"`
-	Checker    string    `json:"checker"`
-	Name       string    `json:"name"`
-	Output     string    `json:"output"`
-	StartedAt  time.Time `json:"startedAt"`
-	FinishedAt time.Time `json:"finishedAt"`
+	Id         string      `json:"id"`
+	CommitId   string      `json:"commitId"`
+	Status     CheckStatus `json:"status"`
+	Checker    string      `json:"checker"`
+	Name       string      `json:"name"`
+	Output     string      `json:"output"`
+	StartedAt  time.Time   `json:"startedAt"`
+	FinishedAt time.Time   `json:"finishedAt"`
 }
 
 func (c Commit) FilterValue() string {
@@ -1545,35 +1553,35 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 	title := fmt.Sprintf("%s", titleFn(c.AbbreviatedId, truncate(c.Description, 50)))
 
 	if len(c.LatestChecks) > 0 {
-		aggregateStatus := "running"
+		aggregateStatus := running
 		anyStillRunning := false
 		failing := false
 		// log.Debugf("🪚 LatestChecks: %#v", c.LatestChecks)
 		for _, check := range c.LatestChecks {
 			switch check.Status {
-			case "running":
+			case running:
 				anyStillRunning = true
-			case "failed":
+			case failed:
 				failing = true
 			}
 		}
 
 		if !anyStillRunning {
 			if failing {
-				aggregateStatus = "failed"
+				aggregateStatus = failed
 			} else {
-				aggregateStatus = "succeeded"
+				aggregateStatus = succeeded
 			}
 			// for _, check :=
 		}
 
-		if aggregateStatus == "running" {
+		if aggregateStatus == running {
 			title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]"))
 		}
-		if aggregateStatus == "failed" {
+		if aggregateStatus == failed {
 			title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]"))
 		}
-		if aggregateStatus == "succeeded" {
+		if aggregateStatus == succeeded {
 			title = fmt.Sprintf("%s %s", title, lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]"))
 		}
 	}
@@ -1735,20 +1743,20 @@ type commitShowModel struct {
 func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 	var s strings.Builder
 	var status string
-	var aggregateStatus string
+	var aggregateStatus CheckStatus
 
 	for _, check := range m.commit.LatestChecks {
 		aggregateStatus = check.Status
-		if aggregateStatus == "failed" || aggregateStatus == "running" {
+		if aggregateStatus == failed || aggregateStatus == running {
 			break
 		}
 	}
 	switch aggregateStatus {
-	case "running":
+	case running:
 		status = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]")
-	case "failed":
+	case failed:
 		status = lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]")
-	case "succeeded":
+	case succeeded:
 		status = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]")
 	}
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.commit.AbbreviatedId))
