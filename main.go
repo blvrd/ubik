@@ -1556,7 +1556,6 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 		aggregateStatus := running
 		anyStillRunning := false
 		failing := false
-		// log.Debugf("🪚 LatestChecks: %#v", c.LatestChecks)
 		for _, check := range c.LatestChecks {
 			switch check.Status {
 			case running:
@@ -1572,7 +1571,6 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 			} else {
 				aggregateStatus = succeeded
 			}
-			// for _, check :=
 		}
 
 		if aggregateStatus == running {
