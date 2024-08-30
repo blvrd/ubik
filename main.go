@@ -1683,7 +1683,7 @@ func SortIssues(issues []Issue) []Issue {
 			continue
 		}
 
-		if issue.Status == done {
+		if issue.Status == done || issue.Status == wontDo {
 			closedIssues = append(closedIssues, issue)
 			continue
 		}
