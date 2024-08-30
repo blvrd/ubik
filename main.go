@@ -1024,7 +1024,7 @@ func RunCheck(check Check) tea.Cmd {
 		result, err := executeCheckUsingArchive(check)
 		check.Output = result
 		if err != nil {
-			log.Debugf("Check failed: %v", err)
+			debug("Check failed: %v", err)
 			check.Status = failed
 			return checkResult(check)
 		}
@@ -1979,4 +1979,10 @@ func convertSlice[T, U any](input []T, convert func(T) U) []U {
 		result[i] = convert(v)
 	}
 	return result
+}
+
+func debug(format string, args ...any) {
+	if isDebugEnabled() {
+		log.Debugf(format, args...)
+	}
 }
