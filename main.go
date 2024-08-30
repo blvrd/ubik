@@ -920,22 +920,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.commitIndex, cmd = m.commitIndex.Update(msg)
 				return m, cmd
 			case key.Matches(msg, keys.RunCheck):
-				commit := m.commitIndex.SelectedItem().(Commit)
-				commit.LatestChecks = []Check{}
-				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
-				m.commitIndex, cmd = m.commitIndex.Update(msg)
-				m.commitShow = commitShowModel{commit: commit}
-				m.commitShow.Init(m)
-				checkCommands := []*exec.Cmd{
-					exec.Command("go", "test"),
-					exec.Command("./check.sh"),
-				}
-				var cmds []tea.Cmd
-				for _, command := range checkCommands {
-					commit.LatestChecks = append(commit.LatestChecks, Check{Status: "running", CommitId: commit.Id, Name: command.String()})
-					cmds = append(cmds, RunCheck(commit.Id, command))
-				}
-				return m, tea.Batch(cmds...)
+				// commit := m.commitIndex.SelectedItem().(Commit)
+				// commit.LatestChecks = []Check{}
+				// m.commitIndex.SetItem(m.commitIndex.Index(), commit)
+				// m.commitIndex, cmd = m.commitIndex.Update(msg)
+				// m.commitShow = commitShowModel{commit: commit}
+				// m.commitShow.Init(m)
+				// checkCommands := []*exec.Cmd{
+				// 	exec.Command("go", "test"),
+				// 	exec.Command("./check.sh"),
+				// }
+				// var cmds []tea.Cmd
+				// for _, command := range checkCommands {
+				// 	commit.LatestChecks = append(commit.LatestChecks, Check{Status: "running", CommitId: commit.Id, Name: command.String()})
+				// 	cmds = append(cmds, RunCheck(commit.Id, command))
+				// }
+				// return m, tea.Batch(cmds...)
 			case key.Matches(msg, keys.CommitDetailFocus):
 				m.commitShow = commitShowModel{commit: m.commitIndex.SelectedItem().(Commit)}
 				m.commitShow.Init(m)
@@ -960,29 +960,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, nil
 				}
 			}
-		case checkPersistedMsg:
-			var commit Commit
-			var commitIndex int
-			for i, c := range m.commitIndex.Items() {
-				if c.(Commit).Id == msg.Check.CommitId {
-					commit = c.(Commit)
-					commitIndex = i
-					break
-				}
-			}
-			commit.LatestChecks = append(commit.LatestChecks, Check{Status: msg.Check.Status, Output: msg.Check.Output, CommitId: commit.Id})
-			m.commitIndex.SetItem(commitIndex, commit)
-			m.commitIndex, cmd = m.commitIndex.Update(msg)
-			m.commitShow = commitShowModel{commit: commit}
-			m.commitShow.Init(m)
-		case checkResult:
-			check := Check{
-				Status:   msg.status,
-				CommitId: msg.commitHash,
-				Output:   msg.output,
-			}
-
-			return m, persistCheck(check)
+			// case checkPersistedMsg:
+			// 	var commit Commit
+			// 	var commitIndex int
+			// 	for i, c := range m.commitIndex.Items() {
+			// 		if c.(Commit).Id == msg.Check.CommitId {
+			// 			commit = c.(Commit)
+			// 			commitIndex = i
+			// 			break
+			// 		}
+			// 	}
+			// 	commit.LatestChecks = append(commit.LatestChecks, Check{Status: msg.Check.Status, Output: msg.Check.Output, CommitId: commit.Id})
+			// 	m.commitIndex.SetItem(commitIndex, commit)
+			// 	m.commitIndex, cmd = m.commitIndex.Update(msg)
+			// 	m.commitShow = commitShowModel{commit: commit}
+			// 	m.commitShow.Init(m)
+			// case checkResult:
+			// 	check := Check{
+			// 		Status:   msg.status,
+			// 		CommitId: msg.commitHash,
+			// 		Output:   msg.output,
+			// 	}
+			//
+			// 	return m, persistCheck(check)
 		}
 
 		m.commitIndex, cmd = m.commitIndex.Update(msg)
