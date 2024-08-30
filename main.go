@@ -1467,6 +1467,21 @@ func (c Commit) AggregateCheckStatus() CheckStatus {
 
 type CheckStatus string
 
+func (c CheckStatus) Icon() string {
+	var icon string
+
+	switch c {
+	case running:
+		icon = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]")
+	case failed:
+		icon = lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]")
+	case succeeded:
+		icon = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]")
+	}
+
+	return icon
+}
+
 const (
 	failed    CheckStatus = "failed"
 	succeeded CheckStatus = "succeeded"
@@ -1525,7 +1540,7 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 	title := fmt.Sprintf("%s", titleFn(c.AbbreviatedId, truncate(c.Description, 50)))
 
 	if len(c.LatestChecks) > 0 {
-		title = fmt.Sprintf("%s %s", title, statusToIcon(c.AggregateCheckStatus()))
+		title = fmt.Sprintf("%s %s", title, c.AggregateCheckStatus().Icon())
 	}
 
 	description := fmt.Sprintf("committed at %s by %s", c.Timestamp.Format(time.RFC822), author)
@@ -1685,7 +1700,7 @@ type commitShowModel struct {
 func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 	var s strings.Builder
 
-	icon := statusToIcon(m.commit.AggregateCheckStatus())
+	icon := m.commit.AggregateCheckStatus().Icon()
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.commit.AbbreviatedId))
 	header := fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, m.commit.Description, icon)
 	s.WriteString(lipgloss.NewStyle().Render(header))
@@ -1693,7 +1708,7 @@ func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 
 	m.viewport = viewport.New(ctx.Layout.RightSize.Width-2, ctx.Layout.RightSize.Height-2)
 	for _, check := range m.commit.LatestChecks {
-		s.WriteString(fmt.Sprintf("\n\n%s %s", check.Name, statusToIcon(check.Status)))
+		s.WriteString(fmt.Sprintf("\n\n%s %s", check.Name, check.Status.Icon()))
 	}
 
 	m.viewport.SetContent(s.String())
@@ -1955,19 +1970,4 @@ func convertSlice[T, U any](input []T, convert func(T) U) []U {
 		result[i] = convert(v)
 	}
 	return result
-}
-
-func statusToIcon(status CheckStatus) string {
-	var icon string
-
-	switch status {
-	case running:
-		icon = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]")
-	case failed:
-		icon = lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]")
-	case succeeded:
-		icon = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]")
-	}
-
-	return icon
 }
