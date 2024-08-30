@@ -1758,11 +1758,11 @@ func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 		status = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]")
 	}
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.commit.AbbreviatedId))
-	header := fmt.Sprintf("%s %s\nStatus: %s", identifier, m.commit.Description, status)
-	s.WriteString(lipgloss.NewStyle().BorderBottom(true).BorderStyle(lipgloss.NormalBorder()).PaddingTop(0).Render(header))
+	header := fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, m.commit.Description, status)
+	s.WriteString(lipgloss.NewStyle().Render(header))
 	s.WriteString("\n")
 
-	m.viewport = viewport.New(ctx.Layout.RightSize.Width, ctx.Layout.RightSize.Height)
+	m.viewport = viewport.New(ctx.Layout.RightSize.Width-2, ctx.Layout.RightSize.Height-2)
 	s.WriteString(m.commit.Description)
 	for _, check := range m.commit.LatestChecks {
 		s.WriteString(fmt.Sprintf("\n\n%s", check.Output))
