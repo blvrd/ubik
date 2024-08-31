@@ -2056,6 +2056,7 @@ func convertSlice[T, U any](input []T, convert func(T) U) []U {
 
 func debug(format string, args ...any) {
 	if isDebugEnabled() {
+		log.Helper()
 		log.Debugf(format, args...)
 	}
 }
