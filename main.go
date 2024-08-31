@@ -48,6 +48,7 @@ func persistCheck(check Check) tea.Cmd {
 
 		jsonData, err := json.Marshal(check)
 		if err != nil {
+			debug("%#v", err.Error())
 			return err
 		}
 
@@ -56,6 +57,7 @@ func persistCheck(check Check) tea.Cmd {
 
 		b, err := cmd.Output()
 		if err != nil {
+			debug("%#v", err.Error())
 			return err
 		}
 
@@ -65,7 +67,7 @@ func persistCheck(check Check) tea.Cmd {
 		err = cmd.Run()
 
 		if err != nil {
-			log.Fatalf("%#v", err.Error())
+			debug("%#v", err.Error())
 			panic(err)
 		}
 		return checkPersistedMsg{Check: check}
@@ -985,11 +987,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.commitShow.Init(m)
 				return m, tea.Batch(cmds...)
 			}
-		case checkResult:
+
+		case checkPersistedMsg:
+			check := msg.Check
 			var commit Commit
 			var commitIndex int
 			for i, c := range m.commitIndex.Items() {
-				if c.(Commit).Id == msg.CommitId {
+				if c.(Commit).Id == check.CommitId {
 					commit = c.(Commit)
 					commitIndex = i
 					break
@@ -997,8 +1001,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			updatedChecks := make([]Check, len(commit.LatestChecks))
 			for i, c := range commit.LatestChecks {
-				if msg.Id == c.Id {
-					updatedChecks[i] = Check(msg)
+				if check.Id == c.Id {
+					updatedChecks[i] = check
 				} else {
 					updatedChecks[i] = c
 				}
@@ -1008,6 +1012,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.commitIndex, cmd = m.commitIndex.Update(msg)
 			m.commitShow = commitShowModel{commit: commit}
 			m.commitShow.Init(m)
+		case checkResult:
+			return m, persistCheck(Check(msg))
 		}
 
 		m.commitShow.viewport, cmd = m.commitShow.viewport.Update(msg)
@@ -1491,7 +1497,7 @@ const (
 )
 
 type Check struct {
-	Command    *exec.Cmd
+	Command    *exec.Cmd   `json:"-"`
 	Id         string      `json:"id"`
 	CommitId   string      `json:"commitId"`
 	Status     CheckStatus `json:"status"`
