@@ -1479,17 +1479,24 @@ func (c Commit) AggregateCheckStatus() CheckStatus {
 		return ""
 	}
 
-	aggregateStatus := succeeded
+	hasFailedCheck := false
 	for _, check := range c.LatestChecks {
 		switch check.Status {
-		case failed:
-			return failed
 		case running:
-			aggregateStatus = running
+			return running
+		case failed:
+			hasFailedCheck = true
+		case succeeded:
+			// Continue checking other checks
+		default:
+			return running
 		}
 	}
 
-	return aggregateStatus
+	if hasFailedCheck {
+		return failed
+	}
+	return succeeded
 }
 
 func (c Commit) DeleteExistingChecks() tea.Cmd {

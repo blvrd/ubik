@@ -8,7 +8,7 @@ import (
 
 func TestStringToShortcode(t *testing.T) {
 	input := "hello world"
-	expected := "uU0nu"
+	expected := "uU0nuZ"
 	shortcode := StringToShortcode(input)
 	if shortcode != expected {
 		t.Errorf("Expected %s, got %s", expected, shortcode)
@@ -69,9 +69,17 @@ func TestCommitAggregateCheckStatus(t *testing.T) {
 			expected: succeeded,
 		},
 		{
-			name: "One running",
+			name: "One running with another succeeded check",
 			checks: []Check{
 				{Status: succeeded},
+				{Status: running},
+			},
+			expected: running,
+		},
+		{
+			name: "One running with another failed check",
+			checks: []Check{
+				{Status: failed},
 				{Status: running},
 			},
 			expected: running,
