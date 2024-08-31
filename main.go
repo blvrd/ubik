@@ -1485,6 +1485,9 @@ func (c Commit) AggregateCheckStatus() CheckStatus {
 		case running:
 			return running
 		case failed:
+			if check.Optional {
+				continue
+			}
 			hasFailedCheck = true
 		case succeeded:
 			// Continue checking other checks

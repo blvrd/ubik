@@ -100,6 +100,14 @@ func TestCommitAggregateCheckStatus(t *testing.T) {
 			},
 			expected: failed,
 		},
+		{
+			name: "Optional check failed",
+			checks: []Check{
+				{Status: failed, Optional: true},
+				{Status: succeeded},
+			},
+			expected: succeeded,
+		},
 	}
 
 	for _, tt := range tests {
