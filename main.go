@@ -1549,6 +1549,7 @@ type Check struct {
 	Output     string      `json:"output"`
 	StartedAt  time.Time   `json:"startedAt"`
 	FinishedAt time.Time   `json:"finishedAt"`
+	Optional   bool        `json:"optional"`
 }
 
 func NewChecks(commit Commit) []Check {
@@ -1568,6 +1569,7 @@ func NewChecks(commit Commit) []Check {
 			Command:   exec.Command("./check.sh"),
 			Name:      "another check",
 			StartedAt: time.Now().UTC(),
+			Optional:  true,
 		},
 	}
 }
@@ -1797,6 +1799,9 @@ func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 	m.viewport = viewport.New(ctx.Layout.RightSize.Width-2, ctx.Layout.RightSize.Height-2)
 	for _, check := range m.commit.LatestChecks {
 		s.WriteString(fmt.Sprintf("\n%s %s", check.Status.Icon(), check.Name))
+		if check.Optional {
+			s.WriteString(lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(" (optional)"))
+		}
 		if m.expandCheckDetails {
 			s.WriteString(
 				lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(
