@@ -1043,6 +1043,7 @@ func RunCheck(check Check) tea.Cmd {
 	return func() tea.Msg {
 		result, err := executeCheckUsingArchive(check)
 		check.Output = result
+		check.FinishedAt = time.Now().UTC()
 		if err != nil {
 			debug("Check failed: %v", err)
 			check.Status = failed
@@ -1539,18 +1540,20 @@ type Check struct {
 func NewChecks(commit Commit) []Check {
 	return []Check{
 		Check{
-			Id:       uuid.NewString(),
-			Status:   running,
-			CommitId: commit.Id,
-			Command:  exec.Command("go", "test"),
-			Name:     "tests",
+			Id:        uuid.NewString(),
+			Status:    running,
+			CommitId:  commit.Id,
+			Command:   exec.Command("go", "test"),
+			Name:      "tests",
+			StartedAt: time.Now().UTC(),
 		},
 		Check{
-			Id:       uuid.NewString(),
-			Status:   running,
-			CommitId: commit.Id,
-			Command:  exec.Command("./check.sh"),
-			Name:     "another check",
+			Id:        uuid.NewString(),
+			Status:    running,
+			CommitId:  commit.Id,
+			Command:   exec.Command("./check.sh"),
+			Name:      "another check",
+			StartedAt: time.Now().UTC(),
 		},
 	}
 }
@@ -1775,8 +1778,13 @@ func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 
 	m.viewport = viewport.New(ctx.Layout.RightSize.Width-2, ctx.Layout.RightSize.Height-2)
 	for _, check := range m.commit.LatestChecks {
-		s.WriteString(fmt.Sprintf("\n%s %s", check.Name, check.Status.Icon()))
+		s.WriteString(fmt.Sprintf("\n%s %s", check.Status.Icon(), check.Name))
 		if m.expandCheckDetails {
+			s.WriteString(
+				lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(
+					fmt.Sprintf(" finished in %s\n\n", check.FinishedAt.Sub(check.StartedAt)),
+				),
+			)
 			s.WriteString(fmt.Sprintf("\n%s\n\n", check.Output))
 		}
 	}
