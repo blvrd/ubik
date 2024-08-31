@@ -1,9 +1,9 @@
 package main
 
 import (
-	"testing"
-  "time"
 	"github.com/stretchr/testify/assert"
+	"testing"
+	"time"
 )
 
 func TestStringToShortcode(t *testing.T) {
@@ -81,6 +81,14 @@ func TestCommitAggregateCheckStatus(t *testing.T) {
 			checks: []Check{
 				{Status: succeeded},
 				{Status: failed},
+			},
+			expected: failed,
+		},
+		{
+			name: "One failed, different order",
+			checks: []Check{
+				{Status: failed},
+				{Status: succeeded},
 			},
 			expected: failed,
 		},

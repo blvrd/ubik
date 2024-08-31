@@ -1475,13 +1475,20 @@ type Commit struct {
 }
 
 func (c Commit) AggregateCheckStatus() CheckStatus {
-	var aggregateStatus CheckStatus
+	if len(c.LatestChecks) == 0 {
+		return ""
+	}
+
+	aggregateStatus := succeeded
 	for _, check := range c.LatestChecks {
-		aggregateStatus = check.Status
-		if aggregateStatus == running {
-			break
+		switch check.Status {
+		case failed:
+			return failed
+		case running:
+			aggregateStatus = running
 		}
 	}
+
 	return aggregateStatus
 }
 
