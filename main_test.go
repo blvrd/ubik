@@ -2,6 +2,8 @@ package main
 
 import (
 	"testing"
+  "time"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestStringToShortcode(t *testing.T) {
@@ -93,4 +95,14 @@ func TestCommitAggregateCheckStatus(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCheckElapsedTime(t *testing.T) {
+	check := Check{
+		StartedAt:  time.Now().Add(-5 * time.Minute),
+		FinishedAt: time.Now(),
+	}
+
+	elapsed := check.ElapsedTime()
+	assert.InDelta(t, 5*time.Minute, elapsed, float64(time.Second), "ElapsedTime should be approximately 5 minutes")
 }

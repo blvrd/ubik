@@ -1570,6 +1570,10 @@ func (c Check) Delete() tea.Msg {
 	return nil
 }
 
+func (c Check) ElapsedTime() time.Duration {
+	return c.FinishedAt.Sub(c.StartedAt)
+}
+
 func (c Commit) FilterValue() string {
 	return c.Id
 }
@@ -1782,7 +1786,7 @@ func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 		if m.expandCheckDetails {
 			s.WriteString(
 				lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(
-					fmt.Sprintf(" finished in %s\n\n", check.FinishedAt.Sub(check.StartedAt)),
+					fmt.Sprintf(" finished in %s\n\n", check.ElapsedTime()),
 				),
 			)
 			s.WriteString(fmt.Sprintf("\n%s\n\n", check.Output))
