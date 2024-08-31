@@ -33,19 +33,6 @@ type checkPersistedMsg struct {
 
 func persistCheck(check Check) tea.Cmd {
 	return func() tea.Msg {
-		var newCheck bool
-
-		if check.Id == "" {
-			newCheck = true
-		} else {
-			newCheck = false
-		}
-
-		if newCheck {
-			id := uuid.NewString()
-			check.Id = id
-		}
-
 		jsonData, err := json.Marshal(check)
 		if err != nil {
 			debug("%#v", err.Error())
@@ -976,6 +963,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					},
 				}
 
+				cmds = append(cmds, commit.DeleteExistingChecks())
 				commit.LatestChecks = checks
 
 				for _, check := range commit.LatestChecks {
@@ -1466,6 +1454,16 @@ func (c Commit) AggregateCheckStatus() CheckStatus {
 	return aggregateStatus
 }
 
+func (c Commit) DeleteExistingChecks() tea.Cmd {
+	var cmds []tea.Cmd
+
+	for _, check := range c.LatestChecks {
+		cmds = append(cmds, check.Delete)
+	}
+
+	return tea.Batch(cmds...)
+}
+
 type CheckStatus string
 
 func (c CheckStatus) Icon() string {
@@ -1506,6 +1504,18 @@ type Check struct {
 	Output     string      `json:"output"`
 	StartedAt  time.Time   `json:"startedAt"`
 	FinishedAt time.Time   `json:"finishedAt"`
+}
+
+func (c Check) Delete() tea.Msg {
+	cmd := exec.Command("git", "update-ref", "-d", fmt.Sprintf("refs/ubik/checks/%s", c.Id))
+	err := cmd.Run()
+
+	if err != nil {
+		debug("%#v", err)
+		panic(err)
+	}
+
+	return nil
 }
 
 func (c Commit) FilterValue() string {
