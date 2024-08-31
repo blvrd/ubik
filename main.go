@@ -212,29 +212,30 @@ const (
 )
 
 type keyMap struct {
-	Path                  string
-	Up                    key.Binding
-	Down                  key.Binding
-	Left                  key.Binding
-	Right                 key.Binding
-	Help                  key.Binding
-	Quit                  key.Binding
-	Suspend               key.Binding
-	Back                  key.Binding
-	IssueNewForm          key.Binding
-	IssueEditForm         key.Binding
-	IssueDetailFocus      key.Binding
-	IssueStatusDone       key.Binding
-	IssueStatusWontDo     key.Binding
-	IssueStatusInProgress key.Binding
-	IssueCommentFormFocus key.Binding
-	IssueDelete           key.Binding
-	CommitDetailFocus     key.Binding
-	NextInput             key.Binding
-	Submit                key.Binding
-	NextPage              key.Binding
-	PrevPage              key.Binding
-	RunCheck              key.Binding
+	Path                     string
+	Up                       key.Binding
+	Down                     key.Binding
+	Left                     key.Binding
+	Right                    key.Binding
+	Help                     key.Binding
+	Quit                     key.Binding
+	Suspend                  key.Binding
+	Back                     key.Binding
+	IssueNewForm             key.Binding
+	IssueEditForm            key.Binding
+	IssueDetailFocus         key.Binding
+	IssueStatusDone          key.Binding
+	IssueStatusWontDo        key.Binding
+	IssueStatusInProgress    key.Binding
+	IssueCommentFormFocus    key.Binding
+	IssueDelete              key.Binding
+	CommitDetailFocus        key.Binding
+	CommitExpandCheckDetails key.Binding
+	NextInput                key.Binding
+	Submit                   key.Binding
+	NextPage                 key.Binding
+	PrevPage                 key.Binding
+	RunCheck                 key.Binding
 }
 
 // ShortHelp returns keybindings to be shown in the mini help view. It's part
@@ -283,7 +284,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
-			{k.RunCheck},
+			{k.RunCheck, k.CommitExpandCheckDetails},
 			{k.Back},
 		}
 	}
@@ -974,8 +975,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.commitShow = commitShowModel{commit: commit}
 				m.commitShow.Init(m)
 				return m, tea.Batch(cmds...)
+			case key.Matches(msg, keys.CommitExpandCheckDetails):
+				commit := m.commitIndex.SelectedItem().(Commit)
+				var expand bool
+				if m.commitShow.expandCheckDetails {
+					expand = false
+				} else {
+					expand = true
+				}
+				m.commitShow = commitShowModel{commit: commit, expandCheckDetails: expand}
+				m.commitShow.Init(m)
 			}
-
 		case checkPersistedMsg:
 			check := msg.Check
 			var commit Commit
@@ -1148,6 +1158,10 @@ func (m Model) HelpKeys() keyMap {
 		CommitDetailFocus: key.NewBinding(
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "more info"),
+		),
+		CommitExpandCheckDetails: key.NewBinding(
+			key.WithKeys("e"),
+			key.WithHelp("e", "expand check details"),
 		),
 	}
 
@@ -1711,8 +1725,9 @@ func SortIssues(issues []Issue) []Issue {
 }
 
 type commitShowModel struct {
-	commit   Commit
-	viewport viewport.Model
+	commit             Commit
+	viewport           viewport.Model
+	expandCheckDetails bool
 }
 
 func (m *commitShowModel) Init(ctx Model) tea.Cmd {
@@ -1725,7 +1740,10 @@ func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 
 	m.viewport = viewport.New(ctx.Layout.RightSize.Width-2, ctx.Layout.RightSize.Height-2)
 	for _, check := range m.commit.LatestChecks {
-		s.WriteString(fmt.Sprintf("\n\n%s %s", check.Name, check.Status.Icon()))
+		s.WriteString(fmt.Sprintf("\n%s %s", check.Name, check.Status.Icon()))
+		if m.expandCheckDetails {
+			s.WriteString(fmt.Sprintf("\n%s\n\n", check.Output))
+		}
 	}
 
 	m.viewport.SetContent(s.String())
