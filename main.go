@@ -901,6 +901,29 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg := msg.(type) {
+		case checkResult:
+			return m, persistCheck(Check(msg))
+		case checkPersistedMsg:
+			check := msg.Check
+			var commit Commit
+			var commitIndex int
+			for i, c := range m.commitIndex.Items() {
+				if c.(Commit).Id == check.CommitId {
+					commit = c.(Commit)
+					commitIndex = i
+					break
+				}
+			}
+			updatedChecks := make([]Check, len(commit.LatestChecks))
+			for i, c := range commit.LatestChecks {
+				if check.Id == c.Id {
+					updatedChecks[i] = check
+				} else {
+					updatedChecks[i] = c
+				}
+			}
+			commit.LatestChecks = updatedChecks
+			m.commitIndex.SetItem(commitIndex, commit)
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, keys.Down):
@@ -910,6 +933,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.commitIndex, cmd = m.commitIndex.Update(msg)
 				return m, cmd
 			case key.Matches(msg, keys.RunCheck):
+				commit := m.commitIndex.SelectedItem().(Commit)
+				var cmds []tea.Cmd
+				checks := NewChecks(commit)
+				cmds = append(cmds, commit.DeleteExistingChecks())
+				commit.LatestChecks = checks
+
+				for _, check := range commit.LatestChecks {
+					cmds = append(cmds, RunCheck(check))
+				}
+				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
+				return m, tea.Batch(cmds...)
 			case key.Matches(msg, keys.CommitDetailFocus):
 				m.commitShow = commitShowModel{commit: m.commitIndex.SelectedItem().(Commit)}
 				m.commitShow.Init(m)
@@ -947,23 +981,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.RunCheck):
 				commit := m.commitIndex.SelectedItem().(Commit)
 				var cmds []tea.Cmd
-				checks := []Check{
-					Check{
-						Id:       uuid.NewString(),
-						Status:   running,
-						CommitId: commit.Id,
-						Command:  exec.Command("go", "test"),
-						Name:     "tests",
-					},
-					Check{
-						Id:       uuid.NewString(),
-						Status:   running,
-						CommitId: commit.Id,
-						Command:  exec.Command("./check.sh"),
-						Name:     "another check",
-					},
-				}
-
+				checks := NewChecks(commit)
 				cmds = append(cmds, commit.DeleteExistingChecks())
 				commit.LatestChecks = checks
 
@@ -971,7 +989,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmds = append(cmds, RunCheck(check))
 				}
 				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
-				m.commitIndex, cmd = m.commitIndex.Update(msg)
 				m.commitShow = commitShowModel{commit: commit}
 				m.commitShow.Init(m)
 				return m, tea.Batch(cmds...)
@@ -986,6 +1003,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.commitShow = commitShowModel{commit: commit, expandCheckDetails: expand}
 				m.commitShow.Init(m)
 			}
+		case checkResult:
+			return m, persistCheck(Check(msg))
 		case checkPersistedMsg:
 			check := msg.Check
 			var commit Commit
@@ -1007,11 +1026,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			commit.LatestChecks = updatedChecks
 			m.commitIndex.SetItem(commitIndex, commit)
-			m.commitIndex, cmd = m.commitIndex.Update(msg)
 			m.commitShow = commitShowModel{commit: commit}
 			m.commitShow.Init(m)
-		case checkResult:
-			return m, persistCheck(Check(msg))
 		}
 
 		m.commitShow.viewport, cmd = m.commitShow.viewport.Update(msg)
@@ -1518,6 +1534,25 @@ type Check struct {
 	Output     string      `json:"output"`
 	StartedAt  time.Time   `json:"startedAt"`
 	FinishedAt time.Time   `json:"finishedAt"`
+}
+
+func NewChecks(commit Commit) []Check {
+	return []Check{
+		Check{
+			Id:       uuid.NewString(),
+			Status:   running,
+			CommitId: commit.Id,
+			Command:  exec.Command("go", "test"),
+			Name:     "tests",
+		},
+		Check{
+			Id:       uuid.NewString(),
+			Status:   running,
+			CommitId: commit.Id,
+			Command:  exec.Command("./check.sh"),
+			Name:     "another check",
+		},
+	}
 }
 
 func (c Check) Delete() tea.Msg {
