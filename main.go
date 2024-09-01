@@ -1572,7 +1572,6 @@ func NewChecks(commit Commit) []Check {
 			Command:   exec.Command("./check.sh"),
 			Name:      "another check",
 			StartedAt: time.Now().UTC(),
-			Optional:  true,
 		},
 	}
 }
