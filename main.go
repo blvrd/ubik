@@ -1562,15 +1562,15 @@ func NewChecks(commit Commit) []Check {
 			Status:    running,
 			CommitId:  commit.Id,
 			Command:   exec.Command("go", "test"),
-			Name:      "tests",
+			Name:      "Tests ('go test')",
 			StartedAt: time.Now().UTC(),
 		},
 		Check{
 			Id:        uuid.NewString(),
 			Status:    running,
 			CommitId:  commit.Id,
-			Command:   exec.Command("./check.sh"),
-			Name:      "another check",
+			Command:   exec.Command("gosec", "./"),
+			Name:      "Security ('gosec')",
 			StartedAt: time.Now().UTC(),
 		},
 	}
