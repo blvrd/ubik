@@ -33,6 +33,7 @@
         packages = with pkgs; [
           go_1_23
           gopls
+          gosec
         ];
       };
     });
