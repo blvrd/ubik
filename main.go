@@ -310,7 +310,7 @@ func (i Issue) FilterValue() string {
 	return i.Title
 }
 
-func (i Issue) Height() int                             { return 3 }
+func (i Issue) Height() int                             { return 2 }
 func (i Issue) Spacing() int                            { return 1 }
 func (i Issue) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
 
@@ -346,15 +346,16 @@ func (i Issue) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 		}
 	}
 	title := fmt.Sprintf("%s %s", status, titleFn(truncate(i.Title, 50)))
+  labels := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf(strings.Join(i.Labels, ",")))
+  title = fmt.Sprintf("%s %s", title, labels)
 
-	labels := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf(strings.Join(i.Labels, ",")))
 	description := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf(
 		"#%s opened by %s on %s",
 		i.Shortcode,
 		i.Author,
 		i.CreatedAt.Format(time.DateOnly),
 	))
-	item := lipgloss.JoinVertical(lipgloss.Left, title, labels, description)
+	item := lipgloss.JoinVertical(lipgloss.Left, title, description)
 
 	fmt.Fprintf(w, item)
 }
