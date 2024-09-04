@@ -299,6 +299,7 @@ type Issue struct {
 	Title       string    `json:"title"`
 	Description string    `json:"description"`
 	Status      status    `json:"status"`
+	Labels      []string  `jaon:"labels"`
 	Comments    []Comment `json:"comments"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
@@ -344,9 +345,9 @@ func (i Issue) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 				Render(strings.Join(s, " "))
 		}
 	}
-	title := fmt.Sprintf("%s %s", status, titleFn(fmt.Sprintf("#%s", i.Shortcode), truncate(i.Title, 50)))
+	title := fmt.Sprintf("%s %s", status, titleFn(truncate(i.Title, 50)))
 
-	description := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("created by %s at %s", i.Author, i.CreatedAt.Format(time.RFC822)))
+	description := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s opened by %s on %s", i.Shortcode, i.Author, i.CreatedAt.Format(time.DateOnly)))
 	item := lipgloss.JoinVertical(lipgloss.Left, title, description)
 
 	fmt.Fprintf(w, item)
@@ -1572,6 +1573,7 @@ func NewChecks(commit Commit) []Check {
 			Command:   exec.Command("gosec", "./"),
 			Name:      "Security ('gosec')",
 			StartedAt: time.Now().UTC(),
+			Optional:  true,
 		},
 	}
 }
