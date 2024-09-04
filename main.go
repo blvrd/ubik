@@ -202,14 +202,38 @@ func DefaultStyles() Styles {
 
 var styles = DefaultStyles()
 
-type status int
+type issueStatus string
 
 const (
-	todo       status = 1
-	inProgress status = 2
-	done       status = 3
-	wontDo     status = 4
+	todo       issueStatus = "todo"
+	inProgress issueStatus = "in-progress"
+	done       issueStatus = "done"
+	wontDo     issueStatus = "wont-do"
 )
+
+func (s issueStatus) Icon() string {
+	icons := map[issueStatus]string{
+		todo:       "[·]",
+		inProgress: "[⋯]",
+		wontDo:     "[×]",
+		done:       "[✓]",
+	}
+	return lipgloss.NewStyle().Foreground(s.color()).Render(icons[s])
+}
+
+func (s issueStatus) PrettyString() string {
+	return lipgloss.NewStyle().Foreground(s.color()).Render(string(s))
+}
+
+func (s issueStatus) color() lipgloss.AdaptiveColor {
+	colors := map[issueStatus]lipgloss.AdaptiveColor{
+		todo:       styles.Theme.SecondaryText,
+		inProgress: styles.Theme.YellowText,
+		wontDo:     styles.Theme.RedText,
+		done:       styles.Theme.GreenText,
+	}
+	return colors[s]
+}
 
 type keyMap struct {
 	Path                     string
@@ -293,17 +317,17 @@ func (k keyMap) FullHelp() [][]key.Binding {
 }
 
 type Issue struct {
-	Id          string    `json:"id"`
-	Shortcode   string    `json:"shortcode"`
-	Author      string    `json:"author"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	Status      status    `json:"status"`
-	Labels      []string  `jaon:"labels"`
-	Comments    []Comment `json:"comments"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	DeletedAt   time.Time `json:"deleted_at"`
+	Id          string      `json:"id"`
+	Shortcode   string      `json:"shortcode"`
+	Author      string      `json:"author"`
+	Title       string      `json:"title"`
+	Description string      `json:"description"`
+	Status      issueStatus `json:"status"`
+	Labels      []string    `jaon:"labels"`
+	Comments    []Comment   `json:"comments"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
+	DeletedAt   time.Time   `json:"deleted_at"`
 }
 
 func (i Issue) FilterValue() string {
@@ -324,19 +348,6 @@ func (i Issue) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 
 	defaultItemStyles := list.NewDefaultItemStyles()
 
-	var status string
-
-	switch i.Status {
-	case todo:
-		status = "[·]"
-	case inProgress:
-		status = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("[⋯]")
-	case wontDo:
-		status = lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("[×]")
-	case done:
-		status = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("[✓]")
-	}
-
 	titleFn := defaultItemStyles.NormalTitle.Padding(0).Render
 	if index == m.Index() {
 		titleFn = func(s ...string) string {
@@ -346,7 +357,7 @@ func (i Issue) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 				Render(strings.Join(s, " "))
 		}
 	}
-	title := fmt.Sprintf("%s %s", status, titleFn(truncate(i.Title, 50)))
+	title := fmt.Sprintf("%s %s", i.Status.Icon(), titleFn(truncate(i.Title, 50)))
 	labels := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf(strings.Join(i.Labels, ",")))
 	title = fmt.Sprintf("%s %s", title, labels)
 
@@ -1852,19 +1863,8 @@ func (m *issueShowModel) Init(ctx Model) tea.Cmd {
 	)
 	m.layout = ctx.Layout
 	var s strings.Builder
-	var status string
-	switch m.issue.Status {
-	case todo:
-		status = "todo"
-	case inProgress:
-		status = lipgloss.NewStyle().Foreground(styles.Theme.YellowText).Render("in-progress")
-	case wontDo:
-		status = lipgloss.NewStyle().Foreground(styles.Theme.RedText).Render("wont-do")
-	case done:
-		status = lipgloss.NewStyle().Foreground(styles.Theme.GreenText).Render("done")
-	}
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", m.issue.Shortcode))
-	header := fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, m.issue.Title, status)
+	header := fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, m.issue.Title, m.issue.Status.PrettyString())
 	s.WriteString(lipgloss.NewStyle().Render(header))
 	s.WriteString(m.issue.Description + "\n")
 
