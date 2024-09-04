@@ -307,7 +307,8 @@ type Issue struct {
 }
 
 func (i Issue) FilterValue() string {
-	return i.Title
+	labels := strings.Join(i.Labels, " ")
+	return fmt.Sprintf("%s %s", i.Title, labels)
 }
 
 func (i Issue) Height() int                             { return 2 }
@@ -346,8 +347,8 @@ func (i Issue) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 		}
 	}
 	title := fmt.Sprintf("%s %s", status, titleFn(truncate(i.Title, 50)))
-  labels := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf(strings.Join(i.Labels, ",")))
-  title = fmt.Sprintf("%s %s", title, labels)
+	labels := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf(strings.Join(i.Labels, ",")))
+	title = fmt.Sprintf("%s %s", title, labels)
 
 	description := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf(
 		"#%s opened by %s on %s",
@@ -1755,7 +1756,6 @@ func getIssues() tea.Msg {
 
 		var issue Issue
 		json.Unmarshal(out.Bytes(), &issue)
-		issue.Labels = []string{"bug", "storage-v2"}
 
 		if issue.DeletedAt.IsZero() {
 			issues = append(issues, issue)
