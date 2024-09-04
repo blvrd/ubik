@@ -310,7 +310,7 @@ func (i Issue) FilterValue() string {
 	return i.Title
 }
 
-func (i Issue) Height() int                             { return 2 }
+func (i Issue) Height() int                             { return 3 }
 func (i Issue) Spacing() int                            { return 1 }
 func (i Issue) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
 
@@ -347,8 +347,14 @@ func (i Issue) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 	}
 	title := fmt.Sprintf("%s %s", status, titleFn(truncate(i.Title, 50)))
 
-	description := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s opened by %s on %s", i.Shortcode, i.Author, i.CreatedAt.Format(time.DateOnly)))
-	item := lipgloss.JoinVertical(lipgloss.Left, title, description)
+	labels := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf(strings.Join(i.Labels, ",")))
+	description := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf(
+		"#%s opened by %s on %s",
+		i.Shortcode,
+		i.Author,
+		i.CreatedAt.Format(time.DateOnly),
+	))
+	item := lipgloss.JoinVertical(lipgloss.Left, title, labels, description)
 
 	fmt.Fprintf(w, item)
 }
@@ -1748,6 +1754,7 @@ func getIssues() tea.Msg {
 
 		var issue Issue
 		json.Unmarshal(out.Bytes(), &issue)
+		issue.Labels = []string{"bug", "storage-v2"}
 
 		if issue.DeletedAt.IsZero() {
 			issues = append(issues, issue)
