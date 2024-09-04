@@ -22,6 +22,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 	bl "github.com/winder/bubblelayout"
 )
@@ -407,6 +408,7 @@ type Model struct {
 	help        help.Model
 	styles      Styles
 	tabs        []string
+	msgDump     io.Writer
 	Layout
 }
 
@@ -477,6 +479,9 @@ func (m Model) Init() tea.Cmd {
 type layoutMsg Layout
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.msgDump != nil {
+		spew.Fdump(m.msgDump, msg)
+	}
 	var cmd tea.Cmd
 
 	keys := m.HelpKeys()
@@ -2008,10 +2013,18 @@ func (m commentFormModel) View(focus string) string {
 
 func main() {
 	_ = lipgloss.HasDarkBackground()
-	p := tea.NewProgram(InitialModel(), tea.WithAltScreen(), tea.WithReportFocus())
+	m := InitialModel()
 
 	var logFile *os.File
+	var dump *os.File
 	if isDebugEnabled() {
+		if _, ok := os.LookupEnv("DEBUG"); ok {
+			var err error
+			dump, err = os.OpenFile("messages.log", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0o644)
+			if err != nil {
+				os.Exit(1)
+			}
+		}
 		var err error
 		logFile, err = setupLogging()
 		if err != nil {
@@ -2021,6 +2034,8 @@ func main() {
 		defer logFile.Close()
 	}
 
+	m.msgDump = dump
+	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithReportFocus())
 	_, err := p.Run()
 	if err != nil {
 		if isDebugEnabled() {
