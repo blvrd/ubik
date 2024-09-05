@@ -535,18 +535,24 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = persistIssue(currentIssue)
 		return m, cmd
 	case issueFormModel:
+		description := msg.descriptionInput.Value()
+		title := msg.titleInput.Value()
+		labels := strings.Split(msg.labelsInput.Value(), " ")
+
 		if msg.editing {
 			currentIssue := m.issueIndex.SelectedItem().(Issue)
-			currentIssue.Title = msg.titleInput.Value()
-			currentIssue.Description = msg.descriptionInput.Value()
-			currentIssue.Labels = strings.Split(msg.labelsInput.Value(), " ")
+			currentIssue.Title = title
+			currentIssue.Description = description
+			currentIssue.Labels = labels
 			cmd = persistIssue(currentIssue)
 		} else {
+			description := msg.descriptionInput.Value()
+
 			newIssue := Issue{
 				Shortcode:   "xxxxxx",
-				Title:       msg.titleInput.Value(),
-				Description: msg.descriptionInput.Value(),
-				Labels:      strings.Split(msg.labelsInput.Value(), " "),
+				Title:       title,
+				Description: description,
+				Labels:      labels,
 				Status:      todo,
 				Author:      "garrett@blvrd.co",
 			}
