@@ -1953,7 +1953,8 @@ func (m *issueShowModel) Init(ctx Model) tea.Cmd {
 	m.layout = ctx.Layout
 	var s strings.Builder
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", m.issue.Shortcode))
-	header := fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, m.issue.Title, m.issue.Status.PrettyString())
+	labels := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("%s", strings.Join(m.issue.Labels, ",")))
+	header := fmt.Sprintf("%s %s %s\nStatus: %s\n\n", identifier, m.issue.Title, labels, m.issue.Status.PrettyString())
 	s.WriteString(lipgloss.NewStyle().Render(header))
 	s.WriteString(m.issue.Description + "\n")
 
