@@ -882,7 +882,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		m.issueForm, cmd = m.issueForm.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, issuesNewTitlePath):
 		switch msg := msg.(type) {
@@ -970,7 +969,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		m.issueForm, cmd = m.issueForm.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, checksIndexPath):
 		if m.commitIndex.SettingFilter() {
