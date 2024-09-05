@@ -50,6 +50,7 @@ func persistCheck(check Check) tea.Cmd {
 
 		hash := strings.TrimSpace(string(b))
 
+		// #nosec G204
 		cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/checks/%s", check.Id), hash)
 		err = cmd.Run()
 
@@ -117,6 +118,7 @@ func persistIssue(issue Issue) tea.Cmd {
 
 		hash := strings.TrimSpace(string(b))
 
+		// #nosec G204
 		cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash)
 		err = cmd.Run()
 
@@ -1137,6 +1139,7 @@ func executeCheckUsingArchive(check Check) (string, error) {
 	}
 	defer os.RemoveAll(tempDir)
 
+	// #nosec G204
 	archiveCmd := exec.Command("git", "archive", "--format=tar", check.CommitId)
 	archive, err := archiveCmd.Output()
 	if err != nil {
@@ -1690,6 +1693,7 @@ func NewChecks(commit Commit) []Check {
 }
 
 func (c Check) Delete() tea.Msg {
+	// #nosec G204
 	cmd := exec.Command("git", "update-ref", "-d", fmt.Sprintf("refs/ubik/checks/%s", c.Id))
 	err := cmd.Run()
 
@@ -1803,6 +1807,7 @@ func getCommits() tea.Msg {
 
 	var readyCommits []Commit
 	for _, refHash := range refHashes {
+		// #nosec G204
 		cmd := exec.Command("git", "cat-file", "-p", refHash)
 		var out bytes.Buffer
 		cmd.Stdout = &out
@@ -1852,6 +1857,7 @@ func getIssues() tea.Msg {
 	}
 
 	for _, refHash := range refHashes {
+		// #nosec G204
 		cmd := exec.Command("git", "cat-file", "-p", refHash)
 		var out bytes.Buffer
 		cmd.Stdout = &out
