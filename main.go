@@ -247,6 +247,7 @@ type keyMap struct {
 	Right                    key.Binding
 	Help                     key.Binding
 	Quit                     key.Binding
+	ForceQuit                key.Binding
 	Suspend                  key.Binding
 	Back                     key.Binding
 	IssueNewForm             key.Binding
@@ -481,6 +482,21 @@ func (m Model) Init() tea.Cmd {
 
 type layoutMsg Layout
 
+func (m Model) isUserTyping() bool {
+	paths := []string{
+		issuesCommentContentPath,
+		issuesEditTitlePath,
+		issuesEditLabelsPath,
+		issuesEditDescriptionPath,
+		issuesEditConfirmationPath,
+		issuesNewTitlePath,
+		issuesNewLabelsPath,
+		issuesNewDescriptionPath,
+	}
+
+	return slices.Contains(paths, m.path)
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.msgDump != nil {
 		fmt.Fprintf(m.msgDump, "%T\n", msg)
@@ -493,6 +509,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Quit):
+			if !m.isUserTyping() {
+				return m, tea.Quit
+			}
+		case key.Matches(msg, keys.ForceQuit):
 			return m, tea.Quit
 		case key.Matches(msg, keys.Suspend):
 			return m, tea.Suspend
@@ -1189,8 +1209,11 @@ func (m Model) HelpKeys() keyMap {
 			key.WithHelp("?", "toggle help"),
 		),
 		Quit: key.NewBinding(
-			key.WithKeys("q", "ctrl+c"),
+			key.WithKeys("q"),
 			key.WithHelp("q", "quit"),
+		),
+		ForceQuit: key.NewBinding(
+			key.WithKeys("ctrl+c"),
 		),
 		Suspend: key.NewBinding(
 			key.WithKeys("ctrl+z"),
