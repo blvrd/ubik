@@ -1812,7 +1812,10 @@ func getCommits() tea.Msg {
 		}
 
 		var check Check
-		json.Unmarshal(out.Bytes(), &check)
+		err = json.Unmarshal(out.Bytes(), &check)
+		if err != nil {
+			panic(err)
+		}
 
 		for _, commit := range commits {
 			if check.CommitId == commit.Id {
@@ -1858,7 +1861,10 @@ func getIssues() tea.Msg {
 		}
 
 		var issue Issue
-		json.Unmarshal(out.Bytes(), &issue)
+		err = json.Unmarshal(out.Bytes(), &issue)
+		if err != nil {
+			panic(err)
+		}
 
 		if issue.DeletedAt.IsZero() {
 			issues = append(issues, issue)
