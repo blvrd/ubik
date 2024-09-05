@@ -2016,6 +2016,8 @@ func (m issueFormModel) View(focus string, editing bool) string {
 	var s strings.Builder
 
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", m.identifier))
+	labelStyle := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render
+	fieldStyle := lipgloss.NewStyle().Foreground(styles.Theme.PrimaryText).Render
 
 	if editing {
 		s.WriteString(fmt.Sprintf("Editing issue %s\n\n", identifier))
@@ -2023,21 +2025,26 @@ func (m issueFormModel) View(focus string, editing bool) string {
 		s.WriteString("New issue\n\n")
 	}
 
-	s.WriteString(m.titleInput.View())
+	s.WriteString(labelStyle("Title"))
 	s.WriteString("\n")
-	s.WriteString("Labels: ")
-	s.WriteString(m.labelsInput.View())
+	s.WriteString(fieldStyle(m.titleInput.View()))
+	s.WriteString("\n\n")
+	s.WriteString(labelStyle("Labels"))
 	s.WriteString("\n")
-	s.WriteString(m.descriptionInput.View())
+	s.WriteString(fieldStyle(m.labelsInput.View()))
+	s.WriteString("\n\n")
+	s.WriteString(labelStyle("Description"))
 	s.WriteString("\n")
-	var style lipgloss.Style
+	s.WriteString(fieldStyle(m.descriptionInput.View()))
+	s.WriteString("\n\n")
+	var confirmationStyle lipgloss.Style
 	if focus == "confirmation" {
-		style = lipgloss.NewStyle().Foreground(styles.Theme.PrimaryText).Background(styles.Theme.SelectedBackground)
+		confirmationStyle = lipgloss.NewStyle().Foreground(styles.Theme.PrimaryText).Background(styles.Theme.SelectedBackground)
 	} else {
-		style = lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText)
+		confirmationStyle = lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText)
 	}
 
-	s.WriteString(style.Render("Save"))
+	s.WriteString(confirmationStyle.Render("Save"))
 
 	return s.String()
 }
@@ -2045,14 +2052,14 @@ func (m issueFormModel) View(focus string, editing bool) string {
 func (m *issueFormModel) SetTitle(title string) {
 	m.titleInput = textinput.New()
 	m.titleInput.CharLimit = 120
-	m.titleInput.Width = 80
+	m.titleInput.Width = 30
 	m.titleInput.SetValue(title)
 }
 
 func (m *issueFormModel) SetLabels(labels []string) {
 	m.labelsInput = textinput.New()
 	m.labelsInput.CharLimit = 100
-	m.labelsInput.Width = 80
+	m.labelsInput.Width = 30
 	m.labelsInput.SetValue(strings.Join(labels, " "))
 }
 
@@ -2062,7 +2069,7 @@ func (m *issueFormModel) SetDescription(description string) {
 	m.descriptionInput.MaxHeight = 0 // unlimited
 	m.descriptionInput.ShowLineNumbers = false
 	m.descriptionInput.SetHeight(30)
-	m.descriptionInput.SetWidth(80)
+	m.descriptionInput.SetWidth(30)
 	m.descriptionInput.SetValue(description)
 }
 
