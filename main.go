@@ -140,9 +140,11 @@ const (
 	issuesCommentContentPath      string = "/issues/show/comments/new/content"
 	issuesCommentConfirmationPath string = "/issues/show/comments/new/confirmation"
 	issuesEditTitlePath           string = "/issues/edit/title"
+	issuesEditLabelsPath          string = "/issues/edit/labels"
 	issuesEditDescriptionPath     string = "/issues/edit/description"
 	issuesEditConfirmationPath    string = "/issues/edit/confirmation"
 	issuesNewTitlePath            string = "/issues/new/title"
+	issuesNewLabelsPath           string = "/issues/new/labels"
 	issuesNewDescriptionPath      string = "/issues/new/description"
 	issuesNewConfirmationPath     string = "/issues/new/confirmation"
 	checksIndexPath               string = "/checks/index"
@@ -538,12 +540,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			currentIssue := m.issueIndex.SelectedItem().(Issue)
 			currentIssue.Title = msg.titleInput.Value()
 			currentIssue.Description = msg.descriptionInput.Value()
+			currentIssue.Labels = strings.Split(msg.labelsInput.Value(), " ")
 			cmd = persistIssue(currentIssue)
 		} else {
 			newIssue := Issue{
 				Shortcode:   "xxxxxx",
 				Title:       msg.titleInput.Value(),
 				Description: msg.descriptionInput.Value(),
+				Labels:      strings.Split(msg.labelsInput.Value(), " "),
 				Status:      todo,
 				Author:      "garrett@blvrd.co",
 			}
@@ -664,7 +668,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.path = issuesShowPath
 			case key.Matches(msg, keys.IssueNewForm):
 				m.issueForm = issueFormModel{editing: false}
-				m.issueForm.Init("", "")
+				m.issueForm.Init("", "", []string{})
 				cmd = m.issueForm.titleInput.Focus()
 				m.path = issuesNewTitlePath
 			case key.Matches(msg, keys.IssueDelete):
@@ -738,7 +742,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.IssueEditForm):
 				selectedIssue := m.issueIndex.SelectedItem().(Issue)
 				m.issueForm = issueFormModel{editing: true, identifier: selectedIssue.Shortcode}
-				cmd = m.issueForm.Init(selectedIssue.Title, selectedIssue.Description)
+				cmd = m.issueForm.Init(selectedIssue.Title, selectedIssue.Description, selectedIssue.Labels)
 
 				m.path = issuesEditTitlePath
 				return m, cmd
@@ -800,14 +804,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, cmd
 				}
 			case key.Matches(msg, keys.NextInput):
-				m.path = issuesEditDescriptionPath
+				m.path = issuesEditLabelsPath
 				m.issueForm.titleInput.Blur()
-				cmd = m.issueForm.descriptionInput.Focus()
+				cmd = m.issueForm.labelsInput.Focus()
 				return m, cmd
 			}
 		}
 
 		m.issueForm.titleInput, cmd = m.issueForm.titleInput.Update(msg)
+		return m, cmd
+	case matchRoute(m.path, issuesEditLabelsPath):
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Back):
+				if m.issueForm.editing {
+					m.path = issuesShowPath
+					return m, cmd
+				} else {
+					m.path = issuesIndexPath
+					return m, cmd
+				}
+			case key.Matches(msg, keys.NextInput):
+				m.path = issuesEditDescriptionPath
+				m.issueForm.labelsInput.Blur()
+				m.issueForm.descriptionInput.Focus()
+				return m, cmd
+			}
+		}
+
+		m.issueForm.labelsInput, cmd = m.issueForm.labelsInput.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, issuesEditDescriptionPath):
 		switch msg := msg.(type) {
@@ -866,14 +892,36 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					return m, cmd
 				}
 			case key.Matches(msg, keys.NextInput):
-				m.path = issuesNewDescriptionPath
+				m.path = issuesNewLabelsPath
 				m.issueForm.titleInput.Blur()
-				cmd = m.issueForm.descriptionInput.Focus()
+				cmd = m.issueForm.labelsInput.Focus()
 				return m, cmd
 			}
 		}
 
 		m.issueForm.titleInput, cmd = m.issueForm.titleInput.Update(msg)
+		return m, cmd
+	case matchRoute(m.path, issuesNewLabelsPath):
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch {
+			case key.Matches(msg, keys.Back):
+				if m.issueForm.editing {
+					m.path = issuesShowPath
+					return m, cmd
+				} else {
+					m.path = issuesIndexPath
+					return m, cmd
+				}
+			case key.Matches(msg, keys.NextInput):
+				m.path = issuesNewDescriptionPath
+				m.issueForm.labelsInput.Blur()
+				m.issueForm.descriptionInput.Focus()
+				return m, cmd
+			}
+		}
+
+		m.issueForm.labelsInput, cmd = m.issueForm.labelsInput.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, issuesNewDescriptionPath):
 		switch msg := msg.(type) {
@@ -1353,6 +1401,24 @@ func (m Model) View() string {
 				),
 				boxStyle(m.FooterSize).Render(help),
 			)
+		case matchRoute(m.path, issuesEditLabelsPath):
+			style := lipgloss.NewStyle()
+
+			sidebarView = style.
+				Render(m.issueForm.View("labels", true))
+
+			view = lipgloss.JoinVertical(
+				lipgloss.Left,
+				boxStyle(m.HeaderSize).Render(
+					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+				),
+				lipgloss.JoinHorizontal(
+					lipgloss.Top,
+					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
+					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
+				),
+				boxStyle(m.FooterSize).Render(help),
+			)
 		case matchRoute(m.path, issuesEditDescriptionPath):
 			style := lipgloss.NewStyle()
 
@@ -1394,6 +1460,24 @@ func (m Model) View() string {
 
 			sidebarView = style.
 				Render(m.issueForm.View("title", false))
+
+			view = lipgloss.JoinVertical(
+				lipgloss.Left,
+				boxStyle(m.HeaderSize).Render(
+					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
+				),
+				lipgloss.JoinHorizontal(
+					lipgloss.Top,
+					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
+					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
+				),
+				boxStyle(m.FooterSize).Render(help),
+			)
+		case matchRoute(m.path, issuesNewLabelsPath):
+			style := lipgloss.NewStyle()
+
+			sidebarView = style.
+				Render(m.issueForm.View("labels", false))
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -1906,6 +1990,7 @@ func (m issueShowModel) View() string {
 
 type issueFormModel struct {
 	titleInput       textinput.Model
+	labelsInput      textinput.Model
 	descriptionInput textarea.Model
 	identifier       string
 	editing          bool
@@ -1915,9 +2000,10 @@ func (m issueFormModel) Submit() tea.Msg {
 	return m
 }
 
-func (m *issueFormModel) Init(title, description string) tea.Cmd {
+func (m *issueFormModel) Init(title, description string, labels []string) tea.Cmd {
 	m.SetTitle(title)
 	m.SetDescription(description)
+	m.SetLabels(labels)
 	return m.titleInput.Focus()
 }
 
@@ -1938,6 +2024,9 @@ func (m issueFormModel) View(focus string, editing bool) string {
 
 	s.WriteString(m.titleInput.View())
 	s.WriteString("\n")
+	s.WriteString("Labels: ")
+	s.WriteString(m.labelsInput.View())
+	s.WriteString("\n")
 	s.WriteString(m.descriptionInput.View())
 	s.WriteString("\n")
 	var style lipgloss.Style
@@ -1957,6 +2046,13 @@ func (m *issueFormModel) SetTitle(title string) {
 	m.titleInput.CharLimit = 120
 	m.titleInput.Width = 80
 	m.titleInput.SetValue(title)
+}
+
+func (m *issueFormModel) SetLabels(labels []string) {
+	m.labelsInput = textinput.New()
+	m.labelsInput.CharLimit = 100
+	m.labelsInput.Width = 80
+	m.labelsInput.SetValue(strings.Join(labels, " "))
 }
 
 func (m *issueFormModel) SetDescription(description string) {
