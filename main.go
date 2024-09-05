@@ -2132,6 +2132,7 @@ func main() {
 				os.Exit(1)
 			}
 		}
+		m.msgDump = dump
 		var err error
 		logFile, err = setupLogging()
 		if err != nil {
@@ -2141,7 +2142,6 @@ func main() {
 		defer logFile.Close()
 	}
 
-	m.msgDump = dump
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithReportFocus())
 	_, err := p.Run()
 	if err != nil {
