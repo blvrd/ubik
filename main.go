@@ -22,7 +22,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/google/uuid"
 	bl "github.com/winder/bubblelayout"
 )
@@ -482,7 +481,7 @@ type layoutMsg Layout
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.msgDump != nil {
-		spew.Fdump(m.msgDump, msg)
+		fmt.Fprintf(m.msgDump, "%T\n", msg)
 	}
 	var cmd tea.Cmd
 
