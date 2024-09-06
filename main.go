@@ -1416,7 +1416,7 @@ func (m Model) View() string {
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
-				Render(m.issueForm.View("title", true))
+				Render(m.issueFormView())
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -1434,7 +1434,7 @@ func (m Model) View() string {
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
-				Render(m.issueForm.View("labels", true))
+				Render(m.issueFormView())
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -1452,7 +1452,7 @@ func (m Model) View() string {
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
-				Render(m.issueForm.View("description", true))
+				Render(m.issueFormView())
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -1470,7 +1470,7 @@ func (m Model) View() string {
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
-				Render(m.issueForm.View("confirmation", true))
+				Render(m.issueFormView())
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -1488,7 +1488,7 @@ func (m Model) View() string {
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
-				Render(m.issueForm.View("title", false))
+				Render(m.issueFormView())
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -1506,7 +1506,7 @@ func (m Model) View() string {
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
-				Render(m.issueForm.View("labels", false))
+				Render(m.issueFormView())
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -1524,7 +1524,7 @@ func (m Model) View() string {
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
-				Render(m.issueForm.View("description", false))
+				Render(m.issueFormView())
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -1542,7 +1542,7 @@ func (m Model) View() string {
 			style := lipgloss.NewStyle()
 
 			sidebarView = style.
-				Render(m.issueForm.View("confirmation", false))
+				Render(m.issueFormView())
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -2038,14 +2038,16 @@ func (m issueForm) Update(msg tea.Msg) (issueForm, tea.Cmd) {
 	return m, nil
 }
 
-func (m issueForm) View(focus string, editing bool) string {
+func (m Model) issueFormView() string {
 	var s strings.Builder
 
-	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", m.identifier))
+	form := m.issueForm
+
+	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", form.identifier))
 	labelStyle := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render
 	fieldStyle := lipgloss.NewStyle().Foreground(styles.Theme.PrimaryText).Render
 
-	if editing {
+	if m.issueForm.editing {
 		s.WriteString(fmt.Sprintf("Editing issue %s\n\n", identifier))
 	} else {
 		s.WriteString("New issue\n\n")
@@ -2053,18 +2055,18 @@ func (m issueForm) View(focus string, editing bool) string {
 
 	s.WriteString(labelStyle("Title"))
 	s.WriteString("\n")
-	s.WriteString(fieldStyle(m.titleInput.View()))
+	s.WriteString(fieldStyle(form.titleInput.View()))
 	s.WriteString("\n\n")
 	s.WriteString(labelStyle("Labels"))
 	s.WriteString("\n")
-	s.WriteString(fieldStyle(m.labelsInput.View()))
+	s.WriteString(fieldStyle(form.labelsInput.View()))
 	s.WriteString("\n\n")
 	s.WriteString(labelStyle("Description"))
 	s.WriteString("\n")
-	s.WriteString(fieldStyle(m.descriptionInput.View()))
+	s.WriteString(fieldStyle(form.descriptionInput.View()))
 	s.WriteString("\n\n")
 	var confirmationStyle lipgloss.Style
-	if focus == "confirmation" {
+	if matchRoute(m.path, issuesEditConfirmationPath) || matchRoute(m.path, issuesNewConfirmationPath) {
 		confirmationStyle = lipgloss.NewStyle().Foreground(styles.Theme.PrimaryText).Background(styles.Theme.SelectedBackground)
 	} else {
 		confirmationStyle = lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText)
