@@ -1044,7 +1044,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Batch(cmds...)
 			case key.Matches(msg, keys.CommitDetailFocus):
 				m.commitShow = commitShow{commit: m.commitIndex.SelectedItem().(Commit), viewport: m.NewContentViewport()}
-				m.commitShow.Init(m)
+				m.initCommitShow()
 				m.path = checksShowPath
 				return m, cmd
 			case key.Matches(msg, keys.NextPage):
@@ -1088,7 +1088,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
 				m.commitShow = commitShow{commit: commit, viewport: m.NewContentViewport()}
-				m.commitShow.Init(m)
+				m.initCommitShow()
 				return m, tea.Batch(cmds...)
 			case key.Matches(msg, keys.CommitExpandCheckDetails):
 				commit := m.commitIndex.SelectedItem().(Commit)
@@ -1099,7 +1099,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					expand = true
 				}
 				m.commitShow = commitShow{commit: commit, viewport: m.NewContentViewport(), expandCheckDetails: expand}
-				m.commitShow.Init(m)
+				m.initCommitShow()
 			}
 		case checkResult:
 			return m, persistCheck(Check(msg))
@@ -1125,7 +1125,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			commit.LatestChecks = updatedChecks
 			m.commitIndex.SetItem(commitIndex, commit)
 			m.commitShow = commitShow{commit: commit, viewport: m.NewContentViewport()}
-			m.commitShow.Init(m)
+			m.initCommitShow()
 		}
 
 		m.commitShow.viewport, cmd = m.commitShow.viewport.Update(msg)
@@ -1938,20 +1938,20 @@ type commitShow struct {
 	expandCheckDetails bool
 }
 
-func (m *commitShow) Init(ctx Model) tea.Cmd {
+func (m *Model) initCommitShow() tea.Cmd {
 	var s strings.Builder
 
-	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.commit.AbbreviatedId))
-	header := fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, m.commit.Description, m.commit.AggregateCheckStatus().PrettyString())
+	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.commitShow.commit.AbbreviatedId))
+	header := fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, m.commitShow.commit.Description, m.commitShow.commit.AggregateCheckStatus().PrettyString())
 	s.WriteString(lipgloss.NewStyle().Render(header))
 	s.WriteString("\n")
 
-	for _, check := range m.commit.LatestChecks {
+	for _, check := range m.commitShow.commit.LatestChecks {
 		s.WriteString(fmt.Sprintf("\n%s %s", check.Status.Icon(), check.Name))
 		if check.Optional {
 			s.WriteString(lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(" (optional)"))
 		}
-		if m.expandCheckDetails {
+		if m.commitShow.expandCheckDetails {
 			s.WriteString(
 				lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(
 					fmt.Sprintf(" finished in %s\n\n", check.ElapsedTime()),
@@ -1961,7 +1961,7 @@ func (m *commitShow) Init(ctx Model) tea.Cmd {
 		}
 	}
 
-	m.viewport.SetContent(s.String())
+	m.commitShow.viewport.SetContent(s.String())
 	return nil
 }
 
