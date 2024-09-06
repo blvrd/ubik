@@ -1043,7 +1043,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
 				return m, tea.Batch(cmds...)
 			case key.Matches(msg, keys.CommitDetailFocus):
-				m.commitShow = commitShow{commit: m.commitIndex.SelectedItem().(Commit)}
+				m.commitShow = commitShow{commit: m.commitIndex.SelectedItem().(Commit), viewport: m.NewContentViewport()}
 				m.commitShow.Init(m)
 				m.path = checksShowPath
 				return m, cmd
@@ -1087,7 +1087,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmds = append(cmds, RunCheck(check))
 				}
 				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
-				m.commitShow = commitShow{commit: commit}
+				m.commitShow = commitShow{commit: commit, viewport: m.NewContentViewport()}
 				m.commitShow.Init(m)
 				return m, tea.Batch(cmds...)
 			case key.Matches(msg, keys.CommitExpandCheckDetails):
@@ -1098,7 +1098,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					expand = true
 				}
-				m.commitShow = commitShow{commit: commit, expandCheckDetails: expand}
+				m.commitShow = commitShow{commit: commit, viewport: m.NewContentViewport(), expandCheckDetails: expand}
 				m.commitShow.Init(m)
 			}
 		case checkResult:
@@ -1124,7 +1124,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			commit.LatestChecks = updatedChecks
 			m.commitIndex.SetItem(commitIndex, commit)
-			m.commitShow = commitShow{commit: commit}
+			m.commitShow = commitShow{commit: commit, viewport: m.NewContentViewport()}
 			m.commitShow.Init(m)
 		}
 
@@ -1583,7 +1583,7 @@ func (m Model) View() string {
 			)
 		case matchRoute(m.path, checksShowPath):
 			commitDetailView := lipgloss.NewStyle().
-				Render(m.commitShow.View())
+				Render(m.commitShowView())
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
 				boxStyle(m.HeaderSize).Render(
@@ -1946,7 +1946,6 @@ func (m *commitShow) Init(ctx Model) tea.Cmd {
 	s.WriteString(lipgloss.NewStyle().Render(header))
 	s.WriteString("\n")
 
-	m.viewport = viewport.New(ctx.Layout.RightSize.Width-2, ctx.Layout.RightSize.Height-2)
 	for _, check := range m.commit.LatestChecks {
 		s.WriteString(fmt.Sprintf("\n%s %s", check.Status.Icon(), check.Name))
 		if check.Optional {
@@ -1970,9 +1969,9 @@ func (m commitShow) Update(msg tea.Msg) (commitShow, tea.Cmd) {
 	return m, nil
 }
 
-func (m commitShow) View() string {
+func (m Model) commitShowView() string {
 	var s strings.Builder
-	s.WriteString(m.viewport.View())
+	s.WriteString(m.commitShow.viewport.View())
 	return s.String()
 }
 
