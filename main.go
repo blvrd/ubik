@@ -1358,7 +1358,7 @@ func (m Model) View() string {
 			)
 		case matchRoute(m.path, issuesShowPath):
 			sidebarView = lipgloss.NewStyle().
-				Render(m.issueShow.View())
+				Render(m.issueShowView())
 
 			view = lipgloss.JoinVertical(
 				lipgloss.Left,
@@ -1376,7 +1376,7 @@ func (m Model) View() string {
 			sidebarView = lipgloss.NewStyle().
 				Render(lipgloss.JoinVertical(
 					lipgloss.Left,
-					m.issueShow.View(),
+					m.issueShowView(),
 					m.issueShow.commentForm.View("content"),
 				))
 
@@ -1396,7 +1396,7 @@ func (m Model) View() string {
 			sidebarView = lipgloss.NewStyle().
 				Render(lipgloss.JoinVertical(
 					lipgloss.Left,
-					m.issueShow.View(),
+					m.issueShowView(),
 					m.issueShow.commentForm.View("confirmation"),
 				))
 
@@ -2019,12 +2019,8 @@ func (m *issueShowModel) Init(ctx Model) tea.Cmd {
 	return nil
 }
 
-func (m issueShowModel) Update(msg tea.Msg) (issueShowModel, tea.Cmd) {
-	return m, nil
-}
-
-func (m issueShowModel) View() string {
-	return m.viewport.View()
+func (m Model) issueShowView() string {
+	return m.issueShow.viewport.View()
 }
 
 func (m *issueForm) Init(title, description string, labels []string) tea.Cmd {
