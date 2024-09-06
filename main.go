@@ -394,7 +394,7 @@ type Model struct {
 	issueIndex  list.Model
 	issueShow   issueShow
 	issueForm   issueForm
-	commentForm commentFormModel
+	commentForm commentForm
 	commitIndex list.Model
 	commitShow  commitShowModel
 	err         error
@@ -574,7 +574,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.issueIndex.SetSize(m.LeftSize.Width, m.LeftSize.Height)
 		m.commitIndex.SetSize(m.LeftSize.Width, m.LeftSize.Height)
-	case commentFormModel:
+	case commentForm:
 		currentIssue := m.issueIndex.SelectedItem().(Issue)
 		currentIssue.Comments = append(currentIssue.Comments, Comment{
 			Author:  "garrett@blvrd.co",
@@ -616,7 +616,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			})
 			m.issueIndex.SetItems(items)
 			m.issueIndex.Select(listIndexToFocus)
-			m.commentForm = m.NewCommentFormModel()
+			m.commentForm = m.newCommentForm()
 			m.issueShow = issueShow{issue: msg.Issue, viewport: m.NewContentViewport()}
 			m.InitIssueShow()
 			if msg.ScrollToBottom {
@@ -682,15 +682,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = persistIssue(currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueCommentFormFocus):
-				m.commentForm = m.NewCommentFormModel()
-				m.commentForm.Init()
+				m.commentForm = m.newCommentForm()
+				cmd = m.commentForm.Init()
 				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
 				m.InitIssueShow()
 				m.issueShow.viewport.GotoBottom()
 				m.path = issuesCommentContentPath
+				return m, cmd
 			case key.Matches(msg, keys.IssueDetailFocus):
-				m.commentForm = m.NewCommentFormModel()
-				m.commentForm.Init()
+				m.commentForm = m.newCommentForm()
 				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
 				m.InitIssueShow()
 				m.path = issuesShowPath
@@ -735,8 +735,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					currentIssue.Status = todo
 				}
-				m.commentForm = m.NewCommentFormModel()
-				m.commentForm.Init()
+				m.commentForm = m.newCommentForm()
 				m.issueShow = issueShow{issue: currentIssue, viewport: m.NewContentViewport()}
 				m.InitIssueShow()
 				cmd = persistIssue(currentIssue)
@@ -748,8 +747,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					currentIssue.Status = wontDo
 				}
-				m.commentForm = m.NewCommentFormModel()
-				m.commentForm.Init()
+				m.commentForm = m.newCommentForm()
 				m.issueShow = issueShow{issue: currentIssue, viewport: m.NewContentViewport()}
 				m.InitIssueShow()
 				cmd = persistIssue(currentIssue)
@@ -761,8 +759,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					currentIssue.Status = inProgress
 				}
-				m.commentForm = m.NewCommentFormModel()
-				m.commentForm.Init()
+				m.commentForm = m.newCommentForm()
 				m.issueShow = issueShow{issue: currentIssue, viewport: m.NewContentViewport()}
 				m.InitIssueShow()
 				cmd = persistIssue(currentIssue)
@@ -777,12 +774,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.Back):
 				m.path = issuesIndexPath
 			case key.Matches(msg, keys.IssueCommentFormFocus):
-				m.commentForm = m.NewCommentFormModel()
-				m.commentForm.Init()
+				m.commentForm = m.newCommentForm()
+				cmd = m.commentForm.Init()
 				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
 				m.InitIssueShow()
 				m.issueShow.viewport.GotoBottom()
 				m.path = issuesCommentContentPath
+				return m, cmd
 			}
 		}
 
@@ -794,12 +792,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, keys.Back):
 				currentIssue := m.issueIndex.SelectedItem().(Issue)
-				m.commentForm = m.NewCommentFormModel()
+				m.commentForm = m.newCommentForm()
 				m.issueShow = issueShow{issue: currentIssue, viewport: m.NewContentViewport()}
 				m.InitIssueShow()
 				m.path = issuesShowPath
 			case key.Matches(msg, keys.NextInput):
 				m.commentForm.contentInput.Blur()
+				m.commentForm.confirming = true
 				m.path = issuesCommentConfirmationPath
 			}
 		}
@@ -811,7 +810,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, keys.Back):
 				currentIssue := m.issueIndex.SelectedItem().(Issue)
-				m.commentForm = m.NewCommentFormModel()
+				m.commentForm = m.newCommentForm()
 				m.issueShow = issueShow{issue: currentIssue, viewport: m.NewContentViewport()}
 				m.InitIssueShow()
 				m.path = issuesShowPath
@@ -1378,7 +1377,7 @@ func (m Model) View() string {
 				Render(lipgloss.JoinVertical(
 					lipgloss.Left,
 					m.issueShowView(),
-					m.commentForm.View("content"),
+					m.commentFormView(),
 				))
 
 			view = lipgloss.JoinVertical(
@@ -1398,7 +1397,7 @@ func (m Model) View() string {
 				Render(lipgloss.JoinVertical(
 					lipgloss.Left,
 					m.issueShowView(),
-					m.commentForm.View("confirmation"),
+					m.commentFormView(),
 				))
 
 			view = lipgloss.JoinVertical(
@@ -1985,7 +1984,7 @@ type issueShow struct {
 func (m Model) NewContentViewport() viewport.Model {
 	return viewport.New(
 		m.Layout.RightSize.Width-2,
-		m.Layout.RightSize.Height-len(strings.Split(m.commentForm.View("content"), "\n"))-3,
+		m.Layout.RightSize.Height-len(strings.Split(m.commentFormView(), "\n"))-3,
 	)
 }
 
@@ -2097,11 +2096,12 @@ func (m *issueForm) SetDescription(description string) {
 	m.descriptionInput.SetValue(description)
 }
 
-type commentFormModel struct {
+type commentForm struct {
 	contentInput textarea.Model
+	confirming   bool
 }
 
-func (m Model) NewCommentFormModel() commentFormModel {
+func (m Model) newCommentForm() commentForm {
 	t := textarea.New()
 	t.ShowLineNumbers = false
 	t.Prompt = "┃"
@@ -2110,31 +2110,31 @@ func (m Model) NewCommentFormModel() commentFormModel {
 	t.SetWidth(75)
 	t.Focus()
 
-	return commentFormModel{
+	return commentForm{
 		contentInput: t,
 	}
 }
 
-func (m commentFormModel) Submit() tea.Msg {
+func (m commentForm) Submit() tea.Msg {
 	return m
 }
 
-func (m commentFormModel) Init() tea.Cmd {
+func (m commentForm) Init() tea.Cmd {
 	return textarea.Blink
 }
 
-func (m commentFormModel) Update(msg tea.Msg) (commentFormModel, tea.Cmd) {
+func (m commentForm) Update(msg tea.Msg) (commentForm, tea.Cmd) {
 	return m, nil
 }
 
-func (m commentFormModel) View(focus string) string {
+func (m Model) commentFormView() string {
 	var s strings.Builder
-	s.WriteString(m.contentInput.View())
+	s.WriteString(m.commentForm.contentInput.View())
 	s.WriteString("\n")
-	if focus == "content" {
-		s.WriteString(lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render("Save"))
-	} else {
+	if m.commentForm.confirming {
 		s.WriteString(lipgloss.NewStyle().Foreground(styles.Theme.PrimaryText).Background(styles.Theme.SelectedBackground).Render("Save"))
+	} else {
+		s.WriteString(lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render("Save"))
 	}
 	return s.String()
 }
