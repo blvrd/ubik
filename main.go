@@ -394,6 +394,7 @@ type Model struct {
 	issueIndex  list.Model
 	issueShow   issueShow
 	issueForm   issueForm
+	commentForm commentFormModel
 	commitIndex list.Model
 	commitShow  commitShowModel
 	err         error
@@ -615,8 +616,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			})
 			m.issueIndex.SetItems(items)
 			m.issueIndex.Select(listIndexToFocus)
-			m.issueShow = issueShow{issue: msg.Issue}
-			m.issueShow.commentForm = NewCommentFormModel()
+			m.commentForm = m.NewCommentFormModel()
+			m.issueShow = issueShow{issue: msg.Issue, viewport: m.NewContentViewport()}
 			m.InitIssueShow()
 			if msg.ScrollToBottom {
 				m.issueShow.viewport.GotoBottom()
@@ -681,17 +682,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = persistIssue(currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueCommentFormFocus):
-				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue)}
-				m.issueShow.commentForm = NewCommentFormModel()
-				m.issueShow.commentForm.Init()
-				m.issueShow.Init(m)
+				m.commentForm = m.NewCommentFormModel()
+				m.commentForm.Init()
+				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
+				m.InitIssueShow()
 				m.issueShow.viewport.GotoBottom()
 				m.path = issuesCommentContentPath
 			case key.Matches(msg, keys.IssueDetailFocus):
-				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue)}
-				m.issueShow.commentForm = NewCommentFormModel()
-				m.issueShow.commentForm.Init()
-				m.issueShow.Init(m)
+				m.commentForm = m.NewCommentFormModel()
+				m.commentForm.Init()
+				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
+				m.InitIssueShow()
 				m.path = issuesShowPath
 			case key.Matches(msg, keys.IssueNewForm):
 				m.issueForm = issueForm{editing: false}
@@ -734,10 +735,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					currentIssue.Status = todo
 				}
-				m.issueShow = issueShow{issue: currentIssue}
-				m.issueShow.commentForm = NewCommentFormModel()
-				m.issueShow.commentForm.Init()
-				m.issueShow.Init(m)
+				m.commentForm = m.NewCommentFormModel()
+				m.commentForm.Init()
+				m.issueShow = issueShow{issue: currentIssue, viewport: m.NewContentViewport()}
+				m.InitIssueShow()
 				cmd = persistIssue(currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueStatusWontDo):
@@ -747,10 +748,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					currentIssue.Status = wontDo
 				}
-				m.issueShow = issueShow{issue: currentIssue}
-				m.issueShow.commentForm = NewCommentFormModel()
-				m.issueShow.commentForm.Init()
-				m.issueShow.Init(m)
+				m.commentForm = m.NewCommentFormModel()
+				m.commentForm.Init()
+				m.issueShow = issueShow{issue: currentIssue, viewport: m.NewContentViewport()}
+				m.InitIssueShow()
 				cmd = persistIssue(currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueStatusInProgress):
@@ -760,10 +761,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					currentIssue.Status = inProgress
 				}
-				m.issueShow = issueShow{issue: currentIssue}
-				m.issueShow.commentForm = NewCommentFormModel()
-				m.issueShow.commentForm.Init()
-				m.issueShow.Init(m)
+				m.commentForm = m.NewCommentFormModel()
+				m.commentForm.Init()
+				m.issueShow = issueShow{issue: currentIssue, viewport: m.NewContentViewport()}
+				m.InitIssueShow()
 				cmd = persistIssue(currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueEditForm):
@@ -776,10 +777,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.Back):
 				m.path = issuesIndexPath
 			case key.Matches(msg, keys.IssueCommentFormFocus):
-				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue)}
-				m.issueShow.commentForm = NewCommentFormModel()
-				m.issueShow.commentForm.Init()
-				m.issueShow.Init(m)
+				m.commentForm = m.NewCommentFormModel()
+				m.commentForm.Init()
+				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
+				m.InitIssueShow()
 				m.issueShow.viewport.GotoBottom()
 				m.path = issuesCommentContentPath
 			}
@@ -793,16 +794,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, keys.Back):
 				currentIssue := m.issueIndex.SelectedItem().(Issue)
-				m.issueShow = issueShow{issue: currentIssue}
-				m.issueShow.commentForm = NewCommentFormModel()
-				m.issueShow.Init(m)
+				m.commentForm = m.NewCommentFormModel()
+				m.issueShow = issueShow{issue: currentIssue, viewport: m.NewContentViewport()}
+				m.InitIssueShow()
 				m.path = issuesShowPath
 			case key.Matches(msg, keys.NextInput):
-				m.issueShow.commentForm.contentInput.Blur()
+				m.commentForm.contentInput.Blur()
 				m.path = issuesCommentConfirmationPath
 			}
 		}
-		m.issueShow.commentForm.contentInput, cmd = m.issueShow.commentForm.contentInput.Update(msg)
+		m.commentForm.contentInput, cmd = m.commentForm.contentInput.Update(msg)
 		return m, cmd
 	case matchRoute(m.path, issuesCommentConfirmationPath):
 		switch msg := msg.(type) {
@@ -810,12 +811,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, keys.Back):
 				currentIssue := m.issueIndex.SelectedItem().(Issue)
-				m.issueShow = issueShow{issue: currentIssue}
-				m.issueShow.commentForm = NewCommentFormModel()
-				m.issueShow.Init(m)
+				m.commentForm = m.NewCommentFormModel()
+				m.issueShow = issueShow{issue: currentIssue, viewport: m.NewContentViewport()}
+				m.InitIssueShow()
 				m.path = issuesShowPath
 			case key.Matches(msg, keys.Submit):
-				return m, m.issueShow.commentForm.Submit
+				return m, m.commentForm.Submit
 			}
 		}
 	case matchRoute(m.path, issuesEditTitlePath):
@@ -1377,7 +1378,7 @@ func (m Model) View() string {
 				Render(lipgloss.JoinVertical(
 					lipgloss.Left,
 					m.issueShowView(),
-					m.issueShow.commentForm.View("content"),
+					m.commentForm.View("content"),
 				))
 
 			view = lipgloss.JoinVertical(
@@ -1397,7 +1398,7 @@ func (m Model) View() string {
 				Render(lipgloss.JoinVertical(
 					lipgloss.Left,
 					m.issueShowView(),
-					m.issueShow.commentForm.View("confirmation"),
+					m.commentForm.View("confirmation"),
 				))
 
 			view = lipgloss.JoinVertical(
@@ -1977,16 +1978,18 @@ func (m commitShowModel) View() string {
 }
 
 type issueShow struct {
-	issue       Issue
-	viewport    viewport.Model
-	commentForm commentFormModel
+	issue    Issue
+	viewport viewport.Model
+}
+
+func (m Model) NewContentViewport() viewport.Model {
+	return viewport.New(
+		m.Layout.RightSize.Width-2,
+		m.Layout.RightSize.Height-len(strings.Split(m.commentForm.View("content"), "\n"))-3,
+	)
 }
 
 func (m *Model) InitIssueShow() {
-	m.issueShow.viewport = viewport.New(
-		m.Layout.RightSize.Width-2,
-		m.Layout.RightSize.Height-len(strings.Split(m.issueShow.commentForm.View("content"), "\n"))-3,
-	)
 	var s strings.Builder
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", m.issueShow.issue.Shortcode))
 	labels := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("%s", strings.Join(m.issueShow.issue.Labels, ",")))
@@ -2098,7 +2101,7 @@ type commentFormModel struct {
 	contentInput textarea.Model
 }
 
-func NewCommentFormModel() commentFormModel {
+func (m Model) NewCommentFormModel() commentFormModel {
 	t := textarea.New()
 	t.ShowLineNumbers = false
 	t.Prompt = "┃"
