@@ -1984,7 +1984,7 @@ type issueShow struct {
 func (m Model) NewContentViewport() viewport.Model {
 	return viewport.New(
 		m.Layout.RightSize.Width-2,
-		m.Layout.RightSize.Height-len(strings.Split(m.commentFormView(), "\n"))-3,
+		m.Layout.RightSize.Height-2,
 	)
 }
 
