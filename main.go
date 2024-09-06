@@ -1965,10 +1965,6 @@ func (m *Model) initCommitShow() tea.Cmd {
 	return nil
 }
 
-func (m commitShow) Update(msg tea.Msg) (commitShow, tea.Cmd) {
-	return m, nil
-}
-
 func (m Model) commitShowView() string {
 	var s strings.Builder
 	s.WriteString(m.commitShow.viewport.View())
