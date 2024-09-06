@@ -396,7 +396,7 @@ type Model struct {
 	issueForm   issueForm
 	commentForm commentForm
 	commitIndex list.Model
-	commitShow  commitShowModel
+	commitShow  commitShow
 	err         error
 	help        help.Model
 	styles      Styles
@@ -1043,7 +1043,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
 				return m, tea.Batch(cmds...)
 			case key.Matches(msg, keys.CommitDetailFocus):
-				m.commitShow = commitShowModel{commit: m.commitIndex.SelectedItem().(Commit)}
+				m.commitShow = commitShow{commit: m.commitIndex.SelectedItem().(Commit)}
 				m.commitShow.Init(m)
 				m.path = checksShowPath
 				return m, cmd
@@ -1087,7 +1087,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					cmds = append(cmds, RunCheck(check))
 				}
 				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
-				m.commitShow = commitShowModel{commit: commit}
+				m.commitShow = commitShow{commit: commit}
 				m.commitShow.Init(m)
 				return m, tea.Batch(cmds...)
 			case key.Matches(msg, keys.CommitExpandCheckDetails):
@@ -1098,7 +1098,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					expand = true
 				}
-				m.commitShow = commitShowModel{commit: commit, expandCheckDetails: expand}
+				m.commitShow = commitShow{commit: commit, expandCheckDetails: expand}
 				m.commitShow.Init(m)
 			}
 		case checkResult:
@@ -1124,7 +1124,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			commit.LatestChecks = updatedChecks
 			m.commitIndex.SetItem(commitIndex, commit)
-			m.commitShow = commitShowModel{commit: commit}
+			m.commitShow = commitShow{commit: commit}
 			m.commitShow.Init(m)
 		}
 
@@ -1932,13 +1932,13 @@ func SortIssues(issues []Issue) []Issue {
 	return append(openIssues, closedIssues...)
 }
 
-type commitShowModel struct {
+type commitShow struct {
 	commit             Commit
 	viewport           viewport.Model
 	expandCheckDetails bool
 }
 
-func (m *commitShowModel) Init(ctx Model) tea.Cmd {
+func (m *commitShow) Init(ctx Model) tea.Cmd {
 	var s strings.Builder
 
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", m.commit.AbbreviatedId))
@@ -1966,11 +1966,11 @@ func (m *commitShowModel) Init(ctx Model) tea.Cmd {
 	return nil
 }
 
-func (m commitShowModel) Update(msg tea.Msg) (commitShowModel, tea.Cmd) {
+func (m commitShow) Update(msg tea.Msg) (commitShow, tea.Cmd) {
 	return m, nil
 }
 
-func (m commitShowModel) View() string {
+func (m commitShow) View() string {
 	var s strings.Builder
 	s.WriteString(m.viewport.View())
 	return s.String()
