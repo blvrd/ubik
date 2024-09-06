@@ -1314,293 +1314,74 @@ func boxStyle(size bl.Size) lipgloss.Style {
 	return style
 }
 
+func (m Model) renderTabs(activeTab string) string {
+	var renderedTabs []string
+	for _, t := range m.tabs {
+		style := inactiveTabStyle
+		if t == activeTab {
+			style = activeTabStyle
+		}
+		renderedTabs = append(renderedTabs, style.Render(t))
+	}
+	return lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...)
+}
+
+func (m Model) renderMainLayout(header, left, right, footer string) string {
+	if right == "" {
+		right = ""
+	} else {
+		right = boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(right)
+	}
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		boxStyle(m.HeaderSize).Render(header),
+		lipgloss.JoinHorizontal(
+			lipgloss.Top,
+			boxStyle(m.LeftSize).Render(left),
+			right,
+		),
+		boxStyle(m.FooterSize).Render(footer),
+	)
+}
+
+func (m Model) renderIssuesView() string {
+	left := m.issueIndex.View()
+	var right string
+	switch m.path {
+	case issuesShowPath:
+		right = m.issueShowView()
+	case issuesCommentContentPath, issuesCommentConfirmationPath:
+		right = lipgloss.JoinVertical(lipgloss.Left, m.issueShowView(), m.commentFormView())
+	case issuesEditTitlePath, issuesEditLabelsPath, issuesEditDescriptionPath, issuesEditConfirmationPath,
+		issuesNewTitlePath, issuesNewLabelsPath, issuesNewDescriptionPath, issuesNewConfirmationPath:
+		right = m.issueFormView()
+	}
+	return m.renderMainLayout(m.renderTabs("Issues"), left, right, m.help.View(m.HelpKeys()))
+}
+
+func (m Model) renderChecksView() string {
+	left := m.commitIndex.View()
+	var right string
+	if m.path == checksShowPath {
+		right = m.commitShowView()
+	}
+	return m.renderMainLayout(m.renderTabs("Checks"), left, right, m.help.View(m.HelpKeys()))
+}
+
 func (m Model) View() string {
 	if !m.loaded {
 		return "Loading..."
 	}
 
-	doc := strings.Builder{}
-
-	var renderedTabs []string
-
 	var view string
-
-	help := helpStyle.Render(m.help.View(m.HelpKeys()))
-
 	switch {
 	case strings.HasPrefix(m.path, "/issues"):
-		var sidebarView string
-
-		for _, t := range m.tabs {
-			var style lipgloss.Style
-			isActive := t == "Issues"
-			if isActive {
-				style = activeTabStyle
-			} else {
-				style = inactiveTabStyle
-			}
-			renderedTabs = append(renderedTabs, style.Render(t))
-		}
-
-		switch {
-		case matchRoute(m.path, issuesIndexPath):
-
-			view = lipgloss.JoinVertical(
-				lipgloss.Left,
-				boxStyle(m.HeaderSize).Render(
-					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-				),
-				lipgloss.JoinHorizontal(
-					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-				),
-				boxStyle(m.FooterSize).Render(help),
-			)
-		case matchRoute(m.path, issuesShowPath):
-			sidebarView = lipgloss.NewStyle().
-				Render(m.issueShowView())
-
-			view = lipgloss.JoinVertical(
-				lipgloss.Left,
-				boxStyle(m.HeaderSize).Render(
-					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-				),
-				lipgloss.JoinHorizontal(
-					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
-				),
-				boxStyle(m.FooterSize).Render(help),
-			)
-		case matchRoute(m.path, issuesCommentContentPath):
-			sidebarView = lipgloss.NewStyle().
-				Render(lipgloss.JoinVertical(
-					lipgloss.Left,
-					m.issueShowView(),
-					m.commentFormView(),
-				))
-
-			view = lipgloss.JoinVertical(
-				lipgloss.Left,
-				boxStyle(m.HeaderSize).Render(
-					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-				),
-				lipgloss.JoinHorizontal(
-					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
-				),
-				boxStyle(m.FooterSize).Render(help),
-			)
-		case matchRoute(m.path, issuesCommentConfirmationPath):
-			sidebarView = lipgloss.NewStyle().
-				Render(lipgloss.JoinVertical(
-					lipgloss.Left,
-					m.issueShowView(),
-					m.commentFormView(),
-				))
-
-			view = lipgloss.JoinVertical(
-				lipgloss.Left,
-				boxStyle(m.HeaderSize).Render(
-					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-				),
-				lipgloss.JoinHorizontal(
-					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
-				),
-				boxStyle(m.FooterSize).Render(help),
-			)
-		case matchRoute(m.path, issuesEditTitlePath):
-			style := lipgloss.NewStyle()
-
-			sidebarView = style.
-				Render(m.issueFormView())
-
-			view = lipgloss.JoinVertical(
-				lipgloss.Left,
-				boxStyle(m.HeaderSize).Render(
-					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-				),
-				lipgloss.JoinHorizontal(
-					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
-				),
-				boxStyle(m.FooterSize).Render(help),
-			)
-		case matchRoute(m.path, issuesEditLabelsPath):
-			style := lipgloss.NewStyle()
-
-			sidebarView = style.
-				Render(m.issueFormView())
-
-			view = lipgloss.JoinVertical(
-				lipgloss.Left,
-				boxStyle(m.HeaderSize).Render(
-					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-				),
-				lipgloss.JoinHorizontal(
-					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
-				),
-				boxStyle(m.FooterSize).Render(help),
-			)
-		case matchRoute(m.path, issuesEditDescriptionPath):
-			style := lipgloss.NewStyle()
-
-			sidebarView = style.
-				Render(m.issueFormView())
-
-			view = lipgloss.JoinVertical(
-				lipgloss.Left,
-				boxStyle(m.HeaderSize).Render(
-					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-				),
-				lipgloss.JoinHorizontal(
-					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
-				),
-				boxStyle(m.FooterSize).Render(help),
-			)
-		case matchRoute(m.path, issuesEditConfirmationPath):
-			style := lipgloss.NewStyle()
-
-			sidebarView = style.
-				Render(m.issueFormView())
-
-			view = lipgloss.JoinVertical(
-				lipgloss.Left,
-				boxStyle(m.HeaderSize).Render(
-					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-				),
-				lipgloss.JoinHorizontal(
-					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
-				),
-				boxStyle(m.FooterSize).Render(help),
-			)
-		case matchRoute(m.path, issuesNewTitlePath):
-			style := lipgloss.NewStyle()
-
-			sidebarView = style.
-				Render(m.issueFormView())
-
-			view = lipgloss.JoinVertical(
-				lipgloss.Left,
-				boxStyle(m.HeaderSize).Render(
-					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-				),
-				lipgloss.JoinHorizontal(
-					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
-				),
-				boxStyle(m.FooterSize).Render(help),
-			)
-		case matchRoute(m.path, issuesNewLabelsPath):
-			style := lipgloss.NewStyle()
-
-			sidebarView = style.
-				Render(m.issueFormView())
-
-			view = lipgloss.JoinVertical(
-				lipgloss.Left,
-				boxStyle(m.HeaderSize).Render(
-					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-				),
-				lipgloss.JoinHorizontal(
-					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
-				),
-				boxStyle(m.FooterSize).Render(help),
-			)
-		case matchRoute(m.path, issuesNewDescriptionPath):
-			style := lipgloss.NewStyle()
-
-			sidebarView = style.
-				Render(m.issueFormView())
-
-			view = lipgloss.JoinVertical(
-				lipgloss.Left,
-				boxStyle(m.HeaderSize).Render(
-					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-				),
-				lipgloss.JoinHorizontal(
-					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
-				),
-				boxStyle(m.FooterSize).Render(help),
-			)
-		case matchRoute(m.path, issuesNewConfirmationPath):
-			style := lipgloss.NewStyle()
-
-			sidebarView = style.
-				Render(m.issueFormView())
-
-			view = lipgloss.JoinVertical(
-				lipgloss.Left,
-				boxStyle(m.HeaderSize).Render(
-					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-				),
-				lipgloss.JoinHorizontal(
-					lipgloss.Top,
-					boxStyle(m.LeftSize).Render(m.issueIndex.View()),
-					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(sidebarView),
-				),
-				boxStyle(m.FooterSize).Render(help),
-			)
-		}
+		view = m.renderIssuesView()
 	case strings.HasPrefix(m.path, "/checks"):
-		for _, t := range m.tabs {
-			var style lipgloss.Style
-			isActive := t == "Checks"
-			if isActive {
-				style = activeTabStyle
-			} else {
-				style = inactiveTabStyle
-			}
-			renderedTabs = append(renderedTabs, style.Render(t))
-		}
-		commitListView := lipgloss.NewStyle().
-			Render(m.commitIndex.View())
-
-		switch {
-		case matchRoute(m.path, checksIndexPath):
-			view = lipgloss.JoinVertical(
-				lipgloss.Left,
-				boxStyle(m.HeaderSize).Render(
-					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-				),
-				boxStyle(m.LeftSize).Render(commitListView),
-				boxStyle(m.FooterSize).Render(help),
-			)
-		case matchRoute(m.path, checksShowPath):
-			commitDetailView := lipgloss.NewStyle().
-				Render(m.commitShowView())
-			view = lipgloss.JoinVertical(
-				lipgloss.Left,
-				boxStyle(m.HeaderSize).Render(
-					lipgloss.JoinHorizontal(lipgloss.Top, renderedTabs...),
-				),
-				lipgloss.JoinHorizontal(
-					lipgloss.Top,
-					commitListView,
-					boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(commitDetailView),
-				),
-				help,
-			)
-		}
+		view = m.renderChecksView()
 	}
 
-	doc.WriteString(view)
-	return docStyle.Render(doc.String())
+	return docStyle.Render(view)
 }
 
 type Commit struct {
