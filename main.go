@@ -136,23 +136,23 @@ func persistIssue(issue Issue) tea.Cmd {
 }
 
 const (
-	issuesIndexPath               string = "/issues/index"
-	issuesShowPath                string = "/issues/show"
-	issuesCommentContentPath      string = "/issues/show/comments/new/content"
-	issuesCommentConfirmationPath string = "/issues/show/comments/new/confirmation"
-	issuesEditTitlePath           string = "/issues/edit/title"
-	issuesEditLabelsPath          string = "/issues/edit/labels"
-	issuesEditDescriptionPath     string = "/issues/edit/description"
-	issuesEditConfirmationPath    string = "/issues/edit/confirmation"
-	issuesNewTitlePath            string = "/issues/new/title"
-	issuesNewLabelsPath           string = "/issues/new/labels"
-	issuesNewDescriptionPath      string = "/issues/new/description"
-	issuesNewConfirmationPath     string = "/issues/new/confirmation"
-	checksIndexPath               string = "/checks/index"
-	checksShowPath                string = "/checks/show"
+	issuesIndexPath = iota
+	issuesShowPath
+	issuesCommentContentPath
+	issuesCommentConfirmationPath
+	issuesEditTitlePath
+	issuesEditLabelsPath
+	issuesEditDescriptionPath
+	issuesNewTitlePath
+	issuesEditConfirmationPath
+	issuesNewLabelsPath
+	issuesNewDescriptionPath
+	issuesNewConfirmationPath
+	checksIndexPath
+	checksShowPath
 )
 
-func matchRoute(currentRoute, route string) bool {
+func matchRoute(currentRoute, route int) bool {
 	return route == currentRoute
 }
 
@@ -228,7 +228,7 @@ func (s issueStatus) color() lipgloss.AdaptiveColor {
 }
 
 type keyMap struct {
-	Path                     string
+	Path                     int
 	Up                       key.Binding
 	Down                     key.Binding
 	Left                     key.Binding
@@ -390,7 +390,7 @@ type Layout struct {
 
 type Model struct {
 	loaded      bool
-	path        string
+	path        int
 	issueIndex  list.Model
 	issueShow   issueShow
 	issueForm   issueForm
@@ -510,7 +510,7 @@ func (m Model) Init() tea.Cmd {
 type layoutMsg Layout
 
 func (m Model) isUserTyping() bool {
-	paths := []string{
+	paths := []int{
 		issuesCommentContentPath,
 		issuesEditTitlePath,
 		issuesEditLabelsPath,
@@ -1284,23 +1284,6 @@ func (m Model) HelpKeys() keyMap {
 		),
 	}
 
-	switch {
-	case matchRoute(m.path, issuesIndexPath):
-	case strings.HasSuffix(m.path, "/show"):
-		keys.Up = key.NewBinding(
-			key.WithKeys("up", "k"),
-			key.WithHelp("↑/k", "scroll up"),
-		)
-
-		keys.Down = key.NewBinding(
-			key.WithKeys("down", "j"),
-			key.WithHelp("↓/j", "scroll down"),
-		)
-
-		// Disable with this:
-		// keys.IssueCommentFormFocus.SetEnabled(false)
-	}
-
 	keys.Path = m.path
 
 	return keys
@@ -1374,10 +1357,12 @@ func (m Model) View() string {
 	}
 
 	var view string
-	switch {
-	case strings.HasPrefix(m.path, "/issues"):
+	switch m.path {
+	case issuesIndexPath, issuesShowPath, issuesCommentContentPath, issuesCommentConfirmationPath,
+		issuesEditTitlePath, issuesEditLabelsPath, issuesEditDescriptionPath, issuesEditConfirmationPath,
+		issuesNewTitlePath, issuesNewLabelsPath, issuesNewDescriptionPath, issuesNewConfirmationPath:
 		view = m.renderIssuesView()
-	case strings.HasPrefix(m.path, "/checks"):
+	case checksIndexPath, checksShowPath:
 		view = m.renderChecksView()
 	}
 
