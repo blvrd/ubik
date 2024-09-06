@@ -156,18 +156,6 @@ func matchRoute(currentRoute, route string) bool {
 	return route == currentRoute
 }
 
-// func action(msg tea.Msg, m Model, currentPath string) {
-//   // find controller
-//   // call action, which returns a func
-//   // the func returns model, cmd
-// }
-//
-// type IssuesController struct {}
-//
-// func (IssuesController) Index() {
-//
-// }
-
 type Styles struct {
 	Theme Theme
 }
