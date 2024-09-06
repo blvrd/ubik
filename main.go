@@ -393,7 +393,7 @@ type Model struct {
 	path        string
 	issueIndex  list.Model
 	issueShow   issueShowModel
-	issueForm   issueFormModel
+	issueForm   issueForm
 	commitIndex list.Model
 	commitShow  commitShowModel
 	err         error
@@ -402,6 +402,44 @@ type Model struct {
 	tabs        []string
 	msgDump     io.Writer
 	Layout
+}
+
+func (m Model) submitIssueForm() tea.Cmd {
+	var cmd tea.Cmd
+	form := m.issueForm
+	description := form.descriptionInput.Value()
+	title := form.titleInput.Value()
+	labels := strings.Split(form.labelsInput.Value(), " ")
+
+	if m.issueForm.editing {
+		currentIssue := m.issueIndex.SelectedItem().(Issue)
+		currentIssue.Title = title
+		currentIssue.Description = description
+		currentIssue.Labels = labels
+		cmd = persistIssue(currentIssue)
+	} else {
+		description := form.descriptionInput.Value()
+
+		newIssue := Issue{
+			Shortcode:   "xxxxxx",
+			Title:       title,
+			Description: description,
+			Labels:      labels,
+			Status:      todo,
+			Author:      "garrett@blvrd.co",
+		}
+		cmd = persistIssue(newIssue)
+	}
+
+	return cmd
+}
+
+type issueForm struct {
+	titleInput       textinput.Model
+	labelsInput      textinput.Model
+	descriptionInput textarea.Model
+	identifier       string
+	editing          bool
 }
 
 var (
@@ -544,32 +582,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		cmd = persistIssue(currentIssue)
 		return m, cmd
-	case issueFormModel:
-		description := msg.descriptionInput.Value()
-		title := msg.titleInput.Value()
-		labels := strings.Split(msg.labelsInput.Value(), " ")
-
-		if msg.editing {
-			currentIssue := m.issueIndex.SelectedItem().(Issue)
-			currentIssue.Title = title
-			currentIssue.Description = description
-			currentIssue.Labels = labels
-			cmd = persistIssue(currentIssue)
-		} else {
-			description := msg.descriptionInput.Value()
-
-			newIssue := Issue{
-				Shortcode:   "xxxxxx",
-				Title:       title,
-				Description: description,
-				Labels:      labels,
-				Status:      todo,
-				Author:      "garrett@blvrd.co",
-			}
-			cmd = persistIssue(newIssue)
-		}
-
-		return m, cmd
 	case issuePersistedMsg:
 		if !msg.Issue.DeletedAt.IsZero() {
 			currentIndex := m.issueIndex.Index()
@@ -682,7 +694,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.issueShow.Init(m)
 				m.path = issuesShowPath
 			case key.Matches(msg, keys.IssueNewForm):
-				m.issueForm = issueFormModel{editing: false}
+				m.issueForm = issueForm{editing: false}
 				m.issueForm.Init("", "", []string{})
 				cmd = m.issueForm.titleInput.Focus()
 				m.path = issuesNewTitlePath
@@ -756,7 +768,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			case key.Matches(msg, keys.IssueEditForm):
 				selectedIssue := m.issueIndex.SelectedItem().(Issue)
-				m.issueForm = issueFormModel{editing: true, identifier: selectedIssue.Shortcode}
+				m.issueForm = issueForm{editing: true, identifier: selectedIssue.Shortcode}
 				cmd = m.issueForm.Init(selectedIssue.Title, selectedIssue.Description, selectedIssue.Labels)
 
 				m.path = issuesEditTitlePath
@@ -888,7 +900,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = m.issueForm.titleInput.Focus()
 				return m, cmd
 			case key.Matches(msg, keys.Submit):
-				return m, m.issueForm.Submit
+				return m, m.submitIssueForm()
 			}
 		}
 
@@ -975,7 +987,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = m.issueForm.titleInput.Focus()
 				return m, cmd
 			case key.Matches(msg, keys.Submit):
-				return m, m.issueForm.Submit
+				return m, m.submitIssueForm()
 			}
 		}
 
@@ -2015,30 +2027,18 @@ func (m issueShowModel) View() string {
 	return m.viewport.View()
 }
 
-type issueFormModel struct {
-	titleInput       textinput.Model
-	labelsInput      textinput.Model
-	descriptionInput textarea.Model
-	identifier       string
-	editing          bool
-}
-
-func (m issueFormModel) Submit() tea.Msg {
-	return m
-}
-
-func (m *issueFormModel) Init(title, description string, labels []string) tea.Cmd {
+func (m *issueForm) Init(title, description string, labels []string) tea.Cmd {
 	m.SetTitle(title)
 	m.SetDescription(description)
 	m.SetLabels(labels)
 	return m.titleInput.Focus()
 }
 
-func (m issueFormModel) Update(msg tea.Msg) (issueFormModel, tea.Cmd) {
+func (m issueForm) Update(msg tea.Msg) (issueForm, tea.Cmd) {
 	return m, nil
 }
 
-func (m issueFormModel) View(focus string, editing bool) string {
+func (m issueForm) View(focus string, editing bool) string {
 	var s strings.Builder
 
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", m.identifier))
@@ -2075,21 +2075,21 @@ func (m issueFormModel) View(focus string, editing bool) string {
 	return s.String()
 }
 
-func (m *issueFormModel) SetTitle(title string) {
+func (m *issueForm) SetTitle(title string) {
 	m.titleInput = textinput.New()
 	m.titleInput.CharLimit = 120
 	m.titleInput.Width = 30
 	m.titleInput.SetValue(title)
 }
 
-func (m *issueFormModel) SetLabels(labels []string) {
+func (m *issueForm) SetLabels(labels []string) {
 	m.labelsInput = textinput.New()
 	m.labelsInput.CharLimit = 100
 	m.labelsInput.Width = 30
 	m.labelsInput.SetValue(strings.Join(labels, " "))
 }
 
-func (m *issueFormModel) SetDescription(description string) {
+func (m *issueForm) SetDescription(description string) {
 	m.descriptionInput = textarea.New()
 	m.descriptionInput.CharLimit = 0 // unlimited
 	m.descriptionInput.MaxHeight = 0 // unlimited
