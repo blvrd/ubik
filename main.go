@@ -392,7 +392,7 @@ type Model struct {
 	loaded      bool
 	path        string
 	issueIndex  list.Model
-	issueShow   issueShowModel
+	issueShow   issueShow
 	issueForm   issueForm
 	commitIndex list.Model
 	commitShow  commitShowModel
@@ -615,9 +615,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			})
 			m.issueIndex.SetItems(items)
 			m.issueIndex.Select(listIndexToFocus)
-			m.issueShow = issueShowModel{issue: msg.Issue}
+			m.issueShow = issueShow{issue: msg.Issue}
 			m.issueShow.commentForm = NewCommentFormModel()
-			m.issueShow.Init(m)
+			m.InitIssueShow()
 			if msg.ScrollToBottom {
 				m.issueShow.viewport.GotoBottom()
 			}
@@ -681,14 +681,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = persistIssue(currentIssue)
 				return m, cmd
 			case key.Matches(msg, keys.IssueCommentFormFocus):
-				m.issueShow = issueShowModel{issue: m.issueIndex.SelectedItem().(Issue)}
+				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue)}
 				m.issueShow.commentForm = NewCommentFormModel()
 				m.issueShow.commentForm.Init()
 				m.issueShow.Init(m)
 				m.issueShow.viewport.GotoBottom()
 				m.path = issuesCommentContentPath
 			case key.Matches(msg, keys.IssueDetailFocus):
-				m.issueShow = issueShowModel{issue: m.issueIndex.SelectedItem().(Issue)}
+				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue)}
 				m.issueShow.commentForm = NewCommentFormModel()
 				m.issueShow.commentForm.Init()
 				m.issueShow.Init(m)
@@ -734,7 +734,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					currentIssue.Status = todo
 				}
-				m.issueShow = issueShowModel{issue: currentIssue}
+				m.issueShow = issueShow{issue: currentIssue}
 				m.issueShow.commentForm = NewCommentFormModel()
 				m.issueShow.commentForm.Init()
 				m.issueShow.Init(m)
@@ -747,7 +747,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					currentIssue.Status = wontDo
 				}
-				m.issueShow = issueShowModel{issue: currentIssue}
+				m.issueShow = issueShow{issue: currentIssue}
 				m.issueShow.commentForm = NewCommentFormModel()
 				m.issueShow.commentForm.Init()
 				m.issueShow.Init(m)
@@ -760,7 +760,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					currentIssue.Status = inProgress
 				}
-				m.issueShow = issueShowModel{issue: currentIssue}
+				m.issueShow = issueShow{issue: currentIssue}
 				m.issueShow.commentForm = NewCommentFormModel()
 				m.issueShow.commentForm.Init()
 				m.issueShow.Init(m)
@@ -776,7 +776,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.Back):
 				m.path = issuesIndexPath
 			case key.Matches(msg, keys.IssueCommentFormFocus):
-				m.issueShow = issueShowModel{issue: m.issueIndex.SelectedItem().(Issue)}
+				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue)}
 				m.issueShow.commentForm = NewCommentFormModel()
 				m.issueShow.commentForm.Init()
 				m.issueShow.Init(m)
@@ -793,7 +793,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, keys.Back):
 				currentIssue := m.issueIndex.SelectedItem().(Issue)
-				m.issueShow = issueShowModel{issue: currentIssue}
+				m.issueShow = issueShow{issue: currentIssue}
 				m.issueShow.commentForm = NewCommentFormModel()
 				m.issueShow.Init(m)
 				m.path = issuesShowPath
@@ -810,7 +810,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch {
 			case key.Matches(msg, keys.Back):
 				currentIssue := m.issueIndex.SelectedItem().(Issue)
-				m.issueShow = issueShowModel{issue: currentIssue}
+				m.issueShow = issueShow{issue: currentIssue}
 				m.issueShow.commentForm = NewCommentFormModel()
 				m.issueShow.Init(m)
 				m.path = issuesShowPath
@@ -1976,47 +1976,44 @@ func (m commitShowModel) View() string {
 	return s.String()
 }
 
-type issueShowModel struct {
-	layout      Layout
+type issueShow struct {
 	issue       Issue
 	viewport    viewport.Model
 	commentForm commentFormModel
 }
 
-func (m *issueShowModel) Init(ctx Model) tea.Cmd {
-	m.viewport = viewport.New(
-		ctx.Layout.RightSize.Width-2,
-		ctx.Layout.RightSize.Height-len(strings.Split(m.commentForm.View("content"), "\n"))-3,
+func (m *Model) InitIssueShow() {
+	m.issueShow.viewport = viewport.New(
+		m.Layout.RightSize.Width-2,
+		m.Layout.RightSize.Height-len(strings.Split(m.issueShow.commentForm.View("content"), "\n"))-3,
 	)
-	m.layout = ctx.Layout
 	var s strings.Builder
-	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", m.issue.Shortcode))
-	labels := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("%s", strings.Join(m.issue.Labels, ",")))
-	header := fmt.Sprintf("%s %s %s\nStatus: %s\n\n", identifier, m.issue.Title, labels, m.issue.Status.PrettyString())
+	identifier := lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(fmt.Sprintf("#%s", m.issueShow.issue.Shortcode))
+	labels := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("%s", strings.Join(m.issueShow.issue.Labels, ",")))
+	header := fmt.Sprintf("%s %s %s\nStatus: %s\n\n", identifier, m.issueShow.issue.Title, labels, m.issueShow.issue.Status.PrettyString())
 	s.WriteString(lipgloss.NewStyle().Render(header))
-	s.WriteString(m.issue.Description + "\n")
+	s.WriteString(m.issueShow.issue.Description + "\n")
 
 	commentStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder()).
 		BorderForeground(styles.Theme.SecondaryBorder).
-		Width(m.viewport.Width - 2).
+		Width(m.issueShow.viewport.Width - 2).
 		MarginTop(1)
 
 	commentHeaderStyle := lipgloss.NewStyle().
 		Border(lipgloss.NormalBorder(), false, false, true, false).
 		BorderForeground(styles.Theme.SecondaryBorder).
-		Width(m.viewport.Width - 2)
+		Width(m.issueShow.viewport.Width - 2)
 
-	for i, comment := range m.issue.Comments {
+	for i, comment := range m.issueShow.issue.Comments {
 		commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.Author, comment.CreatedAt.Format(time.RFC822)))
-		if i == len(m.issue.Comments)-1 { // last comment
+		if i == len(m.issueShow.issue.Comments)-1 { // last comment
 			s.WriteString(commentStyle.MarginBottom(6).Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.Content)))
 		} else {
 			s.WriteString(commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.Content)))
 		}
 	}
-	m.viewport.SetContent(s.String())
-	return nil
+	m.issueShow.viewport.SetContent(s.String())
 }
 
 func (m Model) issueShowView() string {
