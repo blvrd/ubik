@@ -696,7 +696,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.path = issuesShowPath
 			case key.Matches(msg, keys.IssueNewForm):
 				m.issueForm = issueForm{editing: false}
-				m.issueForm.Init("", "", []string{})
+				m.initIssueForm("", "", []string{})
 				cmd = m.issueForm.titleInput.Focus()
 				m.path = issuesNewTitlePath
 			case key.Matches(msg, keys.IssueDelete):
@@ -767,7 +767,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.IssueEditForm):
 				selectedIssue := m.issueIndex.SelectedItem().(Issue)
 				m.issueForm = issueForm{editing: true, identifier: selectedIssue.Shortcode}
-				cmd = m.issueForm.Init(selectedIssue.Title, selectedIssue.Description, selectedIssue.Labels)
+				cmd = m.initIssueForm(selectedIssue.Title, selectedIssue.Description, selectedIssue.Labels)
 
 				m.path = issuesEditTitlePath
 				return m, cmd
@@ -1783,11 +1783,11 @@ func (m Model) issueShowView() string {
 	return m.issueShow.viewport.View()
 }
 
-func (m *issueForm) Init(title, description string, labels []string) tea.Cmd {
-	m.SetTitle(title)
-	m.SetDescription(description)
-	m.SetLabels(labels)
-	return m.titleInput.Focus()
+func (m *Model) initIssueForm(title, description string, labels []string) tea.Cmd {
+	m.issueForm.SetTitle(title, clamp(m.RightSize.Width, 50, 80))
+	m.issueForm.SetDescription(description, clamp(m.RightSize.Width, 50, 80), 30)
+	m.issueForm.SetLabels(labels, clamp(m.RightSize.Width, 50, 80))
+	return m.issueForm.titleInput.Focus()
 }
 
 func (m issueForm) Update(msg tea.Msg) (issueForm, tea.Cmd) {
@@ -1833,27 +1833,27 @@ func (m Model) issueFormView() string {
 	return s.String()
 }
 
-func (m *issueForm) SetTitle(title string) {
+func (m *issueForm) SetTitle(title string, width int) {
 	m.titleInput = textinput.New()
 	m.titleInput.CharLimit = 120
-	m.titleInput.Width = 30
+	m.titleInput.Width = width
 	m.titleInput.SetValue(title)
 }
 
-func (m *issueForm) SetLabels(labels []string) {
+func (m *issueForm) SetLabels(labels []string, width int) {
 	m.labelsInput = textinput.New()
 	m.labelsInput.CharLimit = 100
-	m.labelsInput.Width = 30
+	m.labelsInput.Width = width
 	m.labelsInput.SetValue(strings.Join(labels, " "))
 }
 
-func (m *issueForm) SetDescription(description string) {
+func (m *issueForm) SetDescription(description string, width, height int) {
 	m.descriptionInput = textarea.New()
 	m.descriptionInput.CharLimit = 0 // unlimited
 	m.descriptionInput.MaxHeight = 0 // unlimited
 	m.descriptionInput.ShowLineNumbers = false
-	m.descriptionInput.SetHeight(30)
-	m.descriptionInput.SetWidth(30)
+	m.descriptionInput.SetHeight(height)
+	m.descriptionInput.SetWidth(width)
 	m.descriptionInput.SetValue(description)
 }
 
@@ -1868,7 +1868,7 @@ func (m Model) newCommentForm() commentForm {
 	t.Prompt = "┃"
 	t.FocusedStyle.CursorLine = lipgloss.NewStyle().Background(lipgloss.Color("transparent"))
 	t.SetCursor(0)
-	t.SetWidth(75)
+	t.SetWidth(clamp(m.RightSize.Width, 50, 80))
 	t.Focus()
 
 	return commentForm{
