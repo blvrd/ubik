@@ -12,7 +12,7 @@ require (
 	github.com/winder/bubblelayout v0.0.1
 )
 
-// replace github.com/charmbracelet/bubbles => /Users/blvrd/projects/tmp-bubbles
+replace github.com/charmbracelet/bubbles => /Users/blvrd/projects/bubbles
 
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
