@@ -389,20 +389,29 @@ type Layout struct {
 }
 
 type Model struct {
-	loaded      bool
-	path        int
-	issueIndex  list.Model
-	issueShow   issueShow
-	issueForm   issueForm
-	commentForm commentForm
-	commitIndex list.Model
-	commitShow  commitShow
-	err         error
-	help        help.Model
-	styles      Styles
-	tabs        []string
-	msgDump     io.Writer
+	loaded             bool
+	path               int
+	issueIndex         list.Model
+	issueShow          issueShow
+	issueForm          issueForm
+	commentForm        commentForm
+	commitIndex        list.Model
+	commitShow         commitShow
+	err                error
+	help               help.Model
+	styles             Styles
+	tabs               []string
+	previousSearchTerm string
+	msgDump            io.Writer
 	Layout
+}
+
+type SetSearchTermMsg string
+
+func SetSearchTerm(term string) tea.Cmd {
+	return func() tea.Msg {
+		return SetSearchTermMsg(term)
+	}
 }
 
 func (m Model) submitIssueForm() tea.Cmd {
@@ -553,7 +562,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m.Layout.Resize(msg.Width, msg.Height)
 		}
 	case tea.FocusMsg:
-		return m, tea.Batch(getIssues, getCommits)
+		return m, tea.Sequence(getIssues, getCommits, SetSearchTerm(m.previousSearchTerm))
+	case tea.BlurMsg:
+		log.Debugf("🪚 FilterValue: %#v", m.issueIndex.FilterValue())
+		if m.issueIndex.FilterValue() != "" {
+			m.previousSearchTerm = m.issueIndex.FilterValue()
+		}
+		return m, nil
 	case IssuesReadyMsg:
 		var listItems []list.Item
 		for _, issue := range msg {
@@ -583,6 +598,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		cmd = persistIssue(currentIssue)
 		return m, cmd
+	case SetSearchTermMsg:
+		if msg != "" {
+			m.issueIndex.SetFilterText(string(msg))
+		}
+
+		return m, nil
 	case issuePersistedMsg:
 		if !msg.Issue.DeletedAt.IsZero() {
 			currentIndex := m.issueIndex.Index()
@@ -633,6 +654,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch {
 	case matchRoute(m.path, issuesIndexPath):
 		if m.issueIndex.SettingFilter() {
+			// m.previousSearchTerm = ""
 			m.issueIndex, cmd = m.issueIndex.Update(msg)
 			return m, cmd
 		}
