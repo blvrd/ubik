@@ -1482,7 +1482,6 @@ func NewChecks(commit Commit) []Check {
 }
 
 func (c Check) Delete() tea.Msg {
-	// #nosec G204
 	cmd := exec.Command("git", "update-ref", "-d", fmt.Sprintf("refs/ubik/checks/%s", c.Id))
 	err := cmd.Run()
 
