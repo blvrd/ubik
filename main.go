@@ -1037,7 +1037,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, commit.DeleteExistingChecks())
 				commit.LatestChecks = checks
 
-				for _, check := range commit.LatestChecks {
+				for i, check := range commit.LatestChecks {
+					check.ExecutionPosition = i
 					cmds = append(cmds, RunCheck(check))
 				}
 				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
@@ -1083,7 +1084,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, commit.DeleteExistingChecks())
 				commit.LatestChecks = checks
 
-				for _, check := range commit.LatestChecks {
+				for i, check := range commit.LatestChecks {
+					check.ExecutionPosition = i
 					cmds = append(cmds, RunCheck(check))
 				}
 				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
@@ -1447,16 +1449,17 @@ const (
 )
 
 type Check struct {
-	Command    *exec.Cmd   `json:"-"`
-	Id         string      `json:"id"`
-	CommitId   string      `json:"commitId"`
-	Status     CheckStatus `json:"status"`
-	Checker    string      `json:"checker"`
-	Name       string      `json:"name"`
-	Output     string      `json:"output"`
-	StartedAt  time.Time   `json:"startedAt"`
-	FinishedAt time.Time   `json:"finishedAt"`
-	Optional   bool        `json:"optional"`
+	Command           *exec.Cmd   `json:"-"`
+	Id                string      `json:"id"`
+	CommitId          string      `json:"commitId"`
+	Status            CheckStatus `json:"status"`
+	Checker           string      `json:"checker"`
+	Name              string      `json:"name"`
+	Output            string      `json:"output"`
+	StartedAt         time.Time   `json:"startedAt"`
+	FinishedAt        time.Time   `json:"finishedAt"`
+	Optional          bool        `json:"optional"`
+	ExecutionPosition int         `json:"executionPosition"`
 }
 
 func NewChecks(commit Commit) []Check {
@@ -1613,8 +1616,12 @@ func getCommits() tea.Msg {
 		for _, commit := range commits {
 			if check.CommitId == commit.Id {
 				commit.LatestChecks = append(commit.LatestChecks, check)
+				slices.SortFunc(commit.LatestChecks, func(a, b Check) int {
+					return a.ExecutionPosition - b.ExecutionPosition
+				})
 			}
 		}
+
 	}
 
 	for _, commit := range commits {
