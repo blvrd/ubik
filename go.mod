@@ -9,7 +9,6 @@ require (
 	github.com/charmbracelet/log v0.4.0
 	github.com/google/uuid v1.6.0
 	github.com/stretchr/testify v1.9.0
-	github.com/winder/bubblelayout v0.0.1
 )
 
 // replace github.com/charmbracelet/bubbles => github.com/blvrd/bubbles v0.0.0-20240910162552-804399699b19

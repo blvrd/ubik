@@ -23,7 +23,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/google/uuid"
-	bl "github.com/winder/bubblelayout"
 )
 
 type checkPersistedMsg struct {
@@ -374,18 +373,30 @@ type Comment struct {
 
 /* MAIN MODEL */
 
+type Size struct {
+	Width  int
+	Height int
+}
+
 type Layout struct {
-	bl.BubbleLayout
+	AvailableSize Size
+	HeaderSize    Size
+	LeftSize      Size
+	RightSize     Size
+	FooterSize    Size
+}
 
-	HeaderID bl.ID
-	RightID  bl.ID
-	LeftID   bl.ID
-	FooterID bl.ID
+func (m *Model) UpdateLayout(msg tea.WindowSizeMsg) {
+	layout := m.layout
+	layout.AvailableSize = Size{Width: msg.Width, Height: msg.Height}
+	available := layout.AvailableSize
 
-	LeftSize   bl.Size
-	RightSize  bl.Size
-	HeaderSize bl.Size
-	FooterSize bl.Size
+	layout.HeaderSize = Size{Width: available.Width, Height: lipgloss.Height(m.renderTabs("Issues"))}
+	layout.FooterSize = Size{Width: available.Width, Height: lipgloss.Height(m.help.View(m.HelpKeys()))}
+	layout.LeftSize = Size{Width: 70, Height: available.Height - layout.HeaderSize.Height - layout.FooterSize.Height}
+
+	m.issueIndex.SetSize(layout.LeftSize.Width, layout.LeftSize.Height)
+	m.commitIndex.SetSize(layout.LeftSize.Width, layout.LeftSize.Height)
 }
 
 type Model struct {
@@ -403,7 +414,7 @@ type Model struct {
 	tabs               []string
 	previousSearchTerm string
 	msgDump            io.Writer
-	Layout
+	layout             Layout
 }
 
 type SetSearchTermMsg string
@@ -465,19 +476,7 @@ var (
 )
 
 func InitialModel() Model {
-	blLayout := bl.New()
-	headerId := blLayout.Add("dock north 4!")
-	leftId := blLayout.Add("width 80")
-	rightId := blLayout.Add("grow")
-	footerId := blLayout.Add("dock south 2!")
-
-	layout := Layout{
-		BubbleLayout: blLayout,
-		HeaderID:     headerId,
-		LeftID:       leftId,
-		RightID:      rightId,
-		FooterID:     footerId,
-	}
+	layout := Layout{}
 
 	issueList := list.New([]list.Item{}, Issue{}, 0, 0)
 	issueList.SetShowHelp(false)
@@ -506,7 +505,7 @@ func InitialModel() Model {
 		help:        helpModel,
 		styles:      DefaultStyles(),
 		tabs:        []string{"Issues", "Checks"},
-		Layout:      layout,
+		layout:      layout,
 		issueIndex:  issueList,
 		commitIndex: commitList,
 	}
@@ -558,9 +557,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.loaded = true
 		}
 
-		return m, func() tea.Msg {
-			return m.Layout.Resize(msg.Width, msg.Height)
-		}
+		m.UpdateLayout(msg)
+		return m, nil
 	case tea.FocusMsg:
 		return m, tea.Sequence(getIssues, getCommits, SetSearchTerm(m.previousSearchTerm))
 	case tea.BlurMsg:
@@ -580,14 +578,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			listItems = append(listItems, commit)
 		}
 		m.commitIndex.SetItems(listItems)
-	case bl.BubbleLayoutMsg:
-		m.LeftSize, _ = msg.Size(m.LeftID)
-		m.RightSize, _ = msg.Size(m.RightID)
-		m.HeaderSize, _ = msg.Size(m.HeaderID)
-		m.FooterSize, _ = msg.Size(m.FooterID)
-
-		m.issueIndex.SetSize(m.LeftSize.Width, m.LeftSize.Height)
-		m.commitIndex.SetSize(m.LeftSize.Width, m.LeftSize.Height)
+	// case bl.BubbleLayoutMsg:
+	// 	m.LeftSize, _ = msg.Size(m.LeftID)
+	// 	m.RightSize, _ = msg.Size(m.RightID)
+	// 	m.HeaderSize, _ = msg.Size(m.HeaderID)
+	// 	m.FooterSize, _ = msg.Size(m.FooterID)
+	//
+	// 	m.issueIndex.SetSize(m.LeftSize.Width, m.LeftSize.Height)
+	// 	m.commitIndex.SetSize(m.LeftSize.Width, m.LeftSize.Height)
 	case commentForm:
 		currentIssue := m.issueIndex.SelectedItem().(Issue)
 		currentIssue.Comments = append(currentIssue.Comments, Comment{
@@ -1316,7 +1314,7 @@ func (m Model) HelpKeys() keyMap {
 	return keys
 }
 
-func boxStyle(size bl.Size) lipgloss.Style {
+func boxStyle(size Size) lipgloss.Style {
 	style := lipgloss.NewStyle().
 		Width(size.Width - 2).
 		Height(size.Height - 2)
@@ -1340,17 +1338,17 @@ func (m Model) renderMainLayout(header, left, right, footer string) string {
 	if right == "" {
 		right = ""
 	} else {
-		right = boxStyle(m.RightSize).Border(lipgloss.NormalBorder(), true).Render(right)
+		right = boxStyle(m.layout.RightSize).Border(lipgloss.NormalBorder(), true).Render(right)
 	}
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
-		boxStyle(m.HeaderSize).Render(header),
+		header,
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
-			boxStyle(m.LeftSize).Render(left),
+			lipgloss.NewStyle().Width(m.layout.LeftSize.Width).Height(m.layout.LeftSize.Height).Render(left),
 			right,
 		),
-		boxStyle(m.FooterSize).Render(footer),
+		footer,
 	)
 }
 
@@ -1776,8 +1774,8 @@ type issueShow struct {
 
 func (m Model) NewContentViewport() viewport.Model {
 	return viewport.New(
-		m.Layout.RightSize.Width-2,
-		m.Layout.RightSize.Height-2,
+		m.layout.RightSize.Width-2,
+		m.layout.RightSize.Height-2,
 	)
 }
 
@@ -1816,9 +1814,9 @@ func (m Model) issueShowView() string {
 }
 
 func (m *Model) initIssueForm(title, description string, labels []string) tea.Cmd {
-	m.issueForm.SetTitle(title, clamp(m.RightSize.Width, 50, 80))
-	m.issueForm.SetDescription(description, clamp(m.RightSize.Width, 50, 80), 30)
-	m.issueForm.SetLabels(labels, clamp(m.RightSize.Width, 50, 80))
+	m.issueForm.SetTitle(title, clamp(m.layout.RightSize.Width, 50, 80))
+	m.issueForm.SetDescription(description, clamp(m.layout.RightSize.Width, 50, 80), 30)
+	m.issueForm.SetLabels(labels, clamp(m.layout.RightSize.Width, 50, 80))
 	return m.issueForm.titleInput.Focus()
 }
 
@@ -1900,7 +1898,7 @@ func (m Model) newCommentForm() commentForm {
 	t.Prompt = "┃"
 	t.FocusedStyle.CursorLine = lipgloss.NewStyle().Background(lipgloss.Color("transparent"))
 	t.SetCursor(0)
-	t.SetWidth(clamp(m.RightSize.Width, 50, 80))
+	t.SetWidth(clamp(m.layout.RightSize.Width, 50, 80))
 	t.Focus()
 
 	return commentForm{
