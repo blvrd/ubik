@@ -3,7 +3,7 @@ module github.com/blvrd/ubik
 go 1.23
 
 require (
-	github.com/charmbracelet/bubbles v0.20.0
+	github.com/charmbracelet/bubbles v0.20.1-0.20240910172203-d019ed3cc97e
 	github.com/charmbracelet/bubbletea v1.1.0
 	github.com/charmbracelet/lipgloss v0.13.0
 	github.com/charmbracelet/log v0.4.0
@@ -12,7 +12,7 @@ require (
 	github.com/winder/bubblelayout v0.0.1
 )
 
-replace github.com/charmbracelet/bubbles => github.com/blvrd/bubbles v0.0.0-20240910162552-804399699b19
+// replace github.com/charmbracelet/bubbles => github.com/blvrd/bubbles v0.0.0-20240910162552-804399699b19
 
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
