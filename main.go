@@ -564,7 +564,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.FocusMsg:
 		return m, tea.Sequence(getIssues, getCommits, SetSearchTerm(m.previousSearchTerm))
 	case tea.BlurMsg:
-		log.Debugf("🪚 FilterValue: %#v", m.issueIndex.FilterValue())
 		if m.issueIndex.FilterValue() != "" {
 			m.previousSearchTerm = m.issueIndex.FilterValue()
 		}
