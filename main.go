@@ -734,6 +734,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			case key.Matches(msg, keys.NextPage):
 				m.path = checksIndexPath
+				return m, nil
 			case key.Matches(msg, keys.PrevPage):
 				return m, nil
 			}
@@ -1076,6 +1077,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case key.Matches(msg, keys.PrevPage):
 				m.path = issuesIndexPath
+				return m, nil
 			case key.Matches(msg, keys.Help):
 				if m.help.ShowAll {
 					m.help.ShowAll = false
