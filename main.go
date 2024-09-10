@@ -603,6 +603,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.issueIndex.SetFilterText(string(msg))
 		}
 
+		m.previousSearchTerm = ""
+
 		return m, nil
 	case issuePersistedMsg:
 		if !msg.Issue.DeletedAt.IsZero() {
