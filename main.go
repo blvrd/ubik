@@ -386,17 +386,24 @@ type Layout struct {
 	FooterSize    Size
 }
 
-func (m *Model) UpdateLayout(msg tea.WindowSizeMsg) {
+func (m Model) UpdateLayout(msg tea.WindowSizeMsg) Layout {
 	layout := m.layout
-	layout.AvailableSize = Size{Width: msg.Width, Height: msg.Height}
+	windowFrameWidth, windowFrameHeight := windowStyle.GetFrameSize()
+	contentAreaFrameWidth, contentAreaFrameHeight := contentAreaStyle.GetFrameSize()
+	layout.AvailableSize = Size{
+		Width:  msg.Width - windowFrameWidth - contentAreaFrameWidth,
+		Height: msg.Height - windowFrameHeight - contentAreaFrameHeight,
+	}
 	available := layout.AvailableSize
 
 	layout.HeaderSize = Size{Width: available.Width, Height: lipgloss.Height(m.renderTabs("Issues"))}
 	layout.FooterSize = Size{Width: available.Width, Height: lipgloss.Height(m.help.View(m.HelpKeys()))}
-	layout.LeftSize = Size{Width: 70, Height: available.Height - layout.HeaderSize.Height - layout.FooterSize.Height}
+	contentHeight := available.Height - layout.HeaderSize.Height - layout.FooterSize.Height
+	layout.LeftSize = Size{Width: 70, Height: contentHeight}
+	layout.RightSize = Size{Width: available.Width - layout.LeftSize.Width, Height: contentHeight}
 
-	m.issueIndex.SetSize(layout.LeftSize.Width, layout.LeftSize.Height)
-	m.commitIndex.SetSize(layout.LeftSize.Width, layout.LeftSize.Height)
+	return layout
+	// m.InitIssueShow()
 }
 
 type Model struct {
@@ -470,7 +477,8 @@ var (
 	highlightColor    = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
 	inactiveTabStyle  = lipgloss.NewStyle().Border(inactiveTabBorder, true).BorderForeground(styles.Theme.FaintBorder).Padding(0, 0)
 	activeTabStyle    = lipgloss.NewStyle().Border(activeTabBorder, true).BorderForeground(styles.Theme.PrimaryBorder).Padding(0, 0)
-	windowStyle       = lipgloss.NewStyle().Padding(0)
+	windowStyle       = lipgloss.NewStyle().Padding(8)
+	contentAreaStyle  = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), true)
 	helpStyle         = lipgloss.NewStyle().Padding(0, 0)
 	footerHeight      = helpStyle.GetVerticalFrameSize() + 1 // 1 row for the context
 )
@@ -557,7 +565,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.loaded = true
 		}
 
-		m.UpdateLayout(msg)
+		lipgloss.NewStyle().GetFrameSize()
+		m.layout = m.UpdateLayout(msg)
+		m.issueIndex.SetSize(m.layout.LeftSize.Width, m.layout.LeftSize.Height)
+		m.commitIndex.SetSize(m.layout.LeftSize.Width, m.layout.LeftSize.Height)
 		return m, nil
 	case tea.FocusMsg:
 		return m, tea.Sequence(getIssues, getCommits, SetSearchTerm(m.previousSearchTerm))
@@ -711,6 +722,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.path = issuesCommentContentPath
 				return m, cmd
 			case key.Matches(msg, keys.IssueDetailFocus):
+				log.Debugf("🪚 layout: %#v", m.layout)
 				m.commentForm = m.newCommentForm()
 				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
 				m.InitIssueShow()
@@ -1314,14 +1326,6 @@ func (m Model) HelpKeys() keyMap {
 	return keys
 }
 
-func boxStyle(size Size) lipgloss.Style {
-	style := lipgloss.NewStyle().
-		Width(size.Width - 2).
-		Height(size.Height - 2)
-
-	return style
-}
-
 func (m Model) renderTabs(activeTab string) string {
 	var renderedTabs []string
 	for _, t := range m.tabs {
@@ -1338,18 +1342,18 @@ func (m Model) renderMainLayout(header, left, right, footer string) string {
 	if right == "" {
 		right = ""
 	} else {
-		right = boxStyle(m.layout.RightSize).Border(lipgloss.NormalBorder(), true).Render(right)
+		right = lipgloss.NewStyle().Width(m.layout.RightSize.Width).Render(right)
 	}
-	return lipgloss.JoinVertical(
+	return windowStyle.Render(lipgloss.JoinVertical(
 		lipgloss.Left,
 		header,
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
-			lipgloss.NewStyle().Width(m.layout.LeftSize.Width).Height(m.layout.LeftSize.Height).Render(left),
+			contentAreaStyle.Width(m.layout.LeftSize.Width).Height(m.layout.LeftSize.Height).Render(left),
 			right,
 		),
 		footer,
-	)
+	))
 }
 
 func (m Model) renderIssuesView() string {
@@ -1774,8 +1778,8 @@ type issueShow struct {
 
 func (m Model) NewContentViewport() viewport.Model {
 	return viewport.New(
-		m.layout.RightSize.Width-2,
-		m.layout.RightSize.Height-2,
+		m.layout.RightSize.Width,
+		m.layout.RightSize.Height,
 	)
 }
 
