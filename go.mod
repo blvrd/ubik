@@ -12,7 +12,7 @@ require (
 	github.com/winder/bubblelayout v0.0.1
 )
 
-replace github.com/charmbracelet/bubbles => /Users/blvrd/projects/bubbles
+replace github.com/charmbracelet/bubbles => github.com/blvrd/bubbles v0.0.0-20240910162552-804399699b19
 
 require (
 	github.com/atotto/clipboard v0.1.4 // indirect
