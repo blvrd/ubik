@@ -729,10 +729,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			case key.Matches(msg, keys.IssueDetailFocus):
 				m.commentForm = m.newCommentForm()
-				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
-				m.InitIssueShow()
 				m.path = issuesShowPath
 				m.layout = m.UpdateLayout(m.layout.TerminalSize)
+				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
+				m.InitIssueShow()
 			case key.Matches(msg, keys.IssueNewForm):
 				m.issueForm = issueForm{editing: false}
 				m.initIssueForm("", "", []string{})
