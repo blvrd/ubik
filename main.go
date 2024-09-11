@@ -1766,7 +1766,12 @@ func newCommitShow(commit Commit, layout Layout, expandCheckDetails bool) commit
 
 	viewport := viewport.New(layout.RightSize.Width, layout.RightSize.Height)
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("%s", commit.AbbreviatedId))
-	header := fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, commit.Description, commit.AggregateCheckStatus().PrettyString())
+	var header string
+	if len(commit.LatestChecks) > 0 {
+		header = fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, commit.Description, commit.AggregateCheckStatus().PrettyString())
+	} else {
+		header = fmt.Sprintf("%s %s\n\nNo checks yet.", identifier, commit.Description)
+	}
 	s.WriteString(lipgloss.NewStyle().Render(header))
 	s.WriteString("\n")
 
