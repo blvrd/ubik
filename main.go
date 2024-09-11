@@ -428,10 +428,9 @@ func (m *Model) UpdateLayout(terminalSize Size) {
 	layout.TerminalSize = terminalSize
 
 	windowFrameWidth, windowFrameHeight := windowStyle.GetFrameSize()
-	contentAreaFrameWidth, contentAreaFrameHeight := contentAreaStyle.GetFrameSize()
 	layout.AvailableSize = Size{
-		Width:  layout.TerminalSize.Width - windowFrameWidth - contentAreaFrameWidth,
-		Height: layout.TerminalSize.Height - windowFrameHeight - contentAreaFrameHeight,
+		Width:  layout.TerminalSize.Width - windowFrameWidth,
+		Height: layout.TerminalSize.Height - windowFrameHeight,
 	}
 	available := layout.AvailableSize
 
