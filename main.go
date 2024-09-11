@@ -402,7 +402,7 @@ func (m Model) UpdateLayout(terminalSize Size) Layout {
 	layout.HeaderSize = Size{Width: available.Width, Height: lipgloss.Height(m.renderTabs("Issues"))}
 	layout.FooterSize = Size{Width: available.Width, Height: lipgloss.Height(m.help.View(m.HelpKeys()))}
 	contentHeight := available.Height - layout.HeaderSize.Height - layout.FooterSize.Height
-	if m.path == issuesShowPath {
+	if m.path == issuesShowPath || m.path == issuesCommentContentPath || m.path == issuesCommentConfirmationPath {
 		layout.LeftSize = Size{Width: 70, Height: contentHeight}
 	} else {
 		layout.LeftSize = Size{Width: available.Width, Height: contentHeight}
@@ -715,10 +715,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.IssueCommentFormFocus):
 				m.commentForm = m.newCommentForm()
 				cmd = m.commentForm.Init()
-				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
+				m.path = issuesCommentContentPath
+				m.layout = m.UpdateLayout(m.layout.TerminalSize)
+				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: viewport.New(
+					m.layout.RightSize.Width,
+					m.layout.RightSize.Height-len(strings.Split(m.commentFormView(), "\n")),
+				)}
 				m.InitIssueShow()
 				m.issueShow.viewport.GotoBottom()
-				m.path = issuesCommentContentPath
 				return m, cmd
 			case key.Matches(msg, keys.IssueDetailFocus):
 				m.commentForm = m.newCommentForm()
@@ -809,10 +813,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.IssueCommentFormFocus):
 				m.commentForm = m.newCommentForm()
 				cmd = m.commentForm.Init()
-				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
+				m.path = issuesCommentContentPath
+				m.layout = m.UpdateLayout(m.layout.TerminalSize)
+				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: viewport.New(
+					m.layout.RightSize.Width,
+					m.layout.RightSize.Height-len(strings.Split(m.commentFormView(), "\n")),
+				)}
 				m.InitIssueShow()
 				m.issueShow.viewport.GotoBottom()
-				m.path = issuesCommentContentPath
 				return m, cmd
 			}
 		}
