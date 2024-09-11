@@ -1765,7 +1765,7 @@ func newCommitShow(commit Commit, layout Layout, expandCheckDetails bool) commit
 	var s strings.Builder
 
 	viewport := viewport.New(layout.RightSize.Width, layout.RightSize.Height)
-	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("#%s", commit.AbbreviatedId))
+	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("%s", commit.AbbreviatedId))
 	header := fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, commit.Description, commit.AggregateCheckStatus().PrettyString())
 	s.WriteString(lipgloss.NewStyle().Render(header))
 	s.WriteString("\n")
