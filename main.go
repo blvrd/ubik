@@ -239,13 +239,13 @@ type keyMap struct {
 	Back                     key.Binding
 	IssueNewForm             key.Binding
 	IssueEditForm            key.Binding
-	IssueDetailFocus         key.Binding
+	IssueShowFocus           key.Binding
 	IssueStatusDone          key.Binding
 	IssueStatusWontDo        key.Binding
 	IssueStatusInProgress    key.Binding
 	IssueCommentFormFocus    key.Binding
 	IssueDelete              key.Binding
-	CommitDetailFocus        key.Binding
+	CommitShowFocus          key.Binding
 	CommitExpandCheckDetails key.Binding
 	NextInput                key.Binding
 	Submit                   key.Binding
@@ -270,7 +270,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
-			{k.IssueNewForm, k.IssueDetailFocus},
+			{k.IssueNewForm, k.IssueShowFocus},
 			{k.IssueStatusDone, k.IssueStatusWontDo},
 			{k.IssueStatusInProgress, k.IssueCommentFormFocus},
 			{k.IssueDelete},
@@ -280,7 +280,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
 			{k.IssueEditForm, k.Back},
-			{k.IssueNewForm, k.IssueDetailFocus},
+			{k.IssueNewForm, k.IssueShowFocus},
 			{k.IssueStatusDone, k.IssueStatusWontDo},
 			{k.IssueStatusInProgress, k.IssueCommentFormFocus},
 		}
@@ -294,7 +294,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
-			{k.RunCheck, k.CommitDetailFocus},
+			{k.RunCheck, k.CommitShowFocus},
 		}
 	case matchRoute(k.Path, checksShowPath):
 		bindings = [][]key.Binding{
@@ -748,7 +748,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.issueShow = newIssueShow(m.issueIndex.SelectedItem().(Issue), m.layout)
 				m.issueShow.viewport.GotoBottom()
 				return m, cmd
-			case key.Matches(msg, keys.IssueDetailFocus):
+			case key.Matches(msg, keys.IssueShowFocus):
 				m.commentForm = newCommentForm()
 				m.path = issuesShowPath
 				m.UpdateLayout(m.layout.TerminalSize)
@@ -1100,7 +1100,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
 				return m, tea.Batch(cmds...)
-			case key.Matches(msg, keys.CommitDetailFocus):
+			case key.Matches(msg, keys.CommitShowFocus):
 				m.path = checksShowPath
 				m.UpdateLayout(m.layout.TerminalSize)
 				m.commitShow = newCommitShow(m.commitIndex.SelectedItem().(Commit), m.layout, false)
@@ -1302,7 +1302,7 @@ func (m Model) HelpKeys() keyMap {
 			key.WithKeys("c"),
 			key.WithHelp("c", "toggle issue comment form"),
 		),
-		IssueDetailFocus: key.NewBinding(
+		IssueShowFocus: key.NewBinding(
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "more info"),
 		),
@@ -1334,7 +1334,7 @@ func (m Model) HelpKeys() keyMap {
 			key.WithKeys(" "),
 			key.WithHelp("space", "run check"),
 		),
-		CommitDetailFocus: key.NewBinding(
+		CommitShowFocus: key.NewBinding(
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "more info"),
 		),
