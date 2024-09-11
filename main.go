@@ -421,7 +421,13 @@ func (m *Model) UpdateLayout(terminalSize Size) {
 		}
 	}
 	layout.RightSize = Size{Width: available.Width - layout.LeftSize.Width, Height: contentHeight}
+
 	m.layout = layout
+
+	// update component sizes based on layout
+	m.issueIndex.SetSize(m.layout.LeftSize.Width, m.layout.LeftSize.Height)
+	m.commitIndex.SetSize(m.layout.LeftSize.Width, m.layout.LeftSize.Height)
+	m.commentForm.contentInput.SetWidth(m.layout.CommentFormSize.Width)
 }
 
 type Model struct {
@@ -535,6 +541,7 @@ func InitialModel() Model {
 		layout:      layout,
 		issueIndex:  issueList,
 		commitIndex: commitList,
+		commentForm: newCommentForm(),
 	}
 }
 
@@ -586,8 +593,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		lipgloss.NewStyle().GetFrameSize()
 		m.UpdateLayout(Size{Width: msg.Width, Height: msg.Height})
-		m.issueIndex.SetSize(m.layout.LeftSize.Width, m.layout.LeftSize.Height)
-		m.commitIndex.SetSize(m.layout.LeftSize.Width, m.layout.LeftSize.Height)
 		return m, nil
 	case tea.FocusMsg:
 		return m, tea.Sequence(getIssues, getCommits, SetSearchTerm(m.previousSearchTerm))
@@ -1904,6 +1909,19 @@ func (m Model) newCommentForm() commentForm {
 	t.FocusedStyle.CursorLine = lipgloss.NewStyle().Background(lipgloss.Color("transparent"))
 	t.SetCursor(0)
 	t.SetWidth(m.layout.CommentFormSize.Width)
+	t.Focus()
+
+	return commentForm{
+		contentInput: t,
+	}
+}
+
+func newCommentForm() commentForm {
+	t := textarea.New()
+	t.ShowLineNumbers = false
+	t.Prompt = "┃"
+	t.FocusedStyle.CursorLine = lipgloss.NewStyle().Background(lipgloss.Color("transparent"))
+	t.SetCursor(0)
 	t.Focus()
 
 	return commentForm{
