@@ -4,7 +4,7 @@ go 1.23
 
 require (
 	github.com/charmbracelet/bubbles v0.20.1-0.20240910172203-d019ed3cc97e
-	github.com/charmbracelet/bubbletea v1.1.0
+	github.com/charmbracelet/bubbletea v1.1.1
 	github.com/charmbracelet/lipgloss v0.13.0
 	github.com/charmbracelet/log v0.4.0
 	github.com/google/uuid v1.6.0
