@@ -25,6 +25,25 @@ import (
 	"github.com/google/uuid"
 )
 
+type Router struct {
+	routes map[int]func(Model, tea.Msg) (Model, tea.Cmd)
+}
+
+func NewRouter() *Router {
+  return &Router{
+    routes: make(map[int]func(Model, tea.Msg) (Model, tea.Cmd)),
+  }
+}
+
+func (r *Router) Route(m Model, msg tea.Msg) (Model, tea.Cmd) {
+  if handler, ok := r.routes[m.path]; ok {
+    return handler(m, msg)
+  }
+
+  // Default handler if no route is found
+  return m, nil
+}
+
 type checkPersistedMsg struct {
 	Check      Check
 	IsNewCheck bool
