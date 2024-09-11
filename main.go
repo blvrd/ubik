@@ -45,7 +45,7 @@ func (r *Router) Route(m Model, msg tea.Msg) (Model, tea.Cmd) {
 }
 
 func (r *Router) AddRoute(path int, handler func(Model, tea.Msg) (Model, tea.Cmd)) {
-    r.routes[path] = handler
+	r.routes[path] = handler
 }
 
 type checkPersistedMsg struct {
