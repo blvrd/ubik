@@ -596,14 +596,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			listItems = append(listItems, commit)
 		}
 		m.commitIndex.SetItems(listItems)
-	// case bl.BubbleLayoutMsg:
-	// 	m.LeftSize, _ = msg.Size(m.LeftID)
-	// 	m.RightSize, _ = msg.Size(m.RightID)
-	// 	m.HeaderSize, _ = msg.Size(m.HeaderID)
-	// 	m.FooterSize, _ = msg.Size(m.FooterID)
-	//
-	// 	m.issueIndex.SetSize(m.LeftSize.Width, m.LeftSize.Height)
-	// 	m.commitIndex.SetSize(m.LeftSize.Width, m.LeftSize.Height)
 	case commentForm:
 		currentIssue := m.issueIndex.SelectedItem().(Issue)
 		currentIssue.Comments = append(currentIssue.Comments, Comment{
