@@ -388,7 +388,7 @@ type Layout struct {
 	FooterSize      Size
 }
 
-func (m Model) UpdateLayout(terminalSize Size) Layout {
+func (m *Model) UpdateLayout(terminalSize Size) {
 	layout := m.layout
 	layout.TerminalSize = terminalSize
 
@@ -421,8 +421,7 @@ func (m Model) UpdateLayout(terminalSize Size) Layout {
 		}
 	}
 	layout.RightSize = Size{Width: available.Width - layout.LeftSize.Width, Height: contentHeight}
-
-	return layout
+	m.layout = layout
 }
 
 type Model struct {
@@ -586,7 +585,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		lipgloss.NewStyle().GetFrameSize()
-		m.layout = m.UpdateLayout(Size{Width: msg.Width, Height: msg.Height})
+		m.UpdateLayout(Size{Width: msg.Width, Height: msg.Height})
 		m.issueIndex.SetSize(m.layout.LeftSize.Width, m.layout.LeftSize.Height)
 		m.commitIndex.SetSize(m.layout.LeftSize.Width, m.layout.LeftSize.Height)
 		return m, nil
@@ -729,7 +728,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.commentForm = m.newCommentForm()
 				cmd = m.commentForm.Init()
 				m.path = issuesCommentContentPath
-				m.layout = m.UpdateLayout(m.layout.TerminalSize)
+				m.UpdateLayout(m.layout.TerminalSize)
 				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
 				m.InitIssueShow()
 				m.issueShow.viewport.GotoBottom()
@@ -737,7 +736,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case key.Matches(msg, keys.IssueDetailFocus):
 				m.commentForm = m.newCommentForm()
 				m.path = issuesShowPath
-				m.layout = m.UpdateLayout(m.layout.TerminalSize)
+				m.UpdateLayout(m.layout.TerminalSize)
 				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
 				m.InitIssueShow()
 			case key.Matches(msg, keys.IssueNewForm):
@@ -824,7 +823,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.commentForm = m.newCommentForm()
 				cmd = m.commentForm.Init()
 				m.path = issuesCommentContentPath
-				m.layout = m.UpdateLayout(m.layout.TerminalSize)
+				m.UpdateLayout(m.layout.TerminalSize)
 				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
 				m.InitIssueShow()
 				m.issueShow.viewport.GotoBottom()
