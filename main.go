@@ -477,16 +477,17 @@ type issueForm struct {
 }
 
 var (
-	inactiveTabBorder = lipgloss.NormalBorder()
-	activeTabBorder   = lipgloss.NormalBorder()
-	docStyle          = lipgloss.NewStyle().Padding(0)
-	highlightColor    = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
-	inactiveTabStyle  = lipgloss.NewStyle().Border(inactiveTabBorder, true).BorderForeground(styles.Theme.FaintBorder).Padding(0, 0)
-	activeTabStyle    = lipgloss.NewStyle().Border(activeTabBorder, true).BorderForeground(styles.Theme.PrimaryBorder).Padding(0, 0)
-	windowStyle       = lipgloss.NewStyle().Padding(8)
-	contentAreaStyle  = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), true)
-	helpStyle         = lipgloss.NewStyle().Padding(0, 0)
-	footerHeight      = helpStyle.GetVerticalFrameSize() + 1 // 1 row for the context
+	inactiveTabBorder   = lipgloss.NormalBorder()
+	activeTabBorder     = lipgloss.NormalBorder()
+	docStyle            = lipgloss.NewStyle().Padding(0)
+	highlightColor      = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
+	inactiveTabStyle    = lipgloss.NewStyle().Border(inactiveTabBorder, true).BorderForeground(styles.Theme.FaintBorder).Padding(0, 0)
+	activeTabStyle      = lipgloss.NewStyle().Border(activeTabBorder, true).BorderForeground(styles.Theme.PrimaryBorder).Padding(0, 0)
+	windowStyle         = lipgloss.NewStyle().Padding(8)
+	contentAreaStyle    = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), true).BorderForeground(styles.Theme.FaintText)
+	helpStyle           = lipgloss.NewStyle().Padding(0, 0)
+	commentContentStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(styles.Theme.SecondaryBorder).MarginTop(1)
+	commentHeaderStyle  = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), false, false, true, false).BorderForeground(styles.Theme.SecondaryBorder)
 )
 
 func InitialModel() Model {
@@ -1355,7 +1356,7 @@ func (m Model) renderMainLayout(header, left, right, footer string) string {
 		header,
 		lipgloss.JoinHorizontal(
 			lipgloss.Top,
-			contentAreaStyle.Width(m.layout.LeftSize.Width).Height(m.layout.LeftSize.Height).Render(left),
+			lipgloss.NewStyle().Width(m.layout.LeftSize.Width).Height(m.layout.LeftSize.Height).Render(left),
 			right,
 		),
 		footer,
@@ -1797,24 +1798,12 @@ func (m *Model) InitIssueShow() {
 	s.WriteString(lipgloss.NewStyle().Render(header))
 	s.WriteString(m.issueShow.issue.Description + "\n")
 
-	commentStyle := lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder()).
-		BorderForeground(styles.Theme.SecondaryBorder).
-		Width(m.issueShow.viewport.Width - 2).
-		MarginTop(1)
+	commentFrameX, _ := commentContentStyle.GetFrameSize()
+	w := lipgloss.NewStyle().Width(m.issueShow.viewport.Width - commentFrameX)
 
-	commentHeaderStyle := lipgloss.NewStyle().
-		Border(lipgloss.NormalBorder(), false, false, true, false).
-		BorderForeground(styles.Theme.SecondaryBorder).
-		Width(m.issueShow.viewport.Width - 2)
-
-	for i, comment := range m.issueShow.issue.Comments {
-		commentHeader := commentHeaderStyle.Render(fmt.Sprintf("%s commented at %s", comment.Author, comment.CreatedAt.Format(time.RFC822)))
-		if i == len(m.issueShow.issue.Comments)-1 { // last comment
-			s.WriteString(commentStyle.MarginBottom(6).Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.Content)))
-		} else {
-			s.WriteString(commentStyle.Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.Content)))
-		}
+	for _, comment := range m.issueShow.issue.Comments {
+		commentHeader := commentHeaderStyle.Inherit(w).Render(fmt.Sprintf("%s commented at %s", comment.Author, comment.CreatedAt.Format(time.RFC822)))
+		s.WriteString(commentContentStyle.Inherit(w).Render(fmt.Sprintf("%s\n%s\n", commentHeader, comment.Content)))
 	}
 	m.issueShow.viewport.SetContent(s.String())
 }
