@@ -30,18 +30,22 @@ type Router struct {
 }
 
 func NewRouter() *Router {
-  return &Router{
-    routes: make(map[int]func(Model, tea.Msg) (Model, tea.Cmd)),
-  }
+	return &Router{
+		routes: make(map[int]func(Model, tea.Msg) (Model, tea.Cmd)),
+	}
 }
 
 func (r *Router) Route(m Model, msg tea.Msg) (Model, tea.Cmd) {
-  if handler, ok := r.routes[m.path]; ok {
-    return handler(m, msg)
-  }
+	if handler, ok := r.routes[m.path]; ok {
+		return handler(m, msg)
+	}
 
-  // Default handler if no route is found
-  return m, nil
+	// Default handler if no route is found
+	return m, nil
+}
+
+func (r *Router) AddRoute(path int, handler func(Model, tea.Msg) (Model, tea.Cmd)) {
+    r.routes[path] = handler
 }
 
 type checkPersistedMsg struct {
@@ -477,6 +481,7 @@ type Model struct {
 	previousSearchTerm string
 	msgDump            io.Writer
 	layout             Layout
+	router             *Router
 }
 
 type SetSearchTermMsg string
@@ -564,6 +569,9 @@ func InitialModel() Model {
 	helpModel := help.New()
 	helpModel.FullSeparator = "    "
 
+	router := NewRouter()
+	// router.AddRoute(issuesIndexPath, issuesIndexController)
+
 	return Model{
 		path:        issuesIndexPath,
 		help:        helpModel,
@@ -575,6 +583,7 @@ func InitialModel() Model {
 		commentForm: newCommentForm(),
 		issueForm:   newIssueForm("", "", "", []string{}, false),
 		issueShow:   newIssueShow(Issue{}, layout),
+		router:      router,
 	}
 }
 
