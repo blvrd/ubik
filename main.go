@@ -379,6 +379,7 @@ type Size struct {
 }
 
 type Layout struct {
+	TerminalSize  Size
 	AvailableSize Size
 	HeaderSize    Size
 	LeftSize      Size
@@ -386,24 +387,29 @@ type Layout struct {
 	FooterSize    Size
 }
 
-func (m Model) UpdateLayout(msg tea.WindowSizeMsg) Layout {
+func (m Model) UpdateLayout(terminalSize Size) Layout {
 	layout := m.layout
+	layout.TerminalSize = terminalSize
+
 	windowFrameWidth, windowFrameHeight := windowStyle.GetFrameSize()
 	contentAreaFrameWidth, contentAreaFrameHeight := contentAreaStyle.GetFrameSize()
 	layout.AvailableSize = Size{
-		Width:  msg.Width - windowFrameWidth - contentAreaFrameWidth,
-		Height: msg.Height - windowFrameHeight - contentAreaFrameHeight,
+		Width:  layout.TerminalSize.Width - windowFrameWidth - contentAreaFrameWidth,
+		Height: layout.TerminalSize.Height - windowFrameHeight - contentAreaFrameHeight,
 	}
 	available := layout.AvailableSize
 
 	layout.HeaderSize = Size{Width: available.Width, Height: lipgloss.Height(m.renderTabs("Issues"))}
 	layout.FooterSize = Size{Width: available.Width, Height: lipgloss.Height(m.help.View(m.HelpKeys()))}
 	contentHeight := available.Height - layout.HeaderSize.Height - layout.FooterSize.Height
-	layout.LeftSize = Size{Width: 70, Height: contentHeight}
+	if m.path == issuesShowPath {
+		layout.LeftSize = Size{Width: 70, Height: contentHeight}
+	} else {
+		layout.LeftSize = Size{Width: available.Width, Height: contentHeight}
+	}
 	layout.RightSize = Size{Width: available.Width - layout.LeftSize.Width, Height: contentHeight}
 
 	return layout
-	// m.InitIssueShow()
 }
 
 type Model struct {
@@ -566,7 +572,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		lipgloss.NewStyle().GetFrameSize()
-		m.layout = m.UpdateLayout(msg)
+		m.layout = m.UpdateLayout(Size{Width: msg.Width, Height: msg.Height})
 		m.issueIndex.SetSize(m.layout.LeftSize.Width, m.layout.LeftSize.Height)
 		m.commitIndex.SetSize(m.layout.LeftSize.Width, m.layout.LeftSize.Height)
 		return m, nil
@@ -722,11 +728,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.path = issuesCommentContentPath
 				return m, cmd
 			case key.Matches(msg, keys.IssueDetailFocus):
-				log.Debugf("🪚 layout: %#v", m.layout)
 				m.commentForm = m.newCommentForm()
 				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
 				m.InitIssueShow()
 				m.path = issuesShowPath
+				m.layout = m.UpdateLayout(m.layout.TerminalSize)
 			case key.Matches(msg, keys.IssueNewForm):
 				m.issueForm = issueForm{editing: false}
 				m.initIssueForm("", "", []string{})
