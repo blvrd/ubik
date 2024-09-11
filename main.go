@@ -692,7 +692,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch {
 	case matchRoute(m.path, issuesIndexPath):
 		if m.issueIndex.SettingFilter() {
-			// m.previousSearchTerm = ""
 			m.issueIndex, cmd = m.issueIndex.Update(msg)
 			return m, cmd
 		}
