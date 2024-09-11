@@ -428,6 +428,10 @@ func (m *Model) UpdateLayout(terminalSize Size) {
 	m.issueIndex.SetSize(m.layout.LeftSize.Width, m.layout.LeftSize.Height)
 	m.commitIndex.SetSize(m.layout.LeftSize.Width, m.layout.LeftSize.Height)
 	m.commentForm.contentInput.SetWidth(m.layout.CommentFormSize.Width)
+	m.issueForm.titleInput.Width = clamp(layout.RightSize.Width, 50, 80)
+	m.issueForm.labelsInput.Width = clamp(layout.RightSize.Width, 50, 80)
+	// m.issueForm.descriptionInput.SetWidth(clamp(layout.RightSize.Width, 50, 80))
+	m.issueForm.descriptionInput.SetWidth(100)
 }
 
 type Model struct {
@@ -542,6 +546,7 @@ func InitialModel() Model {
 		issueIndex:  issueList,
 		commitIndex: commitList,
 		commentForm: newCommentForm(),
+		issueForm:   newIssueForm("", "", "", []string{}, false),
 	}
 }
 
@@ -591,7 +596,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.loaded = true
 		}
 
-		lipgloss.NewStyle().GetFrameSize()
 		m.UpdateLayout(Size{Width: msg.Width, Height: msg.Height})
 		return m, nil
 	case tea.FocusMsg:
@@ -745,10 +749,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
 				m.InitIssueShow()
 			case key.Matches(msg, keys.IssueNewForm):
-				m.issueForm = issueForm{editing: false}
-				m.initIssueForm("", "", []string{})
+				m.issueForm = newIssueForm("", "", "", []string{}, false)
 				cmd = m.issueForm.titleInput.Focus()
 				m.path = issuesNewTitlePath
+				m.UpdateLayout(m.layout.TerminalSize)
+				return m, cmd
 			case key.Matches(msg, keys.IssueDelete):
 				selectedItem := m.issueIndex.SelectedItem()
 				if selectedItem == nil {
@@ -817,10 +822,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			case key.Matches(msg, keys.IssueEditForm):
 				selectedIssue := m.issueIndex.SelectedItem().(Issue)
-				m.issueForm = issueForm{editing: true, identifier: selectedIssue.Shortcode}
-				cmd = m.initIssueForm(selectedIssue.Title, selectedIssue.Description, selectedIssue.Labels)
+				m.issueForm = newIssueForm(selectedIssue.Shortcode, "", "", []string{}, true)
+				cmd = m.issueForm.titleInput.Focus()
 
 				m.path = issuesEditTitlePath
+				m.UpdateLayout(m.layout.TerminalSize)
 				return m, cmd
 			case key.Matches(msg, keys.Back):
 				m.path = issuesIndexPath
@@ -1823,11 +1829,28 @@ func (m Model) issueShowView() string {
 	return m.issueShow.viewport.View()
 }
 
-func (m *Model) initIssueForm(title, description string, labels []string) tea.Cmd {
-	m.issueForm.SetTitle(title, clamp(m.layout.RightSize.Width, 50, 80))
-	m.issueForm.SetDescription(description, clamp(m.layout.RightSize.Width, 50, 80), 30)
-	m.issueForm.SetLabels(labels, clamp(m.layout.RightSize.Width, 50, 80))
-	return m.issueForm.titleInput.Focus()
+func newIssueForm(identifier, title, description string, labels []string, editing bool) issueForm {
+	form := issueForm{
+		identifier:       identifier,
+		titleInput:       textinput.New(),
+		labelsInput:      textinput.New(),
+		descriptionInput: textarea.New(),
+		editing:          editing,
+	}
+
+	form.titleInput.CharLimit = 120
+	form.titleInput.SetValue(title)
+
+	form.labelsInput.CharLimit = 100
+	form.labelsInput.SetValue(strings.Join(labels, " "))
+
+	form.descriptionInput.CharLimit = 0 // unlimited
+	form.descriptionInput.MaxHeight = 0 // unlimited
+	form.descriptionInput.ShowLineNumbers = false
+	form.descriptionInput.SetHeight(30)
+	form.descriptionInput.SetValue(description)
+
+	return form
 }
 
 func (m issueForm) Update(msg tea.Msg) (issueForm, tea.Cmd) {
@@ -1873,28 +1896,7 @@ func (m Model) issueFormView() string {
 	return s.String()
 }
 
-func (m *issueForm) SetTitle(title string, width int) {
-	m.titleInput = textinput.New()
-	m.titleInput.CharLimit = 120
-	m.titleInput.Width = width
-	m.titleInput.SetValue(title)
-}
-
-func (m *issueForm) SetLabels(labels []string, width int) {
-	m.labelsInput = textinput.New()
-	m.labelsInput.CharLimit = 100
-	m.labelsInput.Width = width
-	m.labelsInput.SetValue(strings.Join(labels, " "))
-}
-
-func (m *issueForm) SetDescription(description string, width, height int) {
-	m.descriptionInput = textarea.New()
-	m.descriptionInput.CharLimit = 0 // unlimited
-	m.descriptionInput.MaxHeight = 0 // unlimited
-	m.descriptionInput.ShowLineNumbers = false
-	m.descriptionInput.SetHeight(height)
-	m.descriptionInput.SetWidth(width)
-	m.descriptionInput.SetValue(description)
+func (m *issueForm) SetDescription(description string) {
 }
 
 type commentForm struct {
