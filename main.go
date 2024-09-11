@@ -536,7 +536,7 @@ var (
 	highlightColor      = lipgloss.AdaptiveColor{Light: "#874BFD", Dark: "#7D56F4"}
 	inactiveTabStyle    = lipgloss.NewStyle().Border(inactiveTabBorder, true).BorderForeground(styles.Theme.FaintBorder).Padding(0, 0)
 	activeTabStyle      = lipgloss.NewStyle().Border(activeTabBorder, true).BorderForeground(styles.Theme.PrimaryBorder).Padding(0, 0)
-	windowStyle         = lipgloss.NewStyle().Padding(8)
+	windowStyle         = lipgloss.NewStyle().Padding(2)
 	contentAreaStyle    = lipgloss.NewStyle().Border(lipgloss.NormalBorder(), true).BorderForeground(styles.Theme.FaintText)
 	helpStyle           = lipgloss.NewStyle().Padding(0, 0)
 	commentContentStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).BorderForeground(styles.Theme.SecondaryBorder).MarginTop(1)
