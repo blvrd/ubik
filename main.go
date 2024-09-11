@@ -417,21 +417,18 @@ func (m *Model) UpdateLayout(terminalSize Size) {
 	contentHeight := available.Height - layout.HeaderSize.Height - layout.FooterSize.Height
 	if m.IsRightSidebarOpen() {
 		layout.LeftSize = Size{Width: 70, Height: contentHeight}
-	} else {
-		layout.LeftSize = Size{Width: available.Width, Height: contentHeight}
-	}
-
-	if m.IsRightSidebarOpen() {
 		layout.CommentFormSize = Size{
 			Width:  clamp(available.Width-layout.LeftSize.Width, 50, 80),
 			Height: len(strings.Split(m.commentFormView(), "\n")),
 		}
 	} else {
+		layout.LeftSize = Size{Width: available.Width, Height: contentHeight}
 		layout.CommentFormSize = Size{
 			Width:  0,
 			Height: 0,
 		}
 	}
+
 	layout.RightSize = Size{Width: available.Width - layout.LeftSize.Width, Height: contentHeight}
 
 	m.layout = layout
