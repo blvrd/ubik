@@ -388,6 +388,18 @@ type Layout struct {
 	FooterSize      Size
 }
 
+func (m Model) IsRightSidebarOpen() bool {
+	switch m.path {
+	case issuesCommentContentPath, issuesCommentConfirmationPath,
+		issuesEditTitlePath, issuesEditDescriptionPath, issuesEditLabelsPath, issuesEditConfirmationPath,
+		issuesNewTitlePath, issuesNewDescriptionPath, issuesNewLabelsPath, issuesNewConfirmationPath, issuesShowPath,
+		checksShowPath:
+		return true
+	default:
+		return false
+	}
+}
+
 func (m *Model) UpdateLayout(terminalSize Size) {
 	layout := m.layout
 	layout.TerminalSize = terminalSize
@@ -403,13 +415,13 @@ func (m *Model) UpdateLayout(terminalSize Size) {
 	layout.HeaderSize = Size{Width: available.Width, Height: lipgloss.Height(m.renderTabs("Issues"))}
 	layout.FooterSize = Size{Width: available.Width, Height: lipgloss.Height(m.help.View(m.HelpKeys()))}
 	contentHeight := available.Height - layout.HeaderSize.Height - layout.FooterSize.Height
-	if m.path == issuesShowPath || m.path == issuesCommentContentPath || m.path == issuesCommentConfirmationPath {
+	if m.IsRightSidebarOpen() {
 		layout.LeftSize = Size{Width: 70, Height: contentHeight}
 	} else {
 		layout.LeftSize = Size{Width: available.Width, Height: contentHeight}
 	}
 
-	if m.path == issuesCommentContentPath || m.path == issuesCommentConfirmationPath {
+	if m.IsRightSidebarOpen() {
 		layout.CommentFormSize = Size{
 			Width:  clamp(available.Width-layout.LeftSize.Width, 50, 80),
 			Height: len(strings.Split(m.commentFormView(), "\n")),
@@ -430,8 +442,7 @@ func (m *Model) UpdateLayout(terminalSize Size) {
 	m.commentForm.contentInput.SetWidth(m.layout.CommentFormSize.Width)
 	m.issueForm.titleInput.Width = clamp(layout.RightSize.Width, 50, 80)
 	m.issueForm.labelsInput.Width = clamp(layout.RightSize.Width, 50, 80)
-	// m.issueForm.descriptionInput.SetWidth(clamp(layout.RightSize.Width, 50, 80))
-	m.issueForm.descriptionInput.SetWidth(100)
+	m.issueForm.descriptionInput.SetWidth(clamp(layout.RightSize.Width, 50, 80))
 }
 
 type Model struct {
