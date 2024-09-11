@@ -379,12 +379,13 @@ type Size struct {
 }
 
 type Layout struct {
-	TerminalSize  Size
-	AvailableSize Size
-	HeaderSize    Size
-	LeftSize      Size
-	RightSize     Size
-	FooterSize    Size
+	TerminalSize    Size
+	AvailableSize   Size
+	HeaderSize      Size
+	LeftSize        Size
+	RightSize       Size
+	CommentFormSize Size
+	FooterSize      Size
 }
 
 func (m Model) UpdateLayout(terminalSize Size) Layout {
@@ -406,6 +407,18 @@ func (m Model) UpdateLayout(terminalSize Size) Layout {
 		layout.LeftSize = Size{Width: 70, Height: contentHeight}
 	} else {
 		layout.LeftSize = Size{Width: available.Width, Height: contentHeight}
+	}
+
+	if m.path == issuesCommentContentPath || m.path == issuesCommentConfirmationPath {
+		layout.CommentFormSize = Size{
+			Width:  clamp(available.Width-layout.LeftSize.Width, 50, 80),
+			Height: len(strings.Split(m.commentFormView(), "\n")),
+		}
+	} else {
+		layout.CommentFormSize = Size{
+			Width:  0,
+			Height: 0,
+		}
 	}
 	layout.RightSize = Size{Width: available.Width - layout.LeftSize.Width, Height: contentHeight}
 
@@ -717,10 +730,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = m.commentForm.Init()
 				m.path = issuesCommentContentPath
 				m.layout = m.UpdateLayout(m.layout.TerminalSize)
-				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: viewport.New(
-					m.layout.RightSize.Width,
-					m.layout.RightSize.Height-len(strings.Split(m.commentFormView(), "\n")),
-				)}
+				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
 				m.InitIssueShow()
 				m.issueShow.viewport.GotoBottom()
 				return m, cmd
@@ -815,10 +825,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmd = m.commentForm.Init()
 				m.path = issuesCommentContentPath
 				m.layout = m.UpdateLayout(m.layout.TerminalSize)
-				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: viewport.New(
-					m.layout.RightSize.Width,
-					m.layout.RightSize.Height-len(strings.Split(m.commentFormView(), "\n")),
-				)}
+				m.issueShow = issueShow{issue: m.issueIndex.SelectedItem().(Issue), viewport: m.NewContentViewport()}
 				m.InitIssueShow()
 				m.issueShow.viewport.GotoBottom()
 				return m, cmd
@@ -1786,7 +1793,7 @@ type issueShow struct {
 func (m Model) NewContentViewport() viewport.Model {
 	return viewport.New(
 		m.layout.RightSize.Width,
-		m.layout.RightSize.Height,
+		m.layout.RightSize.Height-m.layout.CommentFormSize.Height,
 	)
 }
 
@@ -1897,7 +1904,7 @@ func (m Model) newCommentForm() commentForm {
 	t.Prompt = "┃"
 	t.FocusedStyle.CursorLine = lipgloss.NewStyle().Background(lipgloss.Color("transparent"))
 	t.SetCursor(0)
-	t.SetWidth(clamp(m.layout.RightSize.Width, 50, 80))
+	t.SetWidth(m.layout.CommentFormSize.Width)
 	t.Focus()
 
 	return commentForm{
