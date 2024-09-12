@@ -569,7 +569,7 @@ func InitialModel() Model {
 	helpModel.FullSeparator = "    "
 
 	router := NewRouter()
-	// router.AddRoute(issuesIndexPath, issuesIndexController)
+	router.AddRoute(issuesIndexPath, issuesIndexHandler)
 
 	return Model{
 		path:        issuesIndexPath,
@@ -605,6 +605,98 @@ func (m Model) isUserTyping() bool {
 	}
 
 	return slices.Contains(paths, m.path)
+}
+
+func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	if m.issueIndex.SettingFilter() {
+		m.issueIndex, cmd = m.issueIndex.Update(msg)
+		return m, cmd
+	}
+	keys := m.HelpKeys()
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keys.Help):
+			if m.help.ShowAll {
+				m.help.ShowAll = false
+				return m, nil
+			} else {
+				var maxHelpHeight int
+				for _, column := range keys.FullHelp() {
+					if len(column) > maxHelpHeight {
+						maxHelpHeight = len(column)
+					}
+				}
+				m.help.ShowAll = true
+				return m, nil
+			}
+		case key.Matches(msg, keys.IssueStatusDone):
+			currentIssue := m.issueIndex.SelectedItem().(Issue)
+			if currentIssue.Status == done {
+				currentIssue.Status = todo
+			} else {
+				currentIssue.Status = done
+			}
+			cmd = persistIssue(currentIssue)
+			return m, cmd
+		case key.Matches(msg, keys.IssueStatusWontDo):
+			currentIssue := m.issueIndex.SelectedItem().(Issue)
+			if currentIssue.Status == wontDo {
+				currentIssue.Status = todo
+			} else {
+				currentIssue.Status = wontDo
+			}
+			cmd = persistIssue(currentIssue)
+			return m, cmd
+		case key.Matches(msg, keys.IssueStatusInProgress):
+			currentIssue := m.issueIndex.SelectedItem().(Issue)
+			if currentIssue.Status == inProgress {
+				currentIssue.Status = todo
+			} else {
+				currentIssue.Status = inProgress
+			}
+			cmd = persistIssue(currentIssue)
+			return m, cmd
+		case key.Matches(msg, keys.IssueCommentFormFocus):
+			m.commentForm = newCommentForm()
+			cmd = m.commentForm.Init()
+			m.path = issuesCommentContentPath
+			m.UpdateLayout(m.layout.TerminalSize)
+			m.issueShow = newIssueShow(m.issueIndex.SelectedItem().(Issue), m.layout)
+			m.issueShow.viewport.GotoBottom()
+			return m, cmd
+		case key.Matches(msg, keys.IssueShowFocus):
+			m.commentForm = newCommentForm()
+			m.path = issuesShowPath
+			m.UpdateLayout(m.layout.TerminalSize)
+			m.issueShow = newIssueShow(m.issueIndex.SelectedItem().(Issue), m.layout)
+		case key.Matches(msg, keys.IssueNewForm):
+			cmd = m.issueForm.titleInput.Focus()
+			m.path = issuesNewTitlePath
+			m.issueForm = newIssueForm("", "", "", []string{}, false)
+			m.UpdateLayout(m.layout.TerminalSize)
+			return m, cmd
+		case key.Matches(msg, keys.IssueDelete):
+			selectedItem := m.issueIndex.SelectedItem()
+			if selectedItem == nil {
+				return m, nil
+			}
+			issue := selectedItem.(Issue)
+			issue.DeletedAt = time.Now().UTC()
+			cmd = persistIssue(issue)
+			return m, cmd
+		case key.Matches(msg, keys.NextPage):
+			m.path = checksIndexPath
+			return m, nil
+		case key.Matches(msg, keys.PrevPage):
+			return m, nil
+		}
+	}
+
+	m.issueIndex, cmd = m.issueIndex.Update(msg)
+	return m, cmd
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -718,93 +810,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch {
 	case matchRoute(m.path, issuesIndexPath):
-		if m.issueIndex.SettingFilter() {
-			m.issueIndex, cmd = m.issueIndex.Update(msg)
-			return m, cmd
-		}
-
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.Help):
-				if m.help.ShowAll {
-					m.help.ShowAll = false
-					return m, nil
-				} else {
-					var maxHelpHeight int
-					for _, column := range keys.FullHelp() {
-						if len(column) > maxHelpHeight {
-							maxHelpHeight = len(column)
-						}
-					}
-					m.help.ShowAll = true
-					return m, nil
-				}
-			case key.Matches(msg, keys.IssueStatusDone):
-				currentIssue := m.issueIndex.SelectedItem().(Issue)
-				if currentIssue.Status == done {
-					currentIssue.Status = todo
-				} else {
-					currentIssue.Status = done
-				}
-				cmd = persistIssue(currentIssue)
-				return m, cmd
-			case key.Matches(msg, keys.IssueStatusWontDo):
-				currentIssue := m.issueIndex.SelectedItem().(Issue)
-				if currentIssue.Status == wontDo {
-					currentIssue.Status = todo
-				} else {
-					currentIssue.Status = wontDo
-				}
-				cmd = persistIssue(currentIssue)
-				return m, cmd
-			case key.Matches(msg, keys.IssueStatusInProgress):
-				currentIssue := m.issueIndex.SelectedItem().(Issue)
-				if currentIssue.Status == inProgress {
-					currentIssue.Status = todo
-				} else {
-					currentIssue.Status = inProgress
-				}
-				cmd = persistIssue(currentIssue)
-				return m, cmd
-			case key.Matches(msg, keys.IssueCommentFormFocus):
-				m.commentForm = newCommentForm()
-				cmd = m.commentForm.Init()
-				m.path = issuesCommentContentPath
-				m.UpdateLayout(m.layout.TerminalSize)
-				m.issueShow = newIssueShow(m.issueIndex.SelectedItem().(Issue), m.layout)
-				m.issueShow.viewport.GotoBottom()
-				return m, cmd
-			case key.Matches(msg, keys.IssueShowFocus):
-				m.commentForm = newCommentForm()
-				m.path = issuesShowPath
-				m.UpdateLayout(m.layout.TerminalSize)
-				m.issueShow = newIssueShow(m.issueIndex.SelectedItem().(Issue), m.layout)
-			case key.Matches(msg, keys.IssueNewForm):
-				cmd = m.issueForm.titleInput.Focus()
-				m.path = issuesNewTitlePath
-				m.issueForm = newIssueForm("", "", "", []string{}, false)
-				m.UpdateLayout(m.layout.TerminalSize)
-				return m, cmd
-			case key.Matches(msg, keys.IssueDelete):
-				selectedItem := m.issueIndex.SelectedItem()
-				if selectedItem == nil {
-					return m, nil
-				}
-				issue := selectedItem.(Issue)
-				issue.DeletedAt = time.Now().UTC()
-				cmd = persistIssue(issue)
-				return m, cmd
-			case key.Matches(msg, keys.NextPage):
-				m.path = checksIndexPath
-				return m, nil
-			case key.Matches(msg, keys.PrevPage):
-				return m, nil
-			}
-		}
-
-		m.issueIndex, cmd = m.issueIndex.Update(msg)
-		return m, cmd
 	case matchRoute(m.path, issuesShowPath):
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
@@ -1219,7 +1224,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	return m, cmd
+	return m.router.Route(m, msg)
 }
 
 type checkResult Check
