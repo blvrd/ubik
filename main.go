@@ -482,6 +482,7 @@ type Model struct {
 	msgDump            io.Writer
 	layout             Layout
 	router             *Router
+	author             string
 }
 
 type SetSearchTermMsg string
@@ -514,7 +515,7 @@ func (m Model) submitIssueForm() tea.Cmd {
 			Description: description,
 			Labels:      labels,
 			Status:      todo,
-			Author:      "garrett@blvrd.co",
+			Author:      m.author,
 		}
 		cmd = persistIssue(newIssue)
 	}
@@ -584,6 +585,7 @@ func InitialModel() Model {
 		issueForm:   newIssueForm("", "", "", []string{}, false),
 		issueShow:   newIssueShow(Issue{}, layout),
 		router:      router,
+		author:      "garrett@blvrd.co",
 	}
 }
 
@@ -749,7 +751,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case commentForm:
 		currentIssue := m.issueIndex.SelectedItem().(Issue)
 		currentIssue.Comments = append(currentIssue.Comments, Comment{
-			Author:  "garrett@blvrd.co",
+			Author:  m.author,
 			Content: msg.contentInput.Value(),
 		})
 
