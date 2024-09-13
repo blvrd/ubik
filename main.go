@@ -790,6 +790,17 @@ func issuesShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			m.issueShow = newIssueShow(m.issueIndex.SelectedItem().(Issue), m.layout)
 			m.issueShow.viewport.GotoBottom()
 			return m, cmd
+		case key.Matches(msg, keys.IssueDelete):
+			selectedItem := m.issueIndex.SelectedItem()
+			if selectedItem == nil {
+				return m, nil
+			}
+			issue := selectedItem.(Issue)
+			issue.DeletedAt = time.Now().UTC()
+			cmd = persistIssue(issue)
+			m.path = issuesIndexPath
+			m.UpdateLayout(m.layout.TerminalSize)
+			return m, cmd
 		}
 	}
 
