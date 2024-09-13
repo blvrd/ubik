@@ -577,6 +577,7 @@ func InitialModel() Model {
 	router := NewRouter()
 	router.AddRoute(issuesIndexPath, issuesIndexHandler)
 	router.AddRoute(issuesShowPath, issuesShowHandler)
+	router.AddRoute(issuesCommentContentPath, issuesCommentContentHandler)
 
 	return Model{
 		path:        issuesIndexPath,
@@ -710,6 +711,7 @@ func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 func issuesShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	keys := m.HelpKeys()
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -781,6 +783,28 @@ func issuesShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	m.issueShow.viewport, cmd = m.issueShow.viewport.Update(msg)
+	return m, cmd
+}
+
+func issuesCommentContentHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	keys := m.HelpKeys()
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keys.Back):
+			currentIssue := m.issueIndex.SelectedItem().(Issue)
+			m.commentForm = newCommentForm()
+			m.issueShow = newIssueShow(currentIssue, m.layout)
+			m.path = issuesShowPath
+		case key.Matches(msg, keys.NextInput):
+			m.commentForm.contentInput.Blur()
+			m.commentForm.confirming = true
+			m.path = issuesCommentConfirmationPath
+		}
+	}
+	m.commentForm.contentInput, cmd = m.commentForm.contentInput.Update(msg)
 	return m, cmd
 }
 
@@ -894,23 +918,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
-	case matchRoute(m.path, issuesCommentContentPath):
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.Back):
-				currentIssue := m.issueIndex.SelectedItem().(Issue)
-				m.commentForm = newCommentForm()
-				m.issueShow = newIssueShow(currentIssue, m.layout)
-				m.path = issuesShowPath
-			case key.Matches(msg, keys.NextInput):
-				m.commentForm.contentInput.Blur()
-				m.commentForm.confirming = true
-				m.path = issuesCommentConfirmationPath
-			}
-		}
-		m.commentForm.contentInput, cmd = m.commentForm.contentInput.Update(msg)
-		return m, cmd
 	case matchRoute(m.path, issuesCommentConfirmationPath):
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
