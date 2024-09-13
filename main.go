@@ -580,6 +580,7 @@ func InitialModel() Model {
 	router.AddRoute(issuesCommentContentPath, issuesCommentContentHandler)
 	router.AddRoute(issuesCommentConfirmationPath, issuesCommentConfirmationHandler)
 	router.AddRoute(issuesEditTitlePath, issuesEditTitleHandler)
+	router.AddRoute(issuesEditLabelsPath, issuesEditLabelsHandler)
 
 	return Model{
 		path:        issuesIndexPath,
@@ -857,6 +858,32 @@ func issuesEditTitleHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
+func issuesEditLabelsHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	keys := m.HelpKeys()
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keys.Back):
+			if m.issueForm.editing {
+				m.path = issuesShowPath
+				return m, cmd
+			} else {
+				m.path = issuesIndexPath
+				return m, cmd
+			}
+		case key.Matches(msg, keys.NextInput):
+			m.path = issuesEditDescriptionPath
+			m.issueForm.labelsInput.Blur()
+			m.issueForm.descriptionInput.Focus()
+			return m, cmd
+		}
+	}
+
+	m.issueForm.labelsInput, cmd = m.issueForm.labelsInput.Update(msg)
+	return m, cmd
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.msgDump != nil {
 		fmt.Fprintf(m.msgDump, "%T\n", msg)
@@ -967,28 +994,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
-	case matchRoute(m.path, issuesEditLabelsPath):
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.Back):
-				if m.issueForm.editing {
-					m.path = issuesShowPath
-					return m, cmd
-				} else {
-					m.path = issuesIndexPath
-					return m, cmd
-				}
-			case key.Matches(msg, keys.NextInput):
-				m.path = issuesEditDescriptionPath
-				m.issueForm.labelsInput.Blur()
-				m.issueForm.descriptionInput.Focus()
-				return m, cmd
-			}
-		}
-
-		m.issueForm.labelsInput, cmd = m.issueForm.labelsInput.Update(msg)
-		return m, cmd
 	case matchRoute(m.path, issuesEditDescriptionPath):
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
