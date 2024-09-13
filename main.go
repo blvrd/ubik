@@ -546,6 +546,11 @@ var (
 )
 
 func InitialModel() Model {
+
+	author, err := getGitAuthorEmail()
+	if err != nil {
+		log.Fatal(err)
+	}
 	layout := Layout{}
 
 	issueList := list.New([]list.Item{}, Issue{}, 0, 0)
@@ -585,7 +590,7 @@ func InitialModel() Model {
 		issueForm:   newIssueForm("", "", "", []string{}, false),
 		issueShow:   newIssueShow(Issue{}, layout),
 		router:      router,
-		author:      "garrett@blvrd.co",
+		author:      author,
 	}
 }
 
@@ -2115,4 +2120,15 @@ func debug(format string, args ...any) {
 		log.Helper()
 		log.Debugf(format, args...)
 	}
+}
+
+func getGitAuthorEmail() (string, error) {
+	cmd := exec.Command("git", "config", "user.email")
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	err := cmd.Run()
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(out.String()), nil
 }
