@@ -578,6 +578,7 @@ func InitialModel() Model {
 	router.AddRoute(issuesIndexPath, issuesIndexHandler)
 	router.AddRoute(issuesShowPath, issuesShowHandler)
 	router.AddRoute(issuesCommentContentPath, issuesCommentContentHandler)
+	router.AddRoute(issuesCommentConfirmationPath, issuesCommentConfirmationHandler)
 
 	return Model{
 		path:        issuesIndexPath,
@@ -808,6 +809,26 @@ func issuesCommentContentHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
+func issuesCommentConfirmationHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	keys := m.HelpKeys()
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keys.Back):
+			currentIssue := m.issueIndex.SelectedItem().(Issue)
+			m.commentForm = newCommentForm()
+			m.issueShow = newIssueShow(currentIssue, m.layout)
+			m.path = issuesShowPath
+		case key.Matches(msg, keys.Submit):
+			cmd = m.commentForm.Submit
+		}
+	}
+
+	return m, cmd
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.msgDump != nil {
 		fmt.Fprintf(m.msgDump, "%T\n", msg)
@@ -918,19 +939,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
-	case matchRoute(m.path, issuesCommentConfirmationPath):
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.Back):
-				currentIssue := m.issueIndex.SelectedItem().(Issue)
-				m.commentForm = newCommentForm()
-				m.issueShow = newIssueShow(currentIssue, m.layout)
-				m.path = issuesShowPath
-			case key.Matches(msg, keys.Submit):
-				return m, m.commentForm.Submit
-			}
-		}
 	case matchRoute(m.path, issuesEditTitlePath):
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
