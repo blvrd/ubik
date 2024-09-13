@@ -582,6 +582,7 @@ func InitialModel() Model {
 	router.AddRoute(issuesEditTitlePath, issuesEditTitleHandler)
 	router.AddRoute(issuesEditLabelsPath, issuesEditLabelsHandler)
 	router.AddRoute(issuesEditDescriptionPath, issuesEditDescriptionHandler)
+	router.AddRoute(issuesEditConfirmationPath, issuesEditConfirmationHandler)
 
 	return Model{
 		path:        issuesIndexPath,
@@ -889,6 +890,7 @@ func issuesEditLabelsHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 func issuesEditDescriptionHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	keys := m.HelpKeys()
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -908,6 +910,33 @@ func issuesEditDescriptionHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	m.issueForm.descriptionInput, cmd = m.issueForm.descriptionInput.Update(msg)
+	return m, cmd
+}
+
+func issuesEditConfirmationHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	keys := m.HelpKeys()
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keys.Back):
+			if m.issueForm.editing {
+				m.path = issuesShowPath
+				return m, cmd
+			} else {
+				m.path = issuesIndexPath
+				return m, cmd
+			}
+		case key.Matches(msg, keys.NextInput):
+			m.path = issuesEditTitlePath
+			cmd = m.issueForm.titleInput.Focus()
+			return m, cmd
+		case key.Matches(msg, keys.Submit):
+			return m, m.submitIssueForm()
+		}
+	}
+
 	return m, cmd
 }
 
@@ -1022,27 +1051,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch {
 	case matchRoute(m.path, issuesEditConfirmationPath):
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.Back):
-				if m.issueForm.editing {
-					m.path = issuesShowPath
-					return m, cmd
-				} else {
-					m.path = issuesIndexPath
-					return m, cmd
-				}
-			case key.Matches(msg, keys.NextInput):
-				m.path = issuesEditTitlePath
-				cmd = m.issueForm.titleInput.Focus()
-				return m, cmd
-			case key.Matches(msg, keys.Submit):
-				return m, m.submitIssueForm()
-			}
-		}
-
-		return m, cmd
 	case matchRoute(m.path, issuesNewTitlePath):
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
