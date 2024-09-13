@@ -462,6 +462,7 @@ func (m *Model) UpdateLayout(terminalSize Size) {
 	m.issueForm.titleInput.Width = clamp(layout.RightSize.Width, 50, 80)
 	m.issueForm.labelsInput.Width = clamp(layout.RightSize.Width, 50, 80)
 	m.issueForm.descriptionInput.SetWidth(clamp(layout.RightSize.Width, 50, 80))
+	m.issueForm.descriptionInput.SetHeight(layout.RightSize.Height / 3)
 }
 
 type Model struct {
@@ -1906,7 +1907,6 @@ func newIssueForm(identifier, title, description string, labels []string, editin
 	form.descriptionInput.CharLimit = 0 // unlimited
 	form.descriptionInput.MaxHeight = 0 // unlimited
 	form.descriptionInput.ShowLineNumbers = false
-	form.descriptionInput.SetHeight(30)
 	form.descriptionInput.SetValue(description)
 
 	return form
