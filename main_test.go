@@ -49,36 +49,36 @@ func TestClamp(t *testing.T) {
 	}
 }
 
-func TestCommitAggregateCheckStatus(t *testing.T) {
+func TestCommitAggregateActionStatus(t *testing.T) {
 	tests := []struct {
 		name     string
-		checks   []Check
-		expected CheckStatus
+		actions   []Action
+		expected ActionStatus
 	}{
 		{
-			name:     "No checks",
-			checks:   []Check{},
+			name:     "No actions",
+			actions:   []Action{},
 			expected: "",
 		},
 		{
 			name: "All succeeded",
-			checks: []Check{
+			actions: []Action{
 				{Status: succeeded},
 				{Status: succeeded},
 			},
 			expected: succeeded,
 		},
 		{
-			name: "One running with another succeeded check",
-			checks: []Check{
+			name: "One running with another succeeded action",
+			actions: []Action{
 				{Status: succeeded},
 				{Status: running},
 			},
 			expected: running,
 		},
 		{
-			name: "One running with another failed check",
-			checks: []Check{
+			name: "One running with another failed action",
+			actions: []Action{
 				{Status: failed},
 				{Status: running},
 			},
@@ -86,7 +86,7 @@ func TestCommitAggregateCheckStatus(t *testing.T) {
 		},
 		{
 			name: "One failed",
-			checks: []Check{
+			actions: []Action{
 				{Status: succeeded},
 				{Status: failed},
 			},
@@ -94,15 +94,15 @@ func TestCommitAggregateCheckStatus(t *testing.T) {
 		},
 		{
 			name: "One failed, different order",
-			checks: []Check{
+			actions: []Action{
 				{Status: failed},
 				{Status: succeeded},
 			},
 			expected: failed,
 		},
 		{
-			name: "Optional check failed",
-			checks: []Check{
+			name: "Optional action failed",
+			actions: []Action{
 				{Status: failed, Optional: true},
 				{Status: succeeded},
 			},
@@ -112,8 +112,8 @@ func TestCommitAggregateCheckStatus(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			commit := Commit{LatestChecks: tt.checks}
-			result := commit.AggregateCheckStatus()
+			commit := Commit{LatestActions: tt.actions}
+			result := commit.AggregateActionStatus()
 			if result != tt.expected {
 				t.Errorf("Expected status %v, got %v", tt.expected, result)
 			}
@@ -121,12 +121,12 @@ func TestCommitAggregateCheckStatus(t *testing.T) {
 	}
 }
 
-func TestCheckElapsedTime(t *testing.T) {
-	check := Check{
+func TestActionElapsedTime(t *testing.T) {
+	action := Action{
 		StartedAt:  time.Now().Add(-5 * time.Minute),
 		FinishedAt: time.Now(),
 	}
 
-	elapsed := check.ElapsedTime()
+	elapsed := action.ElapsedTime()
 	assert.InDelta(t, 5*time.Minute, elapsed, float64(time.Second), "ElapsedTime should be approximately 5 minutes")
 }
