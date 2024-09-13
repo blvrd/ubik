@@ -674,9 +674,9 @@ func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			m.UpdateLayout(m.layout.TerminalSize)
 			m.issueShow = newIssueShow(m.issueIndex.SelectedItem().(Issue), m.layout)
 		case key.Matches(msg, keys.IssueNewForm):
-			cmd = m.issueForm.titleInput.Focus()
 			m.path = issuesNewTitlePath
 			m.issueForm = newIssueForm("", "", "", []string{}, false)
+			cmd = m.issueForm.titleInput.Focus()
 			m.UpdateLayout(m.layout.TerminalSize)
 			return m, cmd
 		case key.Matches(msg, keys.IssueDelete):
