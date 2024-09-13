@@ -810,7 +810,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
-	case matchRoute(m.path, issuesIndexPath):
 	case matchRoute(m.path, issuesShowPath):
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
