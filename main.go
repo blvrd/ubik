@@ -347,7 +347,7 @@ type Issue struct {
 
 func (i Issue) FilterValue() string {
 	labels := strings.Join(i.Labels, " ")
-	return fmt.Sprintf("%s\n%s", i.Title, labels)
+	return fmt.Sprintf("%s\n%s\n", i.Title, labels, i.Status)
 }
 
 func (i Issue) Height() int                             { return 2 }
@@ -639,11 +639,26 @@ func LabelFilter(term string, targets []string) []list.Rank {
 	return list.DefaultFilter(labelTerm, labelTargets)
 }
 
+func StatusFilter(term string, targets []string) []list.Rank {
+	var statusTargets []string
+	statusTerm := strings.TrimPrefix(term, "status:")
+
+	for _, t := range targets {
+		statusPart := strings.Split(t, "\n")[2]
+		statusTargets = append(statusTargets, statusPart)
+	}
+
+	return list.DefaultFilter(statusTerm, statusTargets)
+}
+
 func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	if m.issueIndex.SettingFilter() {
 		if strings.Contains(m.issueIndex.FilterValue(), "label:") {
 			m.issueIndex.Filter = LabelFilter
+		}
+		if strings.Contains(m.issueIndex.FilterValue(), "status:") {
+			m.issueIndex.Filter = StatusFilter
 		}
 		m.issueIndex, cmd = m.issueIndex.Update(msg)
 		return m, cmd
