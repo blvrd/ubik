@@ -615,83 +615,6 @@ func (m Model) isUserTyping() bool {
 	return slices.Contains(paths, m.path)
 }
 
-func issuesShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
-	var cmd tea.Cmd
-	keys := m.HelpKeys()
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch {
-		case key.Matches(msg, keys.Help):
-			if m.help.ShowAll {
-				m.help.ShowAll = false
-			} else {
-				m.help.ShowAll = true
-			}
-			return m, nil
-		case key.Matches(msg, keys.IssueStatusDone):
-			currentIssue := m.issueIndex.SelectedItem().(Issue)
-			if currentIssue.Status == todo {
-				currentIssue.Status = done
-			} else {
-				currentIssue.Status = todo
-			}
-			m.commentForm = newCommentForm()
-			m.issueShow = newIssueShow(currentIssue, m.layout)
-			cmd = persistIssue(currentIssue)
-			return m, cmd
-		case key.Matches(msg, keys.IssueStatusWontDo):
-			currentIssue := m.issueIndex.SelectedItem().(Issue)
-			if currentIssue.Status == wontDo {
-				currentIssue.Status = todo
-			} else {
-				currentIssue.Status = wontDo
-			}
-			m.commentForm = newCommentForm()
-			m.issueShow = newIssueShow(currentIssue, m.layout)
-			cmd = persistIssue(currentIssue)
-			return m, cmd
-		case key.Matches(msg, keys.IssueStatusInProgress):
-			currentIssue := m.issueIndex.SelectedItem().(Issue)
-			if currentIssue.Status == inProgress {
-				currentIssue.Status = todo
-			} else {
-				currentIssue.Status = inProgress
-			}
-			m.commentForm = newCommentForm()
-			m.issueShow = newIssueShow(currentIssue, m.layout)
-			cmd = persistIssue(currentIssue)
-			return m, cmd
-		case key.Matches(msg, keys.IssueEditForm):
-			selectedIssue := m.issueIndex.SelectedItem().(Issue)
-			m.issueForm = newIssueForm(
-				selectedIssue.Shortcode,
-				selectedIssue.Title,
-				selectedIssue.Description,
-				selectedIssue.Labels,
-				true,
-			)
-			cmd = m.issueForm.titleInput.Focus()
-
-			m.path = issuesEditTitlePath
-			m.UpdateLayout(m.layout.TerminalSize)
-			return m, cmd
-		case key.Matches(msg, keys.Back):
-			m.path = issuesIndexPath
-		case key.Matches(msg, keys.IssueCommentFormFocus):
-			m.commentForm = newCommentForm()
-			cmd = m.commentForm.Init()
-			m.path = issuesCommentContentPath
-			m.UpdateLayout(m.layout.TerminalSize)
-			m.issueShow = newIssueShow(m.issueIndex.SelectedItem().(Issue), m.layout)
-			m.issueShow.viewport.GotoBottom()
-			return m, cmd
-		}
-	}
-
-	m.issueShow.viewport, cmd = m.issueShow.viewport.Update(msg)
-	return m, cmd
-}
-
 func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	if m.issueIndex.SettingFilter() {
@@ -781,6 +704,83 @@ func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	m.issueIndex, cmd = m.issueIndex.Update(msg)
+	return m, cmd
+}
+
+func issuesShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	keys := m.HelpKeys()
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keys.Help):
+			if m.help.ShowAll {
+				m.help.ShowAll = false
+			} else {
+				m.help.ShowAll = true
+			}
+			return m, nil
+		case key.Matches(msg, keys.IssueStatusDone):
+			currentIssue := m.issueIndex.SelectedItem().(Issue)
+			if currentIssue.Status == todo {
+				currentIssue.Status = done
+			} else {
+				currentIssue.Status = todo
+			}
+			m.commentForm = newCommentForm()
+			m.issueShow = newIssueShow(currentIssue, m.layout)
+			cmd = persistIssue(currentIssue)
+			return m, cmd
+		case key.Matches(msg, keys.IssueStatusWontDo):
+			currentIssue := m.issueIndex.SelectedItem().(Issue)
+			if currentIssue.Status == wontDo {
+				currentIssue.Status = todo
+			} else {
+				currentIssue.Status = wontDo
+			}
+			m.commentForm = newCommentForm()
+			m.issueShow = newIssueShow(currentIssue, m.layout)
+			cmd = persistIssue(currentIssue)
+			return m, cmd
+		case key.Matches(msg, keys.IssueStatusInProgress):
+			currentIssue := m.issueIndex.SelectedItem().(Issue)
+			if currentIssue.Status == inProgress {
+				currentIssue.Status = todo
+			} else {
+				currentIssue.Status = inProgress
+			}
+			m.commentForm = newCommentForm()
+			m.issueShow = newIssueShow(currentIssue, m.layout)
+			cmd = persistIssue(currentIssue)
+			return m, cmd
+		case key.Matches(msg, keys.IssueEditForm):
+			selectedIssue := m.issueIndex.SelectedItem().(Issue)
+			m.issueForm = newIssueForm(
+				selectedIssue.Shortcode,
+				selectedIssue.Title,
+				selectedIssue.Description,
+				selectedIssue.Labels,
+				true,
+			)
+			cmd = m.issueForm.titleInput.Focus()
+
+			m.path = issuesEditTitlePath
+			m.UpdateLayout(m.layout.TerminalSize)
+			return m, cmd
+		case key.Matches(msg, keys.Back):
+			m.path = issuesIndexPath
+		case key.Matches(msg, keys.IssueCommentFormFocus):
+			m.commentForm = newCommentForm()
+			cmd = m.commentForm.Init()
+			m.path = issuesCommentContentPath
+			m.UpdateLayout(m.layout.TerminalSize)
+			m.issueShow = newIssueShow(m.issueIndex.SelectedItem().(Issue), m.layout)
+			m.issueShow.viewport.GotoBottom()
+			return m, cmd
+		}
+	}
+
+	m.issueShow.viewport, cmd = m.issueShow.viewport.Update(msg)
 	return m, cmd
 }
 
