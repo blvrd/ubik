@@ -856,7 +856,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, cmd
 			case key.Matches(msg, keys.IssueEditForm):
 				selectedIssue := m.issueIndex.SelectedItem().(Issue)
-				m.issueForm = newIssueForm(selectedIssue.Shortcode, "", "", []string{}, true)
+				m.issueForm = newIssueForm(
+					selectedIssue.Shortcode,
+					selectedIssue.Title,
+					selectedIssue.Description,
+					selectedIssue.Labels,
+					true,
+				)
 				cmd = m.issueForm.titleInput.Focus()
 
 				m.path = issuesEditTitlePath
