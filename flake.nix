@@ -40,10 +40,10 @@
 
     # Package output
     packages = forAllSystems ({pkgs}: {
-      default = pkgs.buildGoModule {
+      default = pkgs.buildGoModule.override {go = pkgs.go_1_23;} {
         pname = "ubik";
-        version = "0.1.0";
-        vendorSha256 = "sha256-Hk7SECmVO3I7GYBHtPewV/mYx0CRwxFHnW4LNlPrwzU=";
+        version = "pre-alpha";
+        vendorHash = "sha256-Wj0XPigjXWRf4/8Y/EdQ/1P1HypghiP0402ZegUxYvk=";
 
         buildInputs = with pkgs; [
           git
