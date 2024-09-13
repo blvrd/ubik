@@ -583,6 +583,7 @@ func InitialModel() Model {
 	router.AddRoute(issuesEditLabelsPath, issuesEditLabelsHandler)
 	router.AddRoute(issuesEditDescriptionPath, issuesEditDescriptionHandler)
 	router.AddRoute(issuesEditConfirmationPath, issuesEditConfirmationHandler)
+	router.AddRoute(issuesNewTitlePath, issuesNewTitleHandler)
 
 	return Model{
 		path:        issuesIndexPath,
@@ -940,6 +941,33 @@ func issuesEditConfirmationHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
+func issuesNewTitleHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	keys := m.HelpKeys()
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keys.Back):
+			if m.issueForm.editing {
+				m.path = issuesShowPath
+				return m, cmd
+			} else {
+				m.path = issuesIndexPath
+				return m, cmd
+			}
+		case key.Matches(msg, keys.NextInput):
+			m.path = issuesNewLabelsPath
+			m.issueForm.titleInput.Blur()
+			cmd = m.issueForm.labelsInput.Focus()
+			return m, cmd
+		}
+	}
+
+	m.issueForm.titleInput, cmd = m.issueForm.titleInput.Update(msg)
+	return m, cmd
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.msgDump != nil {
 		fmt.Fprintf(m.msgDump, "%T\n", msg)
@@ -1050,29 +1078,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
-	case matchRoute(m.path, issuesEditConfirmationPath):
-	case matchRoute(m.path, issuesNewTitlePath):
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.Back):
-				if m.issueForm.editing {
-					m.path = issuesShowPath
-					return m, cmd
-				} else {
-					m.path = issuesIndexPath
-					return m, cmd
-				}
-			case key.Matches(msg, keys.NextInput):
-				m.path = issuesNewLabelsPath
-				m.issueForm.titleInput.Blur()
-				cmd = m.issueForm.labelsInput.Focus()
-				return m, cmd
-			}
-		}
-
-		m.issueForm.titleInput, cmd = m.issueForm.titleInput.Update(msg)
-		return m, cmd
 	case matchRoute(m.path, issuesNewLabelsPath):
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
