@@ -581,6 +581,7 @@ func InitialModel() Model {
 	router.AddRoute(issuesCommentConfirmationPath, issuesCommentConfirmationHandler)
 	router.AddRoute(issuesEditTitlePath, issuesEditTitleHandler)
 	router.AddRoute(issuesEditLabelsPath, issuesEditLabelsHandler)
+	router.AddRoute(issuesEditDescriptionPath, issuesEditDescriptionHandler)
 
 	return Model{
 		path:        issuesIndexPath,
@@ -861,6 +862,7 @@ func issuesEditTitleHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 func issuesEditLabelsHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	keys := m.HelpKeys()
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
@@ -881,6 +883,31 @@ func issuesEditLabelsHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	}
 
 	m.issueForm.labelsInput, cmd = m.issueForm.labelsInput.Update(msg)
+	return m, cmd
+}
+
+func issuesEditDescriptionHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	keys := m.HelpKeys()
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keys.Back):
+			if m.issueForm.editing {
+				m.path = issuesShowPath
+				return m, cmd
+			} else {
+				m.path = issuesIndexPath
+				return m, cmd
+			}
+		case key.Matches(msg, keys.NextInput):
+			m.path = issuesEditConfirmationPath
+			m.issueForm.descriptionInput.Blur()
+			return m, cmd
+		}
+	}
+
+	m.issueForm.descriptionInput, cmd = m.issueForm.descriptionInput.Update(msg)
 	return m, cmd
 }
 
@@ -994,27 +1021,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
-	case matchRoute(m.path, issuesEditDescriptionPath):
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.Back):
-				if m.issueForm.editing {
-					m.path = issuesShowPath
-					return m, cmd
-				} else {
-					m.path = issuesIndexPath
-					return m, cmd
-				}
-			case key.Matches(msg, keys.NextInput):
-				m.path = issuesEditConfirmationPath
-				m.issueForm.descriptionInput.Blur()
-				return m, cmd
-			}
-		}
-
-		m.issueForm.descriptionInput, cmd = m.issueForm.descriptionInput.Update(msg)
-		return m, cmd
 	case matchRoute(m.path, issuesEditConfirmationPath):
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
