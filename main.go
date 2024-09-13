@@ -585,6 +585,10 @@ func InitialModel() Model {
 	router.AddRoute(issuesEditConfirmationPath, issuesEditConfirmationHandler)
 	router.AddRoute(issuesNewTitlePath, issuesNewTitleHandler)
 	router.AddRoute(issuesNewLabelsPath, issuesNewLabelsHandler)
+	router.AddRoute(issuesNewDescriptionPath, issuesNewDescriptionHandler)
+	router.AddRoute(issuesNewConfirmationPath, issuesNewConfirmationHandler)
+	router.AddRoute(checksIndexPath, checksIndexHandler)
+	router.AddRoute(checksShowPath, checksShowHandler)
 
 	return Model{
 		path:        issuesIndexPath,
@@ -996,6 +1000,150 @@ func issuesNewLabelsHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
+func issuesNewDescriptionHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	keys := m.HelpKeys()
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keys.Back):
+			m.path = issuesIndexPath
+			return m, cmd
+		case key.Matches(msg, keys.NextInput):
+			m.path = issuesNewConfirmationPath
+			m.issueForm.descriptionInput.Blur()
+			return m, cmd
+		}
+	}
+
+	m.issueForm.descriptionInput, cmd = m.issueForm.descriptionInput.Update(msg)
+	return m, cmd
+}
+
+func issuesNewConfirmationHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	keys := m.HelpKeys()
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keys.Back):
+			m.path = issuesIndexPath
+			return m, cmd
+		case key.Matches(msg, keys.NextInput):
+			m.path = issuesNewTitlePath
+			cmd = m.issueForm.titleInput.Focus()
+			return m, cmd
+		case key.Matches(msg, keys.Submit):
+			return m, m.submitIssueForm()
+		}
+	}
+
+	return m, cmd
+}
+
+func checksIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	keys := m.HelpKeys()
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keys.Help):
+			m.help.ShowAll = !m.help.ShowAll
+			return m, nil
+		case key.Matches(msg, keys.RunCheck):
+			commit := m.commitIndex.SelectedItem().(Commit)
+			var cmds []tea.Cmd
+			checks := NewChecks(commit)
+			cmds = append(cmds, commit.DeleteExistingChecks())
+			commit.LatestChecks = checks
+
+			for i, check := range commit.LatestChecks {
+				check.ExecutionPosition = i
+				cmds = append(cmds, RunCheck(check))
+			}
+			m.commitIndex.SetItem(m.commitIndex.Index(), commit)
+			return m, tea.Batch(cmds...)
+		case key.Matches(msg, keys.CommitShowFocus):
+			m.path = checksShowPath
+			m.UpdateLayout(m.layout.TerminalSize)
+			m.commitShow = newCommitShow(m.commitIndex.SelectedItem().(Commit), m.layout, false)
+			return m, cmd
+		case key.Matches(msg, keys.NextPage):
+			m.path = issuesIndexPath
+			return m, nil
+		case key.Matches(msg, keys.PrevPage):
+			return m, nil
+		}
+	}
+
+	m.commitIndex, cmd = m.commitIndex.Update(msg)
+	return m, cmd
+}
+
+func checksShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	keys := m.HelpKeys()
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, keys.Back):
+			m.path = checksIndexPath
+		case key.Matches(msg, keys.RunCheck):
+			commit := m.commitIndex.SelectedItem().(Commit)
+			var cmds []tea.Cmd
+			checks := NewChecks(commit)
+			cmds = append(cmds, commit.DeleteExistingChecks())
+			commit.LatestChecks = checks
+
+			for i, check := range commit.LatestChecks {
+				check.ExecutionPosition = i
+				cmds = append(cmds, RunCheck(check))
+			}
+			m.commitIndex.SetItem(m.commitIndex.Index(), commit)
+			m.UpdateLayout(m.layout.TerminalSize)
+			m.commitShow = newCommitShow(commit, m.layout, false)
+			return m, tea.Batch(cmds...)
+		case key.Matches(msg, keys.CommitExpandCheckDetails):
+			commit := m.commitIndex.SelectedItem().(Commit)
+			expand := !m.commitShow.expandCheckDetails
+			m.UpdateLayout(m.layout.TerminalSize)
+			m.commitShow = newCommitShow(commit, m.layout, expand)
+		}
+	case checkResult:
+		return m, persistCheck(Check(msg))
+	case checkPersistedMsg:
+		check := msg.Check
+		var commit Commit
+		var commitIndex int
+		for i, c := range m.commitIndex.Items() {
+			if c.(Commit).Id == check.CommitId {
+				commit = c.(Commit)
+				commitIndex = i
+				break
+			}
+		}
+		updatedChecks := make([]Check, len(commit.LatestChecks))
+		for i, c := range commit.LatestChecks {
+			if check.Id == c.Id {
+				updatedChecks[i] = check
+			} else {
+				updatedChecks[i] = c
+			}
+		}
+		commit.LatestChecks = updatedChecks
+		m.commitIndex.SetItem(commitIndex, commit)
+		m.UpdateLayout(m.layout.TerminalSize)
+		m.commitShow = newCommitShow(commit, m.layout, m.commitShow.expandCheckDetails)
+	}
+
+	m.commitShow.viewport, cmd = m.commitShow.viewport.Update(msg)
+	return m, cmd
+}
+
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.msgDump != nil {
 		fmt.Fprintf(m.msgDump, "%T\n", msg)
@@ -1102,193 +1250,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.path != issuesIndexPath {
 			m.path = issuesShowPath
 		}
-		return m, cmd
-	}
-
-	switch {
-	case matchRoute(m.path, issuesNewDescriptionPath):
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.Back):
-				if m.issueForm.editing {
-					m.path = issuesShowPath
-					return m, cmd
-				} else {
-					m.path = issuesIndexPath
-					return m, cmd
-				}
-			case key.Matches(msg, keys.NextInput):
-				m.path = issuesNewConfirmationPath
-				m.issueForm.descriptionInput.Blur()
-				return m, cmd
-			}
-		}
-
-		m.issueForm.descriptionInput, cmd = m.issueForm.descriptionInput.Update(msg)
-		return m, cmd
-	case matchRoute(m.path, issuesNewConfirmationPath):
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.Back):
-				if m.issueForm.editing {
-					m.path = issuesShowPath
-					return m, cmd
-				} else {
-					m.path = issuesIndexPath
-					return m, cmd
-				}
-			case key.Matches(msg, keys.NextInput):
-				m.path = issuesNewTitlePath
-				cmd = m.issueForm.titleInput.Focus()
-				return m, cmd
-			case key.Matches(msg, keys.Submit):
-				return m, m.submitIssueForm()
-			}
-		}
-
-		return m, cmd
-	case matchRoute(m.path, checksIndexPath):
-		if m.commitIndex.SettingFilter() {
-			m.commitIndex, cmd = m.commitIndex.Update(msg)
-			return m, cmd
-		}
-
-		switch msg := msg.(type) {
-		case checkResult:
-			return m, persistCheck(Check(msg))
-		case checkPersistedMsg:
-			check := msg.Check
-			var commit Commit
-			var commitIndex int
-			for i, c := range m.commitIndex.Items() {
-				if c.(Commit).Id == check.CommitId {
-					commit = c.(Commit)
-					commitIndex = i
-					break
-				}
-			}
-			updatedChecks := make([]Check, len(commit.LatestChecks))
-			for i, c := range commit.LatestChecks {
-				if check.Id == c.Id {
-					updatedChecks[i] = check
-				} else {
-					updatedChecks[i] = c
-				}
-			}
-			commit.LatestChecks = updatedChecks
-			m.commitIndex.SetItem(commitIndex, commit)
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.Down):
-				m.commitIndex, cmd = m.commitIndex.Update(msg)
-				return m, cmd
-			case key.Matches(msg, keys.Up):
-				m.commitIndex, cmd = m.commitIndex.Update(msg)
-				return m, cmd
-			case key.Matches(msg, keys.RunCheck):
-				commit := m.commitIndex.SelectedItem().(Commit)
-				var cmds []tea.Cmd
-				checks := NewChecks(commit)
-				cmds = append(cmds, commit.DeleteExistingChecks())
-				commit.LatestChecks = checks
-
-				for i, check := range commit.LatestChecks {
-					check.ExecutionPosition = i
-					cmds = append(cmds, RunCheck(check))
-				}
-				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
-				return m, tea.Batch(cmds...)
-			case key.Matches(msg, keys.CommitShowFocus):
-				m.path = checksShowPath
-				m.UpdateLayout(m.layout.TerminalSize)
-				m.commitShow = newCommitShow(m.commitIndex.SelectedItem().(Commit), m.layout, false)
-				return m, cmd
-			case key.Matches(msg, keys.NextPage):
-				return m, nil
-			case key.Matches(msg, keys.PrevPage):
-				m.path = issuesIndexPath
-				return m, nil
-			case key.Matches(msg, keys.Help):
-				if m.help.ShowAll {
-					m.help.ShowAll = false
-					return m, nil
-				} else {
-					var maxHelpHeight int
-					for _, column := range keys.FullHelp() {
-						if len(column) > maxHelpHeight {
-							maxHelpHeight = len(column)
-						}
-					}
-					m.help.ShowAll = true
-					return m, nil
-				}
-			}
-		}
-
-		m.commitIndex, cmd = m.commitIndex.Update(msg)
-		return m, cmd
-	case matchRoute(m.path, checksShowPath):
-		switch msg := msg.(type) {
-		case tea.KeyMsg:
-			switch {
-			case key.Matches(msg, keys.Back):
-				m.path = checksIndexPath
-			case key.Matches(msg, keys.RunCheck):
-				commit := m.commitIndex.SelectedItem().(Commit)
-				var cmds []tea.Cmd
-				checks := NewChecks(commit)
-				cmds = append(cmds, commit.DeleteExistingChecks())
-				commit.LatestChecks = checks
-
-				for i, check := range commit.LatestChecks {
-					check.ExecutionPosition = i
-					cmds = append(cmds, RunCheck(check))
-				}
-				m.commitIndex.SetItem(m.commitIndex.Index(), commit)
-				m.UpdateLayout(m.layout.TerminalSize)
-				m.commitShow = newCommitShow(commit, m.layout, false)
-				return m, tea.Batch(cmds...)
-			case key.Matches(msg, keys.CommitExpandCheckDetails):
-				commit := m.commitIndex.SelectedItem().(Commit)
-				var expand bool
-				if m.commitShow.expandCheckDetails {
-					expand = false
-				} else {
-					expand = true
-				}
-				m.UpdateLayout(m.layout.TerminalSize)
-				m.commitShow = newCommitShow(commit, m.layout, expand)
-			}
-		case checkResult:
-			return m, persistCheck(Check(msg))
-		case checkPersistedMsg:
-			check := msg.Check
-			var commit Commit
-			var commitIndex int
-			for i, c := range m.commitIndex.Items() {
-				if c.(Commit).Id == check.CommitId {
-					commit = c.(Commit)
-					commitIndex = i
-					break
-				}
-			}
-			updatedChecks := make([]Check, len(commit.LatestChecks))
-			for i, c := range commit.LatestChecks {
-				if check.Id == c.Id {
-					updatedChecks[i] = check
-				} else {
-					updatedChecks[i] = c
-				}
-			}
-			commit.LatestChecks = updatedChecks
-			m.commitIndex.SetItem(commitIndex, commit)
-			m.UpdateLayout(m.layout.TerminalSize)
-			m.commitShow = newCommitShow(commit, m.layout, false)
-		}
-
-		m.commitShow.viewport, cmd = m.commitShow.viewport.Update(msg)
 		return m, cmd
 	}
 
