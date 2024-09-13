@@ -250,30 +250,30 @@ func (s issueStatus) color() lipgloss.AdaptiveColor {
 }
 
 type keyMap struct {
-	Path                     int
-	Up                       key.Binding
-	Down                     key.Binding
-	Left                     key.Binding
-	Right                    key.Binding
-	Help                     key.Binding
-	Quit                     key.Binding
-	ForceQuit                key.Binding
-	Suspend                  key.Binding
-	Back                     key.Binding
-	IssueNewForm             key.Binding
-	IssueEditForm            key.Binding
-	IssueShowFocus           key.Binding
-	IssueStatusDone          key.Binding
-	IssueStatusWontDo        key.Binding
-	IssueStatusInProgress    key.Binding
-	IssueCommentFormFocus    key.Binding
-	IssueDelete              key.Binding
-	CommitShowFocus          key.Binding
+	Path                      int
+	Up                        key.Binding
+	Down                      key.Binding
+	Left                      key.Binding
+	Right                     key.Binding
+	Help                      key.Binding
+	Quit                      key.Binding
+	ForceQuit                 key.Binding
+	Suspend                   key.Binding
+	Back                      key.Binding
+	IssueNewForm              key.Binding
+	IssueEditForm             key.Binding
+	IssueShowFocus            key.Binding
+	IssueStatusDone           key.Binding
+	IssueStatusWontDo         key.Binding
+	IssueStatusInProgress     key.Binding
+	IssueCommentFormFocus     key.Binding
+	IssueDelete               key.Binding
+	CommitShowFocus           key.Binding
 	CommitExpandActionDetails key.Binding
-	NextInput                key.Binding
-	Submit                   key.Binding
-	NextPage                 key.Binding
-	PrevPage                 key.Binding
+	NextInput                 key.Binding
+	Submit                    key.Binding
+	NextPage                  key.Binding
+	PrevPage                  key.Binding
 	RunAction                 key.Binding
 }
 
@@ -347,7 +347,7 @@ type Issue struct {
 
 func (i Issue) FilterValue() string {
 	labels := strings.Join(i.Labels, " ")
-	return fmt.Sprintf("%s %s", i.Title, labels)
+	return fmt.Sprintf("%s\n%s", i.Title, labels)
 }
 
 func (i Issue) Height() int                             { return 2 }
@@ -627,9 +627,24 @@ func (m Model) isUserTyping() bool {
 	return slices.Contains(paths, m.path)
 }
 
+func LabelFilter(term string, targets []string) []list.Rank {
+	var labelTargets []string
+	labelTerm := strings.TrimPrefix(term, "label:")
+
+	for _, t := range targets {
+		labelsPart := strings.Split(t, "\n")[1]
+		labelTargets = append(labelTargets, labelsPart)
+	}
+
+	return list.DefaultFilter(labelTerm, labelTargets)
+}
+
 func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	if m.issueIndex.SettingFilter() {
+		if strings.Contains(m.issueIndex.FilterValue(), "label:") {
+			m.issueIndex.Filter = LabelFilter
+		}
 		m.issueIndex, cmd = m.issueIndex.Update(msg)
 		return m, cmd
 	}
@@ -1499,7 +1514,7 @@ type Commit struct {
 	Author        string    `json:"author"`
 	Description   string    `json:"description"`
 	Timestamp     time.Time `json:"timestamp"`
-	LatestActions  []Action   `json:"latestAction"`
+	LatestActions []Action  `json:"latestAction"`
 }
 
 func (c Commit) AggregateActionStatus() ActionStatus {
@@ -1571,17 +1586,17 @@ const (
 )
 
 type Action struct {
-	Command           *exec.Cmd   `json:"-"`
-	Id                string      `json:"id"`
-	CommitId          string      `json:"commitId"`
+	Command           *exec.Cmd    `json:"-"`
+	Id                string       `json:"id"`
+	CommitId          string       `json:"commitId"`
 	Status            ActionStatus `json:"status"`
-	Actioner           string      `json:"actioner"`
-	Name              string      `json:"name"`
-	Output            string      `json:"output"`
-	StartedAt         time.Time   `json:"startedAt"`
-	FinishedAt        time.Time   `json:"finishedAt"`
-	Optional          bool        `json:"optional"`
-	ExecutionPosition int         `json:"executionPosition"`
+	Actioner          string       `json:"actioner"`
+	Name              string       `json:"name"`
+	Output            string       `json:"output"`
+	StartedAt         time.Time    `json:"startedAt"`
+	FinishedAt        time.Time    `json:"finishedAt"`
+	Optional          bool         `json:"optional"`
+	ExecutionPosition int          `json:"executionPosition"`
 }
 
 func NewActions(commit Commit) []Action {
@@ -1828,8 +1843,8 @@ func SortIssues(issues []Issue) []Issue {
 }
 
 type commitShow struct {
-	commit             Commit
-	viewport           viewport.Model
+	commit              Commit
+	viewport            viewport.Model
 	expandActionDetails bool
 }
 
@@ -1865,8 +1880,8 @@ func newCommitShow(commit Commit, layout Layout, expandActionDetails bool) commi
 	viewport.SetContent(s.String())
 
 	return commitShow{
-		commit:             commit,
-		viewport:           viewport,
+		commit:              commit,
+		viewport:            viewport,
 		expandActionDetails: expandActionDetails,
 	}
 }
