@@ -48,14 +48,14 @@ func (r *Router) AddRoute(path int, handler func(Model, tea.Msg) (Model, tea.Cmd
 	r.routes[path] = handler
 }
 
-type checkPersistedMsg struct {
-	Check      Check
-	IsNewCheck bool
+type actionPersistedMsg struct {
+	Action      Action
+	IsNewAction bool
 }
 
-func persistCheck(check Check) tea.Cmd {
+func persistAction(action Action) tea.Cmd {
 	return func() tea.Msg {
-		jsonData, err := json.Marshal(check)
+		jsonData, err := json.Marshal(action)
 		if err != nil {
 			debug("%#v", err.Error())
 			return err
@@ -73,14 +73,14 @@ func persistCheck(check Check) tea.Cmd {
 		hash := strings.TrimSpace(string(b))
 
 		// #nosec G204
-		cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/checks/%s", check.Id), hash)
+		cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/actions/%s", action.Id), hash)
 		err = cmd.Run()
 
 		if err != nil {
 			debug("%#v", err.Error())
 			panic(err)
 		}
-		return checkPersistedMsg{Check: check}
+		return actionPersistedMsg{Action: action}
 	}
 }
 
@@ -170,8 +170,8 @@ const (
 	issuesNewLabelsPath
 	issuesNewDescriptionPath
 	issuesNewConfirmationPath
-	checksIndexPath
-	checksShowPath
+	actionsIndexPath
+	actionsShowPath
 )
 
 func matchRoute(currentRoute, route int) bool {
@@ -269,12 +269,12 @@ type keyMap struct {
 	IssueCommentFormFocus    key.Binding
 	IssueDelete              key.Binding
 	CommitShowFocus          key.Binding
-	CommitExpandCheckDetails key.Binding
+	CommitExpandActionDetails key.Binding
 	NextInput                key.Binding
 	Submit                   key.Binding
 	NextPage                 key.Binding
 	PrevPage                 key.Binding
-	RunCheck                 key.Binding
+	RunAction                 key.Binding
 }
 
 // ShortHelp returns keybindings to be shown in the mini help view. It's part
@@ -313,17 +313,17 @@ func (k keyMap) FullHelp() [][]key.Binding {
 			{k.Up, k.Down},
 			{k.NextInput, k.Back},
 		}
-	case matchRoute(k.Path, checksIndexPath):
+	case matchRoute(k.Path, actionsIndexPath):
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
-			{k.RunCheck, k.CommitShowFocus},
+			{k.RunAction, k.CommitShowFocus},
 		}
-	case matchRoute(k.Path, checksShowPath):
+	case matchRoute(k.Path, actionsShowPath):
 		bindings = [][]key.Binding{
 			{k.Help, k.Quit},
 			{k.Up, k.Down},
-			{k.RunCheck, k.CommitExpandCheckDetails},
+			{k.RunAction, k.CommitExpandActionDetails},
 			{k.Back},
 		}
 	}
@@ -416,7 +416,7 @@ func (m Model) IsRightSidebarOpen() bool {
 	case issuesCommentContentPath, issuesCommentConfirmationPath,
 		issuesEditTitlePath, issuesEditDescriptionPath, issuesEditLabelsPath, issuesEditConfirmationPath,
 		issuesNewTitlePath, issuesNewDescriptionPath, issuesNewLabelsPath, issuesNewConfirmationPath, issuesShowPath,
-		checksShowPath:
+		actionsShowPath:
 		return true
 	default:
 		return false
@@ -587,14 +587,14 @@ func InitialModel() Model {
 	router.AddRoute(issuesNewLabelsPath, issuesNewLabelsHandler)
 	router.AddRoute(issuesNewDescriptionPath, issuesNewDescriptionHandler)
 	router.AddRoute(issuesNewConfirmationPath, issuesNewConfirmationHandler)
-	router.AddRoute(checksIndexPath, checksIndexHandler)
-	router.AddRoute(checksShowPath, checksShowHandler)
+	router.AddRoute(actionsIndexPath, actionsIndexHandler)
+	router.AddRoute(actionsShowPath, actionsShowHandler)
 
 	return Model{
 		path:        issuesIndexPath,
 		help:        helpModel,
 		styles:      DefaultStyles(),
-		tabs:        []string{"Issues", "Checks"},
+		tabs:        []string{"Issues", "Actions"},
 		layout:      layout,
 		issueIndex:  issueList,
 		commitIndex: commitList,
@@ -708,7 +708,7 @@ func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			cmd = persistIssue(issue)
 			return m, cmd
 		case key.Matches(msg, keys.NextPage):
-			m.path = checksIndexPath
+			m.path = actionsIndexPath
 			return m, nil
 		case key.Matches(msg, keys.PrevPage):
 			return m, nil
@@ -1054,7 +1054,7 @@ func issuesNewConfirmationHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
-func checksIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
+func actionsIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	keys := m.HelpKeys()
 
@@ -1064,21 +1064,21 @@ func checksIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 		case key.Matches(msg, keys.Help):
 			m.help.ShowAll = !m.help.ShowAll
 			return m, nil
-		case key.Matches(msg, keys.RunCheck):
+		case key.Matches(msg, keys.RunAction):
 			commit := m.commitIndex.SelectedItem().(Commit)
 			var cmds []tea.Cmd
-			checks := NewChecks(commit)
-			cmds = append(cmds, commit.DeleteExistingChecks())
-			commit.LatestChecks = checks
+			actions := NewActions(commit)
+			cmds = append(cmds, commit.DeleteExistingActions())
+			commit.LatestActions = actions
 
-			for i, check := range commit.LatestChecks {
-				check.ExecutionPosition = i
-				cmds = append(cmds, RunCheck(check))
+			for i, action := range commit.LatestActions {
+				action.ExecutionPosition = i
+				cmds = append(cmds, RunAction(action))
 			}
 			m.commitIndex.SetItem(m.commitIndex.Index(), commit)
 			return m, tea.Batch(cmds...)
 		case key.Matches(msg, keys.CommitShowFocus):
-			m.path = checksShowPath
+			m.path = actionsShowPath
 			m.UpdateLayout(m.layout.TerminalSize)
 			m.commitShow = newCommitShow(m.commitIndex.SelectedItem().(Commit), m.layout, false)
 			return m, cmd
@@ -1094,7 +1094,7 @@ func checksIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	return m, cmd
 }
 
-func checksShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
+func actionsShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	keys := m.HelpKeys()
 
@@ -1102,53 +1102,53 @@ func checksShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Back):
-			m.path = checksIndexPath
-		case key.Matches(msg, keys.RunCheck):
+			m.path = actionsIndexPath
+		case key.Matches(msg, keys.RunAction):
 			commit := m.commitIndex.SelectedItem().(Commit)
 			var cmds []tea.Cmd
-			checks := NewChecks(commit)
-			cmds = append(cmds, commit.DeleteExistingChecks())
-			commit.LatestChecks = checks
+			actions := NewActions(commit)
+			cmds = append(cmds, commit.DeleteExistingActions())
+			commit.LatestActions = actions
 
-			for i, check := range commit.LatestChecks {
-				check.ExecutionPosition = i
-				cmds = append(cmds, RunCheck(check))
+			for i, action := range commit.LatestActions {
+				action.ExecutionPosition = i
+				cmds = append(cmds, RunAction(action))
 			}
 			m.commitIndex.SetItem(m.commitIndex.Index(), commit)
 			m.UpdateLayout(m.layout.TerminalSize)
 			m.commitShow = newCommitShow(commit, m.layout, false)
 			return m, tea.Batch(cmds...)
-		case key.Matches(msg, keys.CommitExpandCheckDetails):
+		case key.Matches(msg, keys.CommitExpandActionDetails):
 			commit := m.commitIndex.SelectedItem().(Commit)
-			expand := !m.commitShow.expandCheckDetails
+			expand := !m.commitShow.expandActionDetails
 			m.UpdateLayout(m.layout.TerminalSize)
 			m.commitShow = newCommitShow(commit, m.layout, expand)
 		}
-	case checkResult:
-		return m, persistCheck(Check(msg))
-	case checkPersistedMsg:
-		check := msg.Check
+	case actionResult:
+		return m, persistAction(Action(msg))
+	case actionPersistedMsg:
+		action := msg.Action
 		var commit Commit
 		var commitIndex int
 		for i, c := range m.commitIndex.Items() {
-			if c.(Commit).Id == check.CommitId {
+			if c.(Commit).Id == action.CommitId {
 				commit = c.(Commit)
 				commitIndex = i
 				break
 			}
 		}
-		updatedChecks := make([]Check, len(commit.LatestChecks))
-		for i, c := range commit.LatestChecks {
-			if check.Id == c.Id {
-				updatedChecks[i] = check
+		updatedActions := make([]Action, len(commit.LatestActions))
+		for i, c := range commit.LatestActions {
+			if action.Id == c.Id {
+				updatedActions[i] = action
 			} else {
-				updatedChecks[i] = c
+				updatedActions[i] = c
 			}
 		}
-		commit.LatestChecks = updatedChecks
+		commit.LatestActions = updatedActions
 		m.commitIndex.SetItem(commitIndex, commit)
 		m.UpdateLayout(m.layout.TerminalSize)
-		m.commitShow = newCommitShow(commit, m.layout, m.commitShow.expandCheckDetails)
+		m.commitShow = newCommitShow(commit, m.layout, m.commitShow.expandActionDetails)
 	}
 
 	m.commitShow.viewport, cmd = m.commitShow.viewport.Update(msg)
@@ -1267,32 +1267,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m.router.Route(m, msg)
 }
 
-type checkResult Check
+type actionResult Action
 
-func RunCheck(check Check) tea.Cmd {
+func RunAction(action Action) tea.Cmd {
 	return func() tea.Msg {
-		result, err := executeCheckUsingArchive(check)
-		check.Output = result
-		check.FinishedAt = time.Now().UTC()
+		result, err := executeActionUsingArchive(action)
+		action.Output = result
+		action.FinishedAt = time.Now().UTC()
 		if err != nil {
-			debug("Check failed: %v", err)
-			check.Status = failed
-			return checkResult(check)
+			debug("Action failed: %v", err)
+			action.Status = failed
+			return actionResult(action)
 		}
-		check.Status = succeeded
-		return checkResult(check)
+		action.Status = succeeded
+		return actionResult(action)
 	}
 }
 
-func executeCheckUsingArchive(check Check) (string, error) {
-	tempDir, err := os.MkdirTemp("", "check-archive-")
+func executeActionUsingArchive(action Action) (string, error) {
+	tempDir, err := os.MkdirTemp("", "action-archive-")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp directory: %w", err)
 	}
 	defer os.RemoveAll(tempDir)
 
 	// #nosec G204
-	archiveCmd := exec.Command("git", "archive", "--format=tar", check.CommitId)
+	archiveCmd := exec.Command("git", "archive", "--format=tar", action.CommitId)
 	archive, err := archiveCmd.Output()
 	if err != nil {
 		return "", fmt.Errorf("failed to create archive: %w", err)
@@ -1305,8 +1305,8 @@ func executeCheckUsingArchive(check Check) (string, error) {
 		return "", fmt.Errorf("failed to extract archive: %w", err)
 	}
 
-	check.Command.Dir = tempDir
-	output, err := runCommandWithOutput(check.Command)
+	action.Command.Dir = tempDir
+	output, err := runCommandWithOutput(action.Command)
 	if err != nil {
 		return output, fmt.Errorf("command execution failed: %w", err)
 	}
@@ -1402,17 +1402,17 @@ func (m Model) HelpKeys() keyMap {
 			key.WithKeys("left"),
 			key.WithHelp("left", "previous page"),
 		),
-		RunCheck: key.NewBinding(
+		RunAction: key.NewBinding(
 			key.WithKeys(" "),
-			key.WithHelp("space", "run check"),
+			key.WithHelp("space", "run action"),
 		),
 		CommitShowFocus: key.NewBinding(
 			key.WithKeys("enter"),
 			key.WithHelp("enter", "more info"),
 		),
-		CommitExpandCheckDetails: key.NewBinding(
+		CommitExpandActionDetails: key.NewBinding(
 			key.WithKeys("e"),
-			key.WithHelp("e", "expand check details"),
+			key.WithHelp("e", "expand action details"),
 		),
 	}
 
@@ -1466,13 +1466,13 @@ func (m Model) renderIssuesView() string {
 	return m.renderMainLayout(m.renderTabs("Issues"), left, right, m.help.View(m.HelpKeys()))
 }
 
-func (m Model) renderChecksView() string {
+func (m Model) renderActionsView() string {
 	left := m.commitIndex.View()
 	var right string
-	if m.path == checksShowPath {
+	if m.path == actionsShowPath {
 		right = m.commitShowView()
 	}
-	return m.renderMainLayout(m.renderTabs("Checks"), left, right, m.help.View(m.HelpKeys()))
+	return m.renderMainLayout(m.renderTabs("Actions"), left, right, m.help.View(m.HelpKeys()))
 }
 
 func (m Model) View() string {
@@ -1486,8 +1486,8 @@ func (m Model) View() string {
 		issuesEditTitlePath, issuesEditLabelsPath, issuesEditDescriptionPath, issuesEditConfirmationPath,
 		issuesNewTitlePath, issuesNewLabelsPath, issuesNewDescriptionPath, issuesNewConfirmationPath:
 		view = m.renderIssuesView()
-	case checksIndexPath, checksShowPath:
-		view = m.renderChecksView()
+	case actionsIndexPath, actionsShowPath:
+		view = m.renderActionsView()
 	}
 
 	return docStyle.Render(view)
@@ -1499,51 +1499,51 @@ type Commit struct {
 	Author        string    `json:"author"`
 	Description   string    `json:"description"`
 	Timestamp     time.Time `json:"timestamp"`
-	LatestChecks  []Check   `json:"latestCheck"`
+	LatestActions  []Action   `json:"latestAction"`
 }
 
-func (c Commit) AggregateCheckStatus() CheckStatus {
-	if len(c.LatestChecks) == 0 {
+func (c Commit) AggregateActionStatus() ActionStatus {
+	if len(c.LatestActions) == 0 {
 		return ""
 	}
 
-	hasFailedCheck := false
-	for _, check := range c.LatestChecks {
-		switch check.Status {
+	hasFailedAction := false
+	for _, action := range c.LatestActions {
+		switch action.Status {
 		case running:
 			return running
 		case failed:
-			if check.Optional {
+			if action.Optional {
 				continue
 			}
-			hasFailedCheck = true
+			hasFailedAction = true
 		case succeeded:
-			// Continue checking other checks
+			// Continue actioning other actions
 		default:
 			return running
 		}
 	}
 
-	if hasFailedCheck {
+	if hasFailedAction {
 		return failed
 	}
 	return succeeded
 }
 
-func (c Commit) DeleteExistingChecks() tea.Cmd {
+func (c Commit) DeleteExistingActions() tea.Cmd {
 	var cmds []tea.Cmd
 
-	for _, check := range c.LatestChecks {
-		cmds = append(cmds, check.Delete)
+	for _, action := range c.LatestActions {
+		cmds = append(cmds, action.Delete)
 	}
 
 	return tea.Batch(cmds...)
 }
 
-type CheckStatus string
+type ActionStatus string
 
-func (c CheckStatus) Icon() string {
-	icons := map[CheckStatus]string{
+func (c ActionStatus) Icon() string {
+	icons := map[ActionStatus]string{
 		running:   "[⋯]",
 		failed:    "[×]",
 		succeeded: "[✓]",
@@ -1551,12 +1551,12 @@ func (c CheckStatus) Icon() string {
 	return lipgloss.NewStyle().Foreground(c.color()).Render(icons[c])
 }
 
-func (c CheckStatus) PrettyString() string {
+func (c ActionStatus) PrettyString() string {
 	return lipgloss.NewStyle().Foreground(c.color()).Render(string(c))
 }
 
-func (c CheckStatus) color() lipgloss.AdaptiveColor {
-	colors := map[CheckStatus]lipgloss.AdaptiveColor{
+func (c ActionStatus) color() lipgloss.AdaptiveColor {
+	colors := map[ActionStatus]lipgloss.AdaptiveColor{
 		running:   styles.Theme.YellowText,
 		failed:    styles.Theme.RedText,
 		succeeded: styles.Theme.GreenText,
@@ -1565,17 +1565,17 @@ func (c CheckStatus) color() lipgloss.AdaptiveColor {
 }
 
 const (
-	failed    CheckStatus = "failed"
-	succeeded CheckStatus = "succeeded"
-	running   CheckStatus = "running"
+	failed    ActionStatus = "failed"
+	succeeded ActionStatus = "succeeded"
+	running   ActionStatus = "running"
 )
 
-type Check struct {
+type Action struct {
 	Command           *exec.Cmd   `json:"-"`
 	Id                string      `json:"id"`
 	CommitId          string      `json:"commitId"`
-	Status            CheckStatus `json:"status"`
-	Checker           string      `json:"checker"`
+	Status            ActionStatus `json:"status"`
+	Actioner           string      `json:"actioner"`
 	Name              string      `json:"name"`
 	Output            string      `json:"output"`
 	StartedAt         time.Time   `json:"startedAt"`
@@ -1584,9 +1584,9 @@ type Check struct {
 	ExecutionPosition int         `json:"executionPosition"`
 }
 
-func NewChecks(commit Commit) []Check {
-	return []Check{
-		Check{
+func NewActions(commit Commit) []Action {
+	return []Action{
+		Action{
 			Id:        uuid.NewString(),
 			Status:    running,
 			CommitId:  commit.Id,
@@ -1594,7 +1594,7 @@ func NewChecks(commit Commit) []Check {
 			Name:      "Tests ('go test')",
 			StartedAt: time.Now().UTC(),
 		},
-		Check{
+		Action{
 			Id:        uuid.NewString(),
 			Status:    running,
 			CommitId:  commit.Id,
@@ -1606,9 +1606,9 @@ func NewChecks(commit Commit) []Check {
 	}
 }
 
-func (c Check) Delete() tea.Msg {
+func (c Action) Delete() tea.Msg {
 	// #nosec G204
-	cmd := exec.Command("git", "update-ref", "-d", fmt.Sprintf("refs/ubik/checks/%s", c.Id))
+	cmd := exec.Command("git", "update-ref", "-d", fmt.Sprintf("refs/ubik/actions/%s", c.Id))
 	err := cmd.Run()
 
 	if err != nil {
@@ -1619,7 +1619,7 @@ func (c Check) Delete() tea.Msg {
 	return nil
 }
 
-func (c Check) ElapsedTime() time.Duration {
+func (c Action) ElapsedTime() time.Duration {
 	return c.FinishedAt.Sub(c.StartedAt)
 }
 
@@ -1662,8 +1662,8 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 
 	title := fmt.Sprintf("%s", titleFn(c.AbbreviatedId, truncate(c.Description, 50)))
 
-	if len(c.LatestChecks) > 0 {
-		title = fmt.Sprintf("%s %s", title, c.AggregateCheckStatus().Icon())
+	if len(c.LatestActions) > 0 {
+		title = fmt.Sprintf("%s %s", title, c.AggregateActionStatus().Icon())
 	}
 
 	description := fmt.Sprintf("committed at %s by %s", c.Timestamp.Format(time.RFC822), author)
@@ -1704,7 +1704,7 @@ func getCommits() tea.Msg {
 		})
 	}
 
-	cmd = exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik/checks")
+	cmd = exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik/actions")
 	b, err := cmd.Output()
 	if err != nil {
 		panic(err)
@@ -1730,16 +1730,16 @@ func getCommits() tea.Msg {
 			continue
 		}
 
-		var check Check
-		err = json.Unmarshal(out.Bytes(), &check)
+		var action Action
+		err = json.Unmarshal(out.Bytes(), &action)
 		if err != nil {
 			panic(err)
 		}
 
 		for _, commit := range commits {
-			if check.CommitId == commit.Id {
-				commit.LatestChecks = append(commit.LatestChecks, check)
-				slices.SortFunc(commit.LatestChecks, func(a, b Check) int {
+			if action.CommitId == commit.Id {
+				commit.LatestActions = append(commit.LatestActions, action)
+				slices.SortFunc(commit.LatestActions, func(a, b Action) int {
 					return a.ExecutionPosition - b.ExecutionPosition
 				})
 			}
@@ -1830,35 +1830,35 @@ func SortIssues(issues []Issue) []Issue {
 type commitShow struct {
 	commit             Commit
 	viewport           viewport.Model
-	expandCheckDetails bool
+	expandActionDetails bool
 }
 
-func newCommitShow(commit Commit, layout Layout, expandCheckDetails bool) commitShow {
+func newCommitShow(commit Commit, layout Layout, expandActionDetails bool) commitShow {
 	var s strings.Builder
 
 	viewport := viewport.New(layout.RightSize.Width, layout.RightSize.Height)
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("%s", commit.AbbreviatedId))
 	var header string
-	if len(commit.LatestChecks) > 0 {
-		header = fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, commit.Description, commit.AggregateCheckStatus().PrettyString())
+	if len(commit.LatestActions) > 0 {
+		header = fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, commit.Description, commit.AggregateActionStatus().PrettyString())
 	} else {
-		header = fmt.Sprintf("%s %s\n\nNo checks yet.", identifier, commit.Description)
+		header = fmt.Sprintf("%s %s\n\nNo actions yet.", identifier, commit.Description)
 	}
 	s.WriteString(lipgloss.NewStyle().Render(header))
 	s.WriteString("\n")
 
-	for _, check := range commit.LatestChecks {
-		s.WriteString(fmt.Sprintf("\n%s %s", check.Status.Icon(), check.Name))
-		if check.Optional {
+	for _, action := range commit.LatestActions {
+		s.WriteString(fmt.Sprintf("\n%s %s", action.Status.Icon(), action.Name))
+		if action.Optional {
 			s.WriteString(lipgloss.NewStyle().Foreground(styles.Theme.SecondaryText).Render(" (optional)"))
 		}
-		if expandCheckDetails {
+		if expandActionDetails {
 			s.WriteString(
 				lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(
-					fmt.Sprintf(" finished in %s\n\n", check.ElapsedTime()),
+					fmt.Sprintf(" finished in %s\n\n", action.ElapsedTime()),
 				),
 			)
-			s.WriteString(fmt.Sprintf("\n%s\n\n", check.Output))
+			s.WriteString(fmt.Sprintf("\n%s\n\n", action.Output))
 		}
 	}
 
@@ -1867,7 +1867,7 @@ func newCommitShow(commit Commit, layout Layout, expandCheckDetails bool) commit
 	return commitShow{
 		commit:             commit,
 		viewport:           viewport,
-		expandCheckDetails: expandCheckDetails,
+		expandActionDetails: expandActionDetails,
 	}
 }
 
