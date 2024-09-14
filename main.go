@@ -627,6 +627,64 @@ func (m Model) isUserTyping() bool {
 	return slices.Contains(paths, m.path)
 }
 
+func CustomFilter(term string, targets []string) []list.Rank {
+	terms := strings.Fields(term)
+	filters := map[string]func(string, []string) []list.Rank{
+		"label:":  LabelFilter,
+		"status:": StatusFilter,
+	}
+
+	// Create a map to store all matching ranks
+	allRanks := make(map[int]list.Rank)
+
+	for _, t := range terms {
+		var ranks []list.Rank
+		for prefix, filterFunc := range filters {
+			if strings.HasPrefix(t, prefix) {
+				ranks = filterFunc(t, targets)
+				break
+			}
+		}
+		if len(ranks) == 0 {
+			ranks = list.DefaultFilter(t, targets)
+		}
+
+		// Intersect the new ranks with existing ones
+		if len(allRanks) == 0 {
+			for _, r := range ranks {
+				allRanks[r.Index] = r
+			}
+		} else {
+			for i := range allRanks {
+				if !containsRank(ranks, i) {
+					delete(allRanks, i)
+				}
+			}
+		}
+
+		if len(allRanks) == 0 {
+			break // No matches, no need to continue
+		}
+	}
+
+	// Convert map to slice
+	result := make([]list.Rank, 0, len(allRanks))
+	for _, r := range allRanks {
+		result = append(result, r)
+	}
+
+	return result
+}
+
+func containsRank(ranks []list.Rank, index int) bool {
+	for _, r := range ranks {
+		if r.Index == index {
+			return true
+		}
+	}
+	return false
+}
+
 func LabelFilter(term string, targets []string) []list.Rank {
 	var labelTargets []string
 	labelTerm := strings.TrimPrefix(term, "label:")
@@ -654,17 +712,7 @@ func StatusFilter(term string, targets []string) []list.Rank {
 func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
 	if m.issueIndex.SettingFilter() {
-		searchTerm := m.issueIndex.FilterValue()
-
-		switch {
-		case strings.HasPrefix(searchTerm, "status:"):
-			m.issueIndex.Filter = StatusFilter
-		case strings.HasPrefix(searchTerm, "label:"):
-			m.issueIndex.Filter = LabelFilter
-		default:
-			m.issueIndex.Filter = list.DefaultFilter
-		}
-
+		m.issueIndex.Filter = CustomFilter
 		m.issueIndex, cmd = m.issueIndex.Update(msg)
 		return m, cmd
 	}
