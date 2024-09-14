@@ -1880,9 +1880,9 @@ func getIssues() tea.Msg {
 	var refHashes []string
 	str := string(b)
 	for _, s := range strings.Split(str, "\n") {
-		noteId := strings.Split(s, " ")[0]
-		if noteId != "" {
-			refHashes = append(refHashes, noteId)
+		refHash := strings.Split(s, " ")[0]
+		if refHash != "" {
+			refHashes = append(refHashes, refHash)
 		}
 	}
 
