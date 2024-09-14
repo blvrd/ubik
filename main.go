@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"time"
@@ -2167,6 +2168,12 @@ func (m Model) commentFormView() string {
 
 func main() {
 	_ = lipgloss.HasDarkBackground()
+
+	if !insideGitRepository() {
+		fmt.Print("Error: ubik must be run inside a git repository\n")
+		os.Exit(1)
+	}
+
 	m := InitialModel()
 
 	var logFile *os.File
@@ -2203,6 +2210,12 @@ func main() {
 
 func isDebugEnabled() bool {
 	return os.Getenv("DEBUG") != ""
+}
+
+func insideGitRepository() bool {
+	gitDir := filepath.Join(".", ".git")
+	_, err := os.Stat(gitDir)
+	return !os.IsNotExist(err)
 }
 
 func setupLogging() (*os.File, error) {
