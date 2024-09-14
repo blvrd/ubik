@@ -1143,6 +1143,29 @@ func actionsIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	keys := m.HelpKeys()
 
 	switch msg := msg.(type) {
+	case actionResult:
+		return m, persistAction(Action(msg))
+	case actionPersistedMsg:
+		action := msg.Action
+		var commit Commit
+		var commitIndex int
+		for i, c := range m.commitIndex.Items() {
+			if c.(Commit).Id == action.CommitId {
+				commit = c.(Commit)
+				commitIndex = i
+				break
+			}
+		}
+		updatedActions := make([]Action, len(commit.LatestActions))
+		for i, c := range commit.LatestActions {
+			if action.Id == c.Id {
+				updatedActions[i] = action
+			} else {
+				updatedActions[i] = c
+			}
+		}
+		commit.LatestActions = updatedActions
+		m.commitIndex.SetItem(commitIndex, commit)
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, keys.Help):
