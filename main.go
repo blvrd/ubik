@@ -794,6 +794,7 @@ func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			m.path = actionsIndexPath
 			return m, nil
 		case key.Matches(msg, keys.PrevPage):
+			m.path = actionsIndexPath
 			return m, nil
 		}
 	}
@@ -1169,6 +1170,7 @@ func actionsIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			m.path = issuesIndexPath
 			return m, nil
 		case key.Matches(msg, keys.PrevPage):
+			m.path = issuesIndexPath
 			return m, nil
 		}
 	}
