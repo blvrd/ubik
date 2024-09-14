@@ -926,6 +926,10 @@ func issuesCommentConfirmationHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			m.commentForm = newCommentForm()
 			m.issueShow = newIssueShow(currentIssue, m.layout)
 			m.path = issuesShowPath
+		case key.Matches(msg, keys.NextInput):
+			cmd = m.commentForm.contentInput.Focus()
+			m.commentForm.confirming = false
+			m.path = issuesCommentContentPath
 		case key.Matches(msg, keys.Submit):
 			cmd = m.commentForm.Submit
 		}
