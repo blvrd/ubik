@@ -2245,14 +2245,11 @@ func UUIDToShortcode(id uuid.UUID) string {
 func StringToShortcode(input string) string {
 	// Hash the input string
 	hash := sha256.Sum256([]byte(input))
-	fmt.Printf("hash: %#v\n\n", string(hash[:]))
 
 	// Encode the first 6 bytes of the hash to base64
 	encoded := base64.RawURLEncoding.EncodeToString(hash[:6])
-	fmt.Printf("encoded: %#v\n\n", encoded)
 
 	// Return the first 6 characters
-	fmt.Printf("first six of encoded: %#v\n\n", encoded[:6])
 	return encoded[:6]
 }
 
