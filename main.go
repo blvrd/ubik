@@ -1296,7 +1296,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.UpdateLayout(Size{Width: msg.Width, Height: msg.Height})
 		return m, nil
 	case tea.FocusMsg:
-		return m, tea.Sequence(getIssues, getCommits, SetSearchTerm(m.previousSearchTerm))
+		return m, tea.Sequence(getIssues, SetSearchTerm(m.previousSearchTerm), getCommits)
 	case tea.BlurMsg:
 		if m.issueIndex.FilterValue() != "" {
 			m.previousSearchTerm = m.issueIndex.FilterValue()
