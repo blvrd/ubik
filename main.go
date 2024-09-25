@@ -23,7 +23,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	// "github.com/go-git/go-git/v5/storage"
 	"github.com/google/uuid"
+	// "github.com/go-git/go-git/v5/plumbing/object"
+	// "github.com/go-git/go-git/v5/config"
 )
 
 type Router struct {
@@ -54,7 +59,7 @@ type actionPersistedMsg struct {
 	IsNewAction bool
 }
 
-func persistAction(action Action) tea.Cmd {
+func persistAction(action Action, repo *git.Repository) tea.Cmd {
 	return func() tea.Msg {
 		jsonData, err := json.Marshal(action)
 		if err != nil {
@@ -62,20 +67,32 @@ func persistAction(action Action) tea.Cmd {
 			return err
 		}
 
-		cmd := exec.Command("git", "hash-object", "--stdin", "-w")
-		cmd.Stdin = bytes.NewReader(jsonData)
-
-		b, err := cmd.Output()
+		obj := repo.Storer.NewEncodedObject()
+		obj.SetType(plumbing.BlobObject)
+		obj.SetSize(int64(len(jsonData)))
+		writer, err := obj.Writer()
+		if err != nil {
+			debug("%#v", err.Error())
+			return err
+		}
+		_, err = writer.Write(jsonData)
+		if err != nil {
+			debug("%#v", err.Error())
+			return err
+		}
+		err = writer.Close()
 		if err != nil {
 			debug("%#v", err.Error())
 			return err
 		}
 
-		hash := strings.TrimSpace(string(b))
-
-		// #nosec G204
-		cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/actions/%s", action.Id), hash)
-		err = cmd.Run()
+		hash, err := repo.Storer.SetEncodedObject(obj)
+		if err != nil {
+			debug("%#v", err.Error())
+			return err
+		}
+		ref := plumbing.NewReferenceFromStrings(fmt.Sprintf("refs/ubik/actions/%s", action.Id), hash.String())
+		err = repo.Storer.SetReference(ref)
 
 		if err != nil {
 			debug("%#v", err.Error())
@@ -484,6 +501,7 @@ type Model struct {
 	layout             Layout
 	router             *Router
 	author             string
+	repo               *git.Repository
 }
 
 type SetSearchTermMsg string
@@ -608,7 +626,7 @@ func InitialModel() Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(getIssues, getCommits)
+	return tea.Sequence(getGitRepo, getIssues, getCommits)
 }
 
 type layoutMsg Layout
@@ -1149,7 +1167,7 @@ func actionsIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case actionResult:
-		return m, persistAction(Action(msg))
+		return m, persistAction(Action(msg), m.repo)
 	case actionPersistedMsg:
 		action := msg.Action
 		var commit Commit
@@ -1238,7 +1256,7 @@ func actionsShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			m.commitShow = newCommitShow(commit, m.layout, expand)
 		}
 	case actionResult:
-		return m, persistAction(Action(msg))
+		return m, persistAction(Action(msg), m.repo)
 	case actionPersistedMsg:
 		action := msg.Action
 		var commit Commit
@@ -1302,6 +1320,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.previousSearchTerm = m.issueIndex.FilterValue()
 		}
 		return m, nil
+	case GitRepoReadyMsg:
+		m.repo = msg
 	case IssuesReadyMsg:
 		var listItems []list.Item
 		for _, issue := range msg {
@@ -1783,6 +1803,13 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 	item := lipgloss.JoinVertical(lipgloss.Left, title, description)
 
 	fmt.Fprintf(w, item)
+}
+
+type GitRepoReadyMsg *git.Repository
+
+func getGitRepo() tea.Msg {
+	repo, _ := git.PlainOpen(".")
+	return GitRepoReadyMsg(repo)
 }
 
 type CommitListReadyMsg []Commit
