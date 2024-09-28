@@ -886,6 +886,8 @@ func issuesShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			return m, cmd
 		case key.Matches(msg, keys.Back):
 			m.path = issuesIndexPath
+			m.UpdateLayout(m.layout.TerminalSize)
+			return m, nil
 		case key.Matches(msg, keys.IssueCommentFormFocus):
 			m.commentForm = newCommentForm()
 			cmd = m.commentForm.Init()
@@ -1573,7 +1575,7 @@ func (m Model) renderMainLayout(header, left, right, footer string) string {
 	} else {
 		right = lipgloss.NewStyle().Width(m.layout.RightSize.Width).Render(right)
 	}
-	return windowStyle.Render(lipgloss.JoinVertical(
+	layout := windowStyle.Render(lipgloss.JoinVertical(
 		lipgloss.Left,
 		header,
 		lipgloss.JoinHorizontal(
@@ -1583,6 +1585,9 @@ func (m Model) renderMainLayout(header, left, right, footer string) string {
 		),
 		footer,
 	))
+	overlayBoxStyle := lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(m.styles.Theme.FaintBorder).Foreground(m.styles.Theme.PrimaryText).Width(40).Height(4).Padding(1)
+	overlayContent := overlayBoxStyle.Render("This is an overlay box which shall be placed in the center of the screen.")
+	return PlaceOverlay((m.layout.TerminalSize.Width/2 - 20), (m.layout.TerminalSize.Height/2 - 3), overlayContent, layout, false)
 }
 
 func (m Model) renderIssuesView() string {
