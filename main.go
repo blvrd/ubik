@@ -29,6 +29,7 @@ import (
 	"github.com/google/uuid"
 	// "github.com/go-git/go-git/v5/plumbing/object"
 	// "github.com/go-git/go-git/v5/config"
+	"github.com/muesli/reflow/truncate"
 )
 
 type Router struct {
@@ -390,7 +391,7 @@ func (i Issue) Render(w io.Writer, m list.Model, index int, listItem list.Item) 
 				Render(strings.Join(s, " "))
 		}
 	}
-	title := fmt.Sprintf("%s %s", i.Status.Icon(), titleFn(truncate(i.Title, 50)))
+	title := fmt.Sprintf("%s %s", i.Status.Icon(), titleFn(truncate.StringWithTail(i.Title, 50, "...")))
 	labels := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf(strings.Join(i.Labels, ",")))
 	title = fmt.Sprintf("%s %s", title, labels)
 
@@ -1793,7 +1794,7 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 		}
 	}
 
-	title := fmt.Sprintf("%s", titleFn(c.AbbreviatedId, truncate(c.Description, 50)))
+	title := fmt.Sprintf("%s", titleFn(c.AbbreviatedId, truncate.StringWithTail(c.Description, 50, "...")))
 
 	if len(c.LatestActions) > 0 {
 		title = fmt.Sprintf("%s %s", title, c.AggregateActionStatus().Icon())
@@ -2278,23 +2279,6 @@ func StringToShortcode(input string) string {
 
 	// Return the first 6 characters
 	return encoded[:6]
-}
-
-func clamp(value, min, max int) int {
-	if value < min {
-		return min
-	}
-	if value > max {
-		return max
-	}
-	return value
-}
-
-func truncate(s string, maxLength int) string {
-	if len(s) <= maxLength {
-		return s
-	}
-	return s[:maxLength-3] + "..."
 }
 
 func convertSlice[T, U any](input []T, convert func(T) U) []U {
