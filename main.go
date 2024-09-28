@@ -179,6 +179,7 @@ func persistIssue(issue Issue) tea.Cmd {
 const (
 	issuesIndexPath = iota
 	issuesShowPath
+	issuesDeleteConfirmationPath
 	issuesCommentContentPath
 	issuesCommentConfirmationPath
 	issuesEditTitlePath
@@ -597,6 +598,7 @@ func InitialModel() Model {
 	router := NewRouter()
 	router.AddRoute(issuesIndexPath, issuesIndexHandler)
 	router.AddRoute(issuesShowPath, issuesShowHandler)
+	router.AddRoute(issuesDeleteConfirmationPath, issuesDeleteHandler)
 	router.AddRoute(issuesCommentContentPath, issuesCommentContentHandler)
 	router.AddRoute(issuesCommentConfirmationPath, issuesCommentConfirmationHandler)
 	router.AddRoute(issuesEditTitlePath, issuesEditTitleHandler)
@@ -806,9 +808,10 @@ func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			if selectedItem == nil {
 				return m, nil
 			}
-			issue := selectedItem.(Issue)
-			issue.DeletedAt = time.Now().UTC()
-			cmd = persistIssue(issue)
+			// issue.DeletedAt = time.Now().UTC()
+			// cmd = persistIssue(issue)
+			m.path = issuesDeleteConfirmationPath
+			m.UpdateLayout(m.layout.TerminalSize)
 			return m, cmd
 		case key.Matches(msg, keys.NextPage):
 			m.path = actionsIndexPath
@@ -901,16 +904,31 @@ func issuesShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			if selectedItem == nil {
 				return m, nil
 			}
-			issue := selectedItem.(Issue)
-			issue.DeletedAt = time.Now().UTC()
-			cmd = persistIssue(issue)
-			m.path = issuesIndexPath
+			// issue := selectedItem.(Issue)
+			// issue.DeletedAt = time.Now().UTC()
+			// cmd = persistIssue(issue)
+			m.path = issuesDeleteConfirmationPath
 			m.UpdateLayout(m.layout.TerminalSize)
 			return m, cmd
 		}
 	}
 
 	m.issueShow.viewport, cmd = m.issueShow.viewport.Update(msg)
+	return m, cmd
+}
+
+func issuesDeleteHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
+	var cmd tea.Cmd
+	// keys := m.HelpKeys()
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		log.Debugf("🪚 msg: %#v", msg)
+		switch {
+		// keys.Match
+		}
+	}
+
 	return m, cmd
 }
 
@@ -1585,9 +1603,15 @@ func (m Model) renderMainLayout(header, left, right, footer string) string {
 		),
 		footer,
 	))
-	overlayBoxStyle := lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(m.styles.Theme.FaintBorder).Foreground(m.styles.Theme.PrimaryText).Width(40).Height(4).Padding(1)
-	overlayContent := overlayBoxStyle.Render("This is an overlay box which shall be placed in the center of the screen.")
-	return PlaceOverlay((m.layout.TerminalSize.Width/2 - 20), (m.layout.TerminalSize.Height/2 - 3), overlayContent, layout, false)
+
+	if m.path == issuesDeleteConfirmationPath {
+		overlayBoxStyle := lipgloss.NewStyle().BorderStyle(lipgloss.RoundedBorder()).BorderForeground(m.styles.Theme.FaintBorder).Foreground(m.styles.Theme.PrimaryText).Width(40).Height(4).Padding(1)
+		issue := m.issueIndex.SelectedItem().(Issue)
+		overlayContent := overlayBoxStyle.Render(fmt.Sprintf("Delete issue #%s?", issue.Shortcode))
+		return PlaceOverlay((m.layout.TerminalSize.Width/2 - 20), (m.layout.TerminalSize.Height/2 - 3), overlayContent, layout, false)
+	} else {
+		return layout
+	}
 }
 
 func (m Model) renderIssuesView() string {
@@ -1621,7 +1645,7 @@ func (m Model) View() string {
 
 	var view string
 	switch m.path {
-	case issuesIndexPath, issuesShowPath, issuesCommentContentPath, issuesCommentConfirmationPath,
+	case issuesIndexPath, issuesShowPath, issuesDeleteConfirmationPath, issuesCommentContentPath, issuesCommentConfirmationPath,
 		issuesEditTitlePath, issuesEditLabelsPath, issuesEditDescriptionPath, issuesEditConfirmationPath,
 		issuesNewTitlePath, issuesNewLabelsPath, issuesNewDescriptionPath, issuesNewConfirmationPath:
 		view = m.renderIssuesView()
