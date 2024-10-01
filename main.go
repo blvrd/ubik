@@ -809,8 +809,6 @@ func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			if selectedItem == nil {
 				return m, nil
 			}
-			// issue.DeletedAt = time.Now().UTC()
-			// cmd = persistIssue(issue)
 			m.path = issuesDeleteConfirmationPath
 			m.UpdateLayout(m.layout.TerminalSize)
 			return m, cmd
@@ -905,9 +903,6 @@ func issuesShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			if selectedItem == nil {
 				return m, nil
 			}
-			// issue := selectedItem.(Issue)
-			// issue.DeletedAt = time.Now().UTC()
-			// cmd = persistIssue(issue)
 			m.path = issuesDeleteConfirmationPath
 			m.UpdateLayout(m.layout.TerminalSize)
 			return m, cmd
