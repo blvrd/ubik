@@ -489,6 +489,7 @@ func (m *Model) UpdateLayout(terminalSize Size) {
 type Model struct {
 	loaded             bool
 	path               int
+	underlayPath       int // determines what view to display under the overlay
 	issueIndex         list.Model
 	issueShow          issueShow
 	issueForm          issueForm
@@ -809,6 +810,7 @@ func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			if selectedItem == nil {
 				return m, nil
 			}
+			m.underlayPath = m.path
 			m.path = issuesDeleteConfirmationPath
 			m.UpdateLayout(m.layout.TerminalSize)
 			return m, cmd
@@ -903,8 +905,9 @@ func issuesShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			if selectedItem == nil {
 				return m, nil
 			}
+			m.underlayPath = m.path
 			m.path = issuesDeleteConfirmationPath
-			m.UpdateLayout(m.layout.TerminalSize)
+			// m.UpdateLayout(m.layout.TerminalSize)
 			return m, cmd
 		}
 	}
@@ -925,16 +928,17 @@ func issuesDeleteHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			if selectedItem == nil {
 				return m, nil
 			}
-      issue := selectedItem.(Issue)
+			issue := selectedItem.(Issue)
 			issue.DeletedAt = time.Now().UTC()
 			cmd = persistIssue(issue)
 			m.path = issuesIndexPath
+			m.underlayPath = 0
 			m.UpdateLayout(m.layout.TerminalSize)
-      return m, cmd
-    case key.Matches(msg, keys.Back):
-      m.path = issuesIndexPath
+			return m, cmd
+		case key.Matches(msg, keys.Back):
+			m.path = issuesIndexPath
 			m.UpdateLayout(m.layout.TerminalSize)
-      return m, cmd
+			return m, cmd
 		}
 	}
 
@@ -1639,6 +1643,14 @@ func (m Model) renderIssuesView() string {
 		issuesNewTitlePath, issuesNewLabelsPath, issuesNewDescriptionPath, issuesNewConfirmationPath:
 		right = m.issueFormView()
 	}
+
+	switch m.underlayPath {
+	case issuesShowPath:
+		right = m.issueShowView()
+	case issuesCommentContentPath, issuesCommentConfirmationPath:
+		right = lipgloss.JoinVertical(lipgloss.Left, m.issueShowView(), m.commentFormView())
+	}
+
 	return m.renderMainLayout(m.renderTabs("Issues"), left, right, m.help.View(m.HelpKeys()))
 }
 
