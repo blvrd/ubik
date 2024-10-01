@@ -288,6 +288,7 @@ type keyMap struct {
 	IssueStatusInProgress     key.Binding
 	IssueCommentFormFocus     key.Binding
 	IssueDelete               key.Binding
+	IssueConfirmDelete        key.Binding
 	CommitShowFocus           key.Binding
 	CommitExpandActionDetails key.Binding
 	NextInput                 key.Binding
@@ -919,13 +920,26 @@ func issuesShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 
 func issuesDeleteHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 	var cmd tea.Cmd
-	// keys := m.HelpKeys()
+	keys := m.HelpKeys()
 
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		log.Debugf("🪚 msg: %#v", msg)
 		switch {
-		// keys.Match
+		case key.Matches(msg, keys.IssueConfirmDelete):
+			selectedItem := m.issueIndex.SelectedItem()
+			if selectedItem == nil {
+				return m, nil
+			}
+      issue := selectedItem.(Issue)
+			issue.DeletedAt = time.Now().UTC()
+			cmd = persistIssue(issue)
+			m.path = issuesIndexPath
+			m.UpdateLayout(m.layout.TerminalSize)
+      return m, cmd
+    case key.Matches(msg, keys.Back):
+      m.path = issuesIndexPath
+			m.UpdateLayout(m.layout.TerminalSize)
+      return m, cmd
 		}
 	}
 
@@ -1539,6 +1553,10 @@ func (m Model) HelpKeys() keyMap {
 		IssueDelete: key.NewBinding(
 			key.WithKeys("backspace"),
 			key.WithHelp("backspace", "delete issue"),
+		),
+		IssueConfirmDelete: key.NewBinding(
+			key.WithKeys("enter"),
+			key.WithHelp("enter", "confirm issue deletion"),
 		),
 		NextInput: key.NewBinding(
 			key.WithKeys("tab"),
