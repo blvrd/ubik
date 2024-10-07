@@ -26,6 +26,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/object"
 
 	// "github.com/go-git/go-git/v5/storage"
 	"github.com/google/uuid"
@@ -1345,7 +1346,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.UpdateLayout(Size{Width: msg.Width, Height: msg.Height})
 		return m, nil
 	case tea.FocusMsg:
-		return m, tea.Sequence(getIssues, SetSearchTerm(m.previousSearchTerm), getCommits(m.repo))
+		if m.repo == nil {
+			return m, nil
+		}
+
+		return m, tea.Sequence(getIssues, SetSearchTerm(m.previousSearchTerm), getCommits(*m.repo))
 	case tea.BlurMsg:
 		if m.issueIndex.FilterValue() != "" {
 			m.previousSearchTerm = m.issueIndex.FilterValue()
@@ -1354,7 +1359,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case GitRepoReadyMsg:
 		m.repo = msg.repo
 		m.gitConfig = msg.cfg
-		return m, getCommits(m.repo)
+		return m, getCommits(*m.repo)
 	case IssuesReadyMsg:
 		var listItems []list.Item
 		for _, issue := range msg {
@@ -1875,7 +1880,7 @@ func getGitRepo() tea.Msg {
 
 type CommitListReadyMsg []Commit
 
-func getCommits(repo *git.Repository) tea.Cmd {
+func getCommits(repo git.Repository) tea.Cmd {
 	return func() tea.Msg {
 		var commits []*Commit
 
@@ -1904,6 +1909,38 @@ func getCommits(repo *git.Repository) tea.Cmd {
 				Timestamp:     timestamp,
 				Description:   parts[4],
 			})
+		}
+
+		refs, _ := repo.References()
+
+		if err != nil {
+			panic(err)
+		}
+
+		err = refs.ForEach(func(ref *plumbing.Reference) error {
+			obj, err := repo.Object(plumbing.AnyObject, ref.Hash())
+			if err != nil {
+				return nil
+			}
+
+			if blob, ok := obj.(*object.Blob); ok {
+				// Read the contents of the blob
+				blobReader, _ := blob.Reader()
+				content, err := io.ReadAll(blobReader)
+				if err != nil {
+					fmt.Printf("Error reading blob content: %v\n", err)
+					return nil
+				}
+
+				log.Debugf("Blob content:\n%s\n", content)
+			} else {
+				log.Debugf("Object is not a blob\n")
+			}
+			return nil
+		})
+
+		if err != nil {
+			panic(err)
 		}
 
 		cmd = exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik/actions")
