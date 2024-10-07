@@ -1882,30 +1882,10 @@ type CommitListReadyMsg []Commit
 
 func getCommits(repo git.Repository) tea.Cmd {
 	return func() tea.Msg {
-		var commits []*Commit
+		var commits []Commit
+		actions := make(map[string][]Action)
 
-		logOptions := git.LogOptions{
-			Order: git.LogOrderCommitterTime,
-		}
-
-		gitCommits, err := repo.Log(&logOptions)
-
-		if err != nil {
-			panic(err)
-		}
-
-		gitCommits.ForEach(func(c *object.Commit) error {
-			commits = append(commits, &Commit{
-				Id:            c.Hash.String(),
-				AbbreviatedId: c.Hash.String()[:8],
-				Author:        c.Author.Email,
-				Timestamp:     c.Author.When,
-				Description:   strings.TrimSuffix(c.Message, "\n"),
-			})
-			return nil
-		})
-
-		refs, _ := repo.References()
+		refs, err := repo.References()
 
 		if err != nil {
 			panic(err)
@@ -1920,15 +1900,19 @@ func getCommits(repo git.Repository) tea.Cmd {
 			if blob, ok := obj.(*object.Blob); ok {
 				// Read the contents of the blob
 				blobReader, _ := blob.Reader()
-				_, err := io.ReadAll(blobReader)
+				b, err := io.ReadAll(blobReader)
 				if err != nil {
 					fmt.Printf("Error reading blob content: %v\n", err)
 					return nil
 				}
 
-				// log.Debugf("Blob content:\n%s\n", content)
-			} else {
-				// log.Debugf("Object is not a blob\n")
+				var action Action
+				err = json.Unmarshal(b, &action)
+				if err != nil {
+					panic(err)
+				}
+
+				actions[action.CommitId] = append(actions[action.CommitId], action)
 			}
 			return nil
 		})
@@ -1937,54 +1921,30 @@ func getCommits(repo git.Repository) tea.Cmd {
 			panic(err)
 		}
 
-		cmd := exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik/actions")
-		b, err := cmd.Output()
+		logOptions := git.LogOptions{
+			Order: git.LogOrderCommitterTime,
+		}
+
+		gitCommits, err := repo.Log(&logOptions)
+
 		if err != nil {
 			panic(err)
 		}
 
-		var refHashes []string
-		str := string(b)
-		for _, s := range strings.Split(str, "\n") {
-			noteId := strings.Split(s, " ")[0]
-			if noteId != "" {
-				refHashes = append(refHashes, noteId)
-			}
-		}
+		gitCommits.ForEach(func(c *object.Commit) error {
+			id := c.Hash.String()
+			commits = append(commits, Commit{
+				Id:            id,
+				AbbreviatedId: id[:8],
+				Author:        c.Author.Email,
+				Timestamp:     c.Author.When,
+				Description:   strings.TrimSuffix(c.Message, "\n"),
+				LatestActions: actions[id],
+			})
+			return nil
+		})
 
-		var readyCommits []Commit
-		for _, refHash := range refHashes {
-			// #nosec G204
-			cmd := exec.Command("git", "cat-file", "-p", refHash)
-			var out bytes.Buffer
-			cmd.Stdout = &out
-			err := cmd.Run()
-			if err != nil {
-				continue
-			}
-
-			var action Action
-			err = json.Unmarshal(out.Bytes(), &action)
-			if err != nil {
-				panic(err)
-			}
-
-			for _, commit := range commits {
-				if action.CommitId == commit.Id {
-					commit.LatestActions = append(commit.LatestActions, action)
-					slices.SortFunc(commit.LatestActions, func(a, b Action) int {
-						return a.ExecutionPosition - b.ExecutionPosition
-					})
-				}
-			}
-
-		}
-
-		for _, commit := range commits {
-			readyCommits = append(readyCommits, *commit)
-		}
-
-		return CommitListReadyMsg(readyCommits)
+		return CommitListReadyMsg(commits)
 	}
 }
 
