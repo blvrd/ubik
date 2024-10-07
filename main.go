@@ -1884,32 +1884,26 @@ func getCommits(repo git.Repository) tea.Cmd {
 	return func() tea.Msg {
 		var commits []*Commit
 
-		cmd := exec.Command(
-			"git",
-			"log",
-			"--pretty=format:%H|%h|%ae|%aI|%s",
-			"--date=format:%d %b %y %H:%M %z",
-		)
-		output, err := cmd.Output()
+		logOptions := git.LogOptions{
+			Order: git.LogOrderCommitterTime,
+		}
+
+		gitCommits, err := repo.Log(&logOptions)
+
 		if err != nil {
-			fmt.Println("Error running command:", err)
+			panic(err)
 		}
 
-		for _, commitHash := range strings.Split(string(output), "\n") {
-			parts := strings.Split(commitHash, "|")
-
-			timestamp, err := time.Parse(time.RFC3339, parts[3])
-			if err != nil {
-				log.Errorf("Error parsing timestamp: %v", err)
-			}
+		gitCommits.ForEach(func(c *object.Commit) error {
 			commits = append(commits, &Commit{
-				Id:            parts[0],
-				AbbreviatedId: parts[1],
-				Author:        parts[2],
-				Timestamp:     timestamp,
-				Description:   parts[4],
+				Id:            c.Hash.String(),
+				AbbreviatedId: c.Hash.String()[:8],
+				Author:        c.Author.Email,
+				Timestamp:     c.Author.When,
+				Description:   strings.TrimSuffix(c.Message, "\n"),
 			})
-		}
+			return nil
+		})
 
 		refs, _ := repo.References()
 
@@ -1926,15 +1920,15 @@ func getCommits(repo git.Repository) tea.Cmd {
 			if blob, ok := obj.(*object.Blob); ok {
 				// Read the contents of the blob
 				blobReader, _ := blob.Reader()
-				content, err := io.ReadAll(blobReader)
+				_, err := io.ReadAll(blobReader)
 				if err != nil {
 					fmt.Printf("Error reading blob content: %v\n", err)
 					return nil
 				}
 
-				log.Debugf("Blob content:\n%s\n", content)
+				// log.Debugf("Blob content:\n%s\n", content)
 			} else {
-				log.Debugf("Object is not a blob\n")
+				// log.Debugf("Object is not a blob\n")
 			}
 			return nil
 		})
@@ -1943,7 +1937,7 @@ func getCommits(repo git.Repository) tea.Cmd {
 			panic(err)
 		}
 
-		cmd = exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik/actions")
+		cmd := exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik/actions")
 		b, err := cmd.Output()
 		if err != nil {
 			panic(err)
