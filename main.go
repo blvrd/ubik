@@ -629,7 +629,7 @@ func InitialModel() Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Sequence(getGitRepo, getIssues)
+	return tea.Sequence(getGitRepo)
 }
 
 type layoutMsg Layout
@@ -1350,7 +1350,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		return m, tea.Sequence(getIssues, SetSearchTerm(m.previousSearchTerm), getCommits(*m.repo))
+		return m, tea.Sequence(getIssues(*m.repo), SetSearchTerm(m.previousSearchTerm), getCommits(*m.repo))
 	case tea.BlurMsg:
 		if m.issueIndex.FilterValue() != "" {
 			m.previousSearchTerm = m.issueIndex.FilterValue()
@@ -1359,7 +1359,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case GitRepoReadyMsg:
 		m.repo = msg.repo
 		m.gitConfig = msg.cfg
-		return m, getCommits(*m.repo)
+		return m, tea.Sequence(getIssues(*m.repo), getCommits(*m.repo))
 	case IssuesReadyMsg:
 		var listItems []list.Item
 		for _, issue := range msg {
@@ -1950,48 +1950,50 @@ func getCommits(repo git.Repository) tea.Cmd {
 
 type IssuesReadyMsg []Issue
 
-func getIssues() tea.Msg {
-	var issues []Issue
+func getIssues(repo git.Repository) tea.Cmd {
+	return func() tea.Msg {
+		var issues []Issue
 
-	cmd := exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik/issues")
-	b, err := cmd.Output()
-	if err != nil {
-		panic(err)
-	}
-
-	var refHashes []string
-	str := string(b)
-	for _, s := range strings.Split(str, "\n") {
-		refHash := strings.Split(s, " ")[0]
-		if refHash != "" {
-			refHashes = append(refHashes, refHash)
-		}
-	}
-
-	for _, refHash := range refHashes {
-		// #nosec G204
-		cmd := exec.Command("git", "cat-file", "-p", refHash)
-		var out bytes.Buffer
-		cmd.Stdout = &out
-		err := cmd.Run()
-		if err != nil {
-			continue
-		}
-
-		var issue Issue
-		err = json.Unmarshal(out.Bytes(), &issue)
+		cmd := exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik/issues")
+		b, err := cmd.Output()
 		if err != nil {
 			panic(err)
 		}
 
-		if issue.DeletedAt.IsZero() {
-			issues = append(issues, issue)
+		var refHashes []string
+		str := string(b)
+		for _, s := range strings.Split(str, "\n") {
+			refHash := strings.Split(s, " ")[0]
+			if refHash != "" {
+				refHashes = append(refHashes, refHash)
+			}
 		}
+
+		for _, refHash := range refHashes {
+			// #nosec G204
+			cmd := exec.Command("git", "cat-file", "-p", refHash)
+			var out bytes.Buffer
+			cmd.Stdout = &out
+			err := cmd.Run()
+			if err != nil {
+				continue
+			}
+
+			var issue Issue
+			err = json.Unmarshal(out.Bytes(), &issue)
+			if err != nil {
+				panic(err)
+			}
+
+			if issue.DeletedAt.IsZero() {
+				issues = append(issues, issue)
+			}
+		}
+
+		sortedIssues := SortIssues(issues)
+
+		return IssuesReadyMsg(sortedIssues)
 	}
-
-	sortedIssues := SortIssues(issues)
-
-	return IssuesReadyMsg(sortedIssues)
 }
 
 func SortIssues(issues []Issue) []Issue {
