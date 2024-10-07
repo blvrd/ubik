@@ -112,7 +112,7 @@ type issuePersistedMsg struct {
 	ScrollToBottom bool
 }
 
-func persistIssue(issue Issue) tea.Cmd {
+func persistIssue(issue Issue, repo *git.Repository) tea.Cmd {
 	return func() tea.Msg {
 		var newIssue bool
 
@@ -152,23 +152,35 @@ func persistIssue(issue Issue) tea.Cmd {
 			return err
 		}
 
-		cmd := exec.Command("git", "hash-object", "--stdin", "-w")
-		cmd.Stdin = bytes.NewReader(jsonData)
-
-		b, err := cmd.Output()
+		obj := repo.Storer.NewEncodedObject()
+		obj.SetType(plumbing.BlobObject)
+		obj.SetSize(int64(len(jsonData)))
+		writer, err := obj.Writer()
 		if err != nil {
+			debug("%#v", err.Error())
 			return err
 		}
-
-		hash := strings.TrimSpace(string(b))
-
-		// #nosec G204
-		cmd = exec.Command("git", "update-ref", fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash)
-		err = cmd.Run()
+		_, err = writer.Write(jsonData)
+		if err != nil {
+			debug("%#v", err.Error())
+			return err
+		}
+		err = writer.Close()
+		if err != nil {
+			debug("%#v", err.Error())
+			return err
+		}
+		hash, err := repo.Storer.SetEncodedObject(obj)
+		if err != nil {
+			debug("%#v", err.Error())
+			return err
+		}
+		ref := plumbing.NewReferenceFromStrings(fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash.String())
+		err = repo.Storer.SetReference(ref)
 
 		if err != nil {
-			log.Fatalf("%#v", err.Error())
-			panic(err)
+			debug("%#v", err.Error())
+			return err
 		}
 
 		return issuePersistedMsg{
@@ -531,7 +543,7 @@ func (m Model) submitIssueForm() tea.Cmd {
 		currentIssue.Title = title
 		currentIssue.Description = description
 		currentIssue.Labels = labels
-		cmd = persistIssue(currentIssue)
+		cmd = persistIssue(currentIssue, m.repo)
 	} else {
 		description := form.descriptionInput.Value()
 
@@ -543,7 +555,7 @@ func (m Model) submitIssueForm() tea.Cmd {
 			Status:      todo,
 			Author:      m.gitConfig.User.Email,
 		}
-		cmd = persistIssue(newIssue)
+		cmd = persistIssue(newIssue, m.repo)
 	}
 
 	return cmd
@@ -764,7 +776,7 @@ func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			} else {
 				currentIssue.Status = done
 			}
-			cmd = persistIssue(currentIssue)
+			cmd = persistIssue(currentIssue, m.repo)
 			return m, cmd
 		case key.Matches(msg, keys.IssueStatusWontDo):
 			currentIssue := m.issueIndex.SelectedItem().(Issue)
@@ -773,7 +785,7 @@ func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			} else {
 				currentIssue.Status = wontDo
 			}
-			cmd = persistIssue(currentIssue)
+			cmd = persistIssue(currentIssue, m.repo)
 			return m, cmd
 		case key.Matches(msg, keys.IssueStatusInProgress):
 			currentIssue := m.issueIndex.SelectedItem().(Issue)
@@ -782,7 +794,7 @@ func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			} else {
 				currentIssue.Status = inProgress
 			}
-			cmd = persistIssue(currentIssue)
+			cmd = persistIssue(currentIssue, m.repo)
 			return m, cmd
 		case key.Matches(msg, keys.IssueCommentFormFocus):
 			m.commentForm = newCommentForm()
@@ -848,7 +860,7 @@ func issuesShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			}
 			m.commentForm = newCommentForm()
 			m.issueShow = newIssueShow(currentIssue, m.layout)
-			cmd = persistIssue(currentIssue)
+			cmd = persistIssue(currentIssue, m.repo)
 			return m, cmd
 		case key.Matches(msg, keys.IssueStatusWontDo):
 			currentIssue := m.issueIndex.SelectedItem().(Issue)
@@ -859,7 +871,7 @@ func issuesShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			}
 			m.commentForm = newCommentForm()
 			m.issueShow = newIssueShow(currentIssue, m.layout)
-			cmd = persistIssue(currentIssue)
+			cmd = persistIssue(currentIssue, m.repo)
 			return m, cmd
 		case key.Matches(msg, keys.IssueStatusInProgress):
 			currentIssue := m.issueIndex.SelectedItem().(Issue)
@@ -870,7 +882,7 @@ func issuesShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			}
 			m.commentForm = newCommentForm()
 			m.issueShow = newIssueShow(currentIssue, m.layout)
-			cmd = persistIssue(currentIssue)
+			cmd = persistIssue(currentIssue, m.repo)
 			return m, cmd
 		case key.Matches(msg, keys.IssueEditForm):
 			selectedIssue := m.issueIndex.SelectedItem().(Issue)
@@ -928,7 +940,7 @@ func issuesDeleteHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			}
 			issue := selectedItem.(Issue)
 			issue.DeletedAt = time.Now().UTC()
-			cmd = persistIssue(issue)
+			cmd = persistIssue(issue, m.repo)
 			m.path = issuesIndexPath
 			m.underlayPath = 0
 			m.UpdateLayout(m.layout.TerminalSize)
@@ -1379,7 +1391,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Content: msg.contentInput.Value(),
 		})
 
-		cmd = persistIssue(currentIssue)
+		cmd = persistIssue(currentIssue, m.repo)
 		return m, cmd
 	case SetSearchTermMsg:
 		if msg != "" {
