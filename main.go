@@ -1891,7 +1891,12 @@ func getCommits(repo git.Repository) tea.Cmd {
 			panic(err)
 		}
 
+    refPath := "refs/ubik/actions"
+
 		err = refs.ForEach(func(ref *plumbing.Reference) error {
+			if !strings.HasPrefix(ref.Name().String(), refPath) {
+				return nil
+			}
 			obj, err := repo.Object(plumbing.AnyObject, ref.Hash())
 			if err != nil {
 				return nil
