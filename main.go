@@ -1931,7 +1931,7 @@ func getCommits(repo git.Repository) tea.Cmd {
 			panic(err)
 		}
 
-		gitCommits.ForEach(func(c *object.Commit) error {
+		err = gitCommits.ForEach(func(c *object.Commit) error {
 			id := c.Hash.String()
 			commits = append(commits, Commit{
 				Id:            id,
@@ -1943,6 +1943,10 @@ func getCommits(repo git.Repository) tea.Cmd {
 			})
 			return nil
 		})
+
+		if err != nil {
+			panic(err)
+    }
 
 		return CommitListReadyMsg(commits)
 	}
