@@ -24,7 +24,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/log"
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
+
 	// "github.com/go-git/go-git/v5/storage"
 	"github.com/google/uuid"
 	// "github.com/go-git/go-git/v5/plumbing/object"
@@ -504,7 +506,7 @@ type Model struct {
 	msgDump            io.Writer
 	layout             Layout
 	router             *Router
-	author             string
+	gitConfig          *config.Config
 	repo               *git.Repository
 }
 
@@ -538,7 +540,7 @@ func (m Model) submitIssueForm() tea.Cmd {
 			Description: description,
 			Labels:      labels,
 			Status:      todo,
-			Author:      m.author,
+			Author:      m.gitConfig.User.Email,
 		}
 		cmd = persistIssue(newIssue)
 	}
@@ -569,10 +571,6 @@ var (
 )
 
 func InitialModel() Model {
-	author, err := getGitAuthorEmail()
-	if err != nil {
-		log.Fatal(err)
-	}
 	layout := Layout{}
 
 	issueList := list.New([]list.Item{}, Issue{}, 0, 0)
@@ -626,7 +624,6 @@ func InitialModel() Model {
 		issueForm:   newIssueForm("", "", "", []string{}, false),
 		issueShow:   newIssueShow(Issue{}, layout),
 		router:      router,
-		author:      author,
 	}
 }
 
@@ -1355,7 +1352,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case GitRepoReadyMsg:
-		m.repo = msg
+		m.repo = msg.repo
+		m.gitConfig = msg.cfg
 	case IssuesReadyMsg:
 		var listItems []list.Item
 		for _, issue := range msg {
@@ -1371,7 +1369,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case commentForm:
 		currentIssue := m.issueIndex.SelectedItem().(Issue)
 		currentIssue.Comments = append(currentIssue.Comments, Comment{
-			Author:  m.author,
+			Author:  m.gitConfig.User.Email,
 			Content: msg.contentInput.Value(),
 		})
 
@@ -1860,11 +1858,18 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 	fmt.Fprintf(w, item)
 }
 
-type GitRepoReadyMsg *git.Repository
+type GitRepoReadyMsg struct {
+	repo *git.Repository
+	cfg  *config.Config
+}
 
 func getGitRepo() tea.Msg {
 	repo, _ := git.PlainOpen(".")
-	return GitRepoReadyMsg(repo)
+	cfg, err := repo.ConfigScoped(config.GlobalScope)
+	if err != nil {
+		panic(err)
+	}
+	return GitRepoReadyMsg{repo, cfg}
 }
 
 type CommitListReadyMsg []Commit
@@ -2348,15 +2353,4 @@ func debug(format string, args ...any) {
 		log.Helper()
 		log.Debugf(format, args...)
 	}
-}
-
-func getGitAuthorEmail() (string, error) {
-	cmd := exec.Command("git", "config", "user.email")
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	err := cmd.Run()
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(out.String()), nil
 }
