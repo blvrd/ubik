@@ -1891,7 +1891,7 @@ func getCommits(repo git.Repository) tea.Cmd {
 			panic(err)
 		}
 
-    refPath := "refs/ubik/actions"
+		refPath := "refs/ubik/actions"
 
 		err = refs.ForEach(func(ref *plumbing.Reference) error {
 			if !strings.HasPrefix(ref.Name().String(), refPath) {
@@ -1938,6 +1938,10 @@ func getCommits(repo git.Repository) tea.Cmd {
 
 		err = gitCommits.ForEach(func(c *object.Commit) error {
 			id := c.Hash.String()
+			commitActions := actions[id]
+			slices.SortFunc(commitActions, func(a, b Action) int {
+				return a.ExecutionPosition - b.ExecutionPosition
+			})
 			commits = append(commits, Commit{
 				Id:            id,
 				AbbreviatedId: id[:8],
@@ -1951,7 +1955,7 @@ func getCommits(repo git.Repository) tea.Cmd {
 
 		if err != nil {
 			panic(err)
-    }
+		}
 
 		return CommitListReadyMsg(commits)
 	}
