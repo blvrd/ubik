@@ -1362,7 +1362,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		return m, tea.Sequence(getIssues(*m.repo), SetSearchTerm(m.previousSearchTerm), getCommits(*m.repo))
+		return m, tea.Sequence(getIssues(*m.repo), SetSearchTerm(m.previousSearchTerm), getCommits(m.repo))
 	case tea.BlurMsg:
 		if m.issueIndex.FilterValue() != "" {
 			m.previousSearchTerm = m.issueIndex.FilterValue()
@@ -1371,7 +1371,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case GitRepoReadyMsg:
 		m.repo = msg.repo
 		m.gitConfig = msg.cfg
-		return m, tea.Sequence(getIssues(*m.repo), getCommits(*m.repo))
+		return m, tea.Sequence(getIssues(*m.repo), getCommits(m.repo))
 	case IssuesReadyMsg:
 		var listItems []list.Item
 		for _, issue := range msg {
@@ -1704,6 +1704,7 @@ type Commit struct {
 	Description   string    `json:"description"`
 	Timestamp     time.Time `json:"timestamp"`
 	LatestActions []Action  `json:"latestAction"`
+	Repo          *git.Repository
 }
 
 func (c Commit) AggregateActionStatus() ActionStatus {
@@ -1738,7 +1739,7 @@ func (c Commit) DeleteExistingActions() tea.Cmd {
 	var cmds []tea.Cmd
 
 	for _, action := range c.LatestActions {
-		cmds = append(cmds, action.Delete)
+		cmds = append(cmds, action.Delete(c.Repo))
 	}
 
 	return tea.Batch(cmds...)
@@ -1810,17 +1811,18 @@ func NewActions(commit Commit) []Action {
 	}
 }
 
-func (c Action) Delete() tea.Msg {
-	// #nosec G204
-	cmd := exec.Command("git", "update-ref", "-d", fmt.Sprintf("refs/ubik/actions/%s", c.Id))
-	err := cmd.Run()
+func (c Action) Delete(repo *git.Repository) tea.Cmd {
+	return func() tea.Msg {
+		refName := plumbing.ReferenceName(fmt.Sprintf("refs/ubik/actions/%s", c.Id))
+		err := repo.Storer.RemoveReference(refName)
 
-	if err != nil {
-		debug("%#v", err)
-		panic(err)
+		if err != nil {
+			debug("%#v", err)
+			return err
+		}
+
+		return nil
 	}
-
-	return nil
 }
 
 func (c Action) ElapsedTime() time.Duration {
@@ -1892,7 +1894,7 @@ func getGitRepo() tea.Msg {
 
 type CommitListReadyMsg []Commit
 
-func getCommits(repo git.Repository) tea.Cmd {
+func getCommits(repo *git.Repository) tea.Cmd {
 	return func() tea.Msg {
 		var commits []Commit
 		actions := make(map[string][]Action)
@@ -1961,6 +1963,7 @@ func getCommits(repo git.Repository) tea.Cmd {
 				Timestamp:     c.Author.When,
 				Description:   strings.TrimSuffix(c.Message, "\n"),
 				LatestActions: actions[id],
+				Repo:          repo,
 			})
 			return nil
 		})
