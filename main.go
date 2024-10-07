@@ -515,20 +515,11 @@ type Model struct {
 	help               help.Model
 	styles             Styles
 	tabs               []string
-	previousSearchTerm string
 	msgDump            io.Writer
 	layout             Layout
 	router             *Router
 	gitConfig          *config.Config
 	repo               *git.Repository
-}
-
-type SetSearchTermMsg string
-
-func SetSearchTerm(term string) tea.Cmd {
-	return func() tea.Msg {
-		return SetSearchTermMsg(term)
-	}
 }
 
 func (m Model) submitIssueForm() tea.Cmd {
@@ -1362,11 +1353,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		return m, tea.Sequence(getIssues(m.repo), SetSearchTerm(m.previousSearchTerm), getCommits(m.repo))
+		return m, tea.Sequence(getCommits(m.repo))
 	case tea.BlurMsg:
-		if m.issueIndex.FilterValue() != "" {
-			m.previousSearchTerm = m.issueIndex.FilterValue()
-		}
 		return m, nil
 	case GitRepoReadyMsg:
 		m.repo = msg.repo
@@ -1393,14 +1381,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		cmd = persistIssue(currentIssue, m.repo)
 		return m, cmd
-	case SetSearchTermMsg:
-		if msg != "" {
-			m.issueIndex.SetFilterText(string(msg))
-		}
-
-		m.previousSearchTerm = ""
-
-		return m, nil
 	case issuePersistedMsg:
 		if !msg.Issue.DeletedAt.IsZero() {
 			currentIndex := m.issueIndex.Index()
