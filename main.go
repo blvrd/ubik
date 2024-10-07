@@ -1954,40 +1954,47 @@ func getIssues(repo git.Repository) tea.Cmd {
 	return func() tea.Msg {
 		var issues []Issue
 
-		cmd := exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik/issues")
-		b, err := cmd.Output()
+		refs, err := repo.References()
 		if err != nil {
 			panic(err)
 		}
 
-		var refHashes []string
-		str := string(b)
-		for _, s := range strings.Split(str, "\n") {
-			refHash := strings.Split(s, " ")[0]
-			if refHash != "" {
-				refHashes = append(refHashes, refHash)
-			}
-		}
+		refPath := "refs/ubik/issues"
 
-		for _, refHash := range refHashes {
-			// #nosec G204
-			cmd := exec.Command("git", "cat-file", "-p", refHash)
-			var out bytes.Buffer
-			cmd.Stdout = &out
-			err := cmd.Run()
+		err = refs.ForEach(func(ref *plumbing.Reference) error {
+			if !strings.HasPrefix(ref.Name().String(), refPath) {
+				return nil
+			}
+
+			obj, err := repo.Object(plumbing.AnyObject, ref.Hash())
 			if err != nil {
-				continue
+				return nil
 			}
 
-			var issue Issue
-			err = json.Unmarshal(out.Bytes(), &issue)
-			if err != nil {
-				panic(err)
-			}
+			if blob, ok := obj.(*object.Blob); ok {
+				// Read the contents of the blob
+				blobReader, _ := blob.Reader()
+				b, err := io.ReadAll(blobReader)
+				if err != nil {
+					fmt.Printf("Error reading blob content: %v\n", err)
+					return nil
+				}
 
-			if issue.DeletedAt.IsZero() {
-				issues = append(issues, issue)
+				var issue Issue
+				err = json.Unmarshal(b, &issue)
+				if err != nil {
+					panic(err)
+				}
+
+				if issue.DeletedAt.IsZero() {
+					issues = append(issues, issue)
+				}
 			}
+			return nil
+		})
+
+		if err != nil {
+			panic(err)
 		}
 
 		sortedIssues := SortIssues(issues)
