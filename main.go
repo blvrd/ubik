@@ -628,7 +628,7 @@ func InitialModel() Model {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Sequence(getGitRepo, getIssues, getCommits)
+	return tea.Sequence(getGitRepo, getIssues)
 }
 
 type layoutMsg Layout
@@ -1345,7 +1345,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.UpdateLayout(Size{Width: msg.Width, Height: msg.Height})
 		return m, nil
 	case tea.FocusMsg:
-		return m, tea.Sequence(getIssues, SetSearchTerm(m.previousSearchTerm), getCommits)
+		return m, tea.Sequence(getIssues, SetSearchTerm(m.previousSearchTerm), getCommits(m.repo))
 	case tea.BlurMsg:
 		if m.issueIndex.FilterValue() != "" {
 			m.previousSearchTerm = m.issueIndex.FilterValue()
@@ -1354,6 +1354,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case GitRepoReadyMsg:
 		m.repo = msg.repo
 		m.gitConfig = msg.cfg
+		return m, getCommits(m.repo)
 	case IssuesReadyMsg:
 		var listItems []list.Item
 		for _, issue := range msg {
@@ -1874,84 +1875,86 @@ func getGitRepo() tea.Msg {
 
 type CommitListReadyMsg []Commit
 
-func getCommits() tea.Msg {
-	var commits []*Commit
+func getCommits(repo *git.Repository) tea.Cmd {
+	return func() tea.Msg {
+		var commits []*Commit
 
-	cmd := exec.Command(
-		"git",
-		"log",
-		"--pretty=format:%H|%h|%ae|%aI|%s",
-		"--date=format:%d %b %y %H:%M %z",
-	)
-	output, err := cmd.Output()
-	if err != nil {
-		fmt.Println("Error running command:", err)
-	}
-
-	for _, commitHash := range strings.Split(string(output), "\n") {
-		parts := strings.Split(commitHash, "|")
-
-		timestamp, err := time.Parse(time.RFC3339, parts[3])
+		cmd := exec.Command(
+			"git",
+			"log",
+			"--pretty=format:%H|%h|%ae|%aI|%s",
+			"--date=format:%d %b %y %H:%M %z",
+		)
+		output, err := cmd.Output()
 		if err != nil {
-			log.Errorf("Error parsing timestamp: %v", err)
-		}
-		commits = append(commits, &Commit{
-			Id:            parts[0],
-			AbbreviatedId: parts[1],
-			Author:        parts[2],
-			Timestamp:     timestamp,
-			Description:   parts[4],
-		})
-	}
-
-	cmd = exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik/actions")
-	b, err := cmd.Output()
-	if err != nil {
-		panic(err)
-	}
-
-	var refHashes []string
-	str := string(b)
-	for _, s := range strings.Split(str, "\n") {
-		noteId := strings.Split(s, " ")[0]
-		if noteId != "" {
-			refHashes = append(refHashes, noteId)
-		}
-	}
-
-	var readyCommits []Commit
-	for _, refHash := range refHashes {
-		// #nosec G204
-		cmd := exec.Command("git", "cat-file", "-p", refHash)
-		var out bytes.Buffer
-		cmd.Stdout = &out
-		err := cmd.Run()
-		if err != nil {
-			continue
+			fmt.Println("Error running command:", err)
 		}
 
-		var action Action
-		err = json.Unmarshal(out.Bytes(), &action)
+		for _, commitHash := range strings.Split(string(output), "\n") {
+			parts := strings.Split(commitHash, "|")
+
+			timestamp, err := time.Parse(time.RFC3339, parts[3])
+			if err != nil {
+				log.Errorf("Error parsing timestamp: %v", err)
+			}
+			commits = append(commits, &Commit{
+				Id:            parts[0],
+				AbbreviatedId: parts[1],
+				Author:        parts[2],
+				Timestamp:     timestamp,
+				Description:   parts[4],
+			})
+		}
+
+		cmd = exec.Command("git", "for-each-ref", "--format=%(objectname)", "refs/ubik/actions")
+		b, err := cmd.Output()
 		if err != nil {
 			panic(err)
 		}
 
-		for _, commit := range commits {
-			if action.CommitId == commit.Id {
-				commit.LatestActions = append(commit.LatestActions, action)
-				slices.SortFunc(commit.LatestActions, func(a, b Action) int {
-					return a.ExecutionPosition - b.ExecutionPosition
-				})
+		var refHashes []string
+		str := string(b)
+		for _, s := range strings.Split(str, "\n") {
+			noteId := strings.Split(s, " ")[0]
+			if noteId != "" {
+				refHashes = append(refHashes, noteId)
 			}
 		}
 
-	}
+		var readyCommits []Commit
+		for _, refHash := range refHashes {
+			// #nosec G204
+			cmd := exec.Command("git", "cat-file", "-p", refHash)
+			var out bytes.Buffer
+			cmd.Stdout = &out
+			err := cmd.Run()
+			if err != nil {
+				continue
+			}
 
-	for _, commit := range commits {
-		readyCommits = append(readyCommits, *commit)
-	}
+			var action Action
+			err = json.Unmarshal(out.Bytes(), &action)
+			if err != nil {
+				panic(err)
+			}
 
-	return CommitListReadyMsg(readyCommits)
+			for _, commit := range commits {
+				if action.CommitId == commit.Id {
+					commit.LatestActions = append(commit.LatestActions, action)
+					slices.SortFunc(commit.LatestActions, func(a, b Action) int {
+						return a.ExecutionPosition - b.ExecutionPosition
+					})
+				}
+			}
+
+		}
+
+		for _, commit := range commits {
+			readyCommits = append(readyCommits, *commit)
+		}
+
+		return CommitListReadyMsg(readyCommits)
+	}
 }
 
 type IssuesReadyMsg []Issue
