@@ -1362,7 +1362,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		return m, tea.Sequence(getIssues(*m.repo), SetSearchTerm(m.previousSearchTerm), getCommits(m.repo))
+		return m, tea.Sequence(getIssues(m.repo), SetSearchTerm(m.previousSearchTerm), getCommits(m.repo))
 	case tea.BlurMsg:
 		if m.issueIndex.FilterValue() != "" {
 			m.previousSearchTerm = m.issueIndex.FilterValue()
@@ -1371,7 +1371,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case GitRepoReadyMsg:
 		m.repo = msg.repo
 		m.gitConfig = msg.cfg
-		return m, tea.Sequence(getIssues(*m.repo), getCommits(m.repo))
+		return m, tea.Sequence(getIssues(m.repo), getCommits(m.repo))
 	case IssuesReadyMsg:
 		var listItems []list.Item
 		for _, issue := range msg {
@@ -1978,7 +1978,7 @@ func getCommits(repo *git.Repository) tea.Cmd {
 
 type IssuesReadyMsg []Issue
 
-func getIssues(repo git.Repository) tea.Cmd {
+func getIssues(repo *git.Repository) tea.Cmd {
 	return func() tea.Msg {
 		var issues []Issue
 
