@@ -1916,7 +1916,7 @@ func getCommits(repo *git.Repository) tea.Cmd {
 			}
     }
 
-		commits := queryForCommits()
+		commits := queryForCommits("select hash, message, author_email, timestamp from commits")
 		var commitsWithActions []Commit
 
 		for _, commit := range commits {
