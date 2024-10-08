@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/log"
 
 	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/mattn/go-sqlite3"
 )
@@ -16,7 +17,17 @@ import (
 func registerSQLiteExtensions() {
 	sql.Register("sqlite3_with_extensions", &sqlite3.SQLiteDriver{
 		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
-			return conn.CreateModule("commits", &commitsModule{})
+			err := conn.CreateModule("refs", &referencesModule{})
+			if err != nil {
+				return err
+			}
+
+			conn.CreateModule("commits", &commitsModule{})
+			if err != nil {
+				return err
+			}
+
+			return nil
 		},
 	})
 }
@@ -169,5 +180,140 @@ func (vc *commitCursor) Rowid() (int64, error) {
 }
 
 func (vc *commitCursor) Close() error {
+	return nil
+}
+
+func queryForReferences() []Ref {
+	var references []Ref
+	db, err := sql.Open("sqlite3_with_extensions", ":memory:")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	_, err = db.Exec("create virtual table refs using refs(hash, name)")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rows, err := db.Query("select hash, name from refs")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var hash, name string
+		rows.Scan(&hash, &name)
+		if err != nil {
+			panic(err)
+		}
+
+		references = append(references, Ref{
+			Hash: hash,
+			Name: name,
+		})
+	}
+
+	return references
+}
+
+type referencesModule struct {
+}
+
+func (m *referencesModule) Create(c *sqlite3.SQLiteConn, args []string) (sqlite3.VTab, error) {
+	err := c.DeclareVTab(fmt.Sprintf(`
+		CREATE TABLE %s (
+      hash TEXT,
+      name TEXT
+		)`, args[0]))
+	if err != nil {
+		return nil, err
+	}
+	return &referencesTable{}, nil
+}
+
+func (m *referencesModule) Connect(c *sqlite3.SQLiteConn, args []string) (sqlite3.VTab, error) {
+	return m.Create(c, args)
+}
+
+func (m *referencesModule) DestroyModule() {}
+
+type referencesTable struct {
+	references []*plumbing.Reference
+}
+
+func (v *referencesTable) Open() (sqlite3.VTabCursor, error) {
+	var references []*plumbing.Reference
+
+	repo, err := git.PlainOpen(".")
+
+	if err != nil {
+		panic(err)
+	}
+
+	refs, err := repo.References()
+
+	if err != nil {
+		panic(err)
+	}
+
+	err = refs.ForEach(func(r *plumbing.Reference) error {
+		references = append(references, r)
+		return nil
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	return &referenceCursor{0, references}, nil
+}
+
+func (v *referencesTable) BestIndex(csts []sqlite3.InfoConstraint, ob []sqlite3.InfoOrderBy) (*sqlite3.IndexResult, error) {
+	used := make([]bool, len(csts))
+	return &sqlite3.IndexResult{
+		IdxNum: 0,
+		IdxStr: "default",
+		Used:   used,
+	}, nil
+}
+
+func (v *referencesTable) Disconnect() error { return nil }
+func (v *referencesTable) Destroy() error    { return nil }
+
+type referenceCursor struct {
+	index      int
+	references []*plumbing.Reference
+}
+
+func (vc *referenceCursor) Column(c *sqlite3.SQLiteContext, col int) error {
+	switch col {
+	case 0:
+		c.ResultText(vc.references[vc.index].Hash().String())
+	case 1:
+		c.ResultText(vc.references[vc.index].Name().String())
+	}
+	return nil
+}
+
+func (vc *referenceCursor) Filter(idxNum int, idxStr string, vals []any) error {
+	vc.index = 0
+	return nil
+}
+
+func (vc *referenceCursor) Next() error {
+	vc.index++
+	return nil
+}
+
+func (vc *referenceCursor) EOF() bool {
+	return vc.index >= len(vc.references)
+}
+
+func (vc *referenceCursor) Rowid() (int64, error) {
+	return int64(vc.index), nil
+}
+
+func (vc *referenceCursor) Close() error {
 	return nil
 }

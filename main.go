@@ -1877,25 +1877,27 @@ func getGitRepo() tea.Msg {
 
 type CommitListReadyMsg []Commit
 
+type Ref struct {
+	Hash string
+	Name string
+}
+
 func getCommits(repo *git.Repository) tea.Cmd {
 	return func() tea.Msg {
 		actions := make(map[string][]Action)
 
-		refs, err := repo.References()
-
-		if err != nil {
-			panic(err)
-		}
-
 		refPath := "refs/ubik/actions"
 
-		err = refs.ForEach(func(ref *plumbing.Reference) error {
-			if !strings.HasPrefix(ref.Name().String(), refPath) {
-				return nil
+    refs := queryForReferences()
+
+    for _, ref := range refs {
+			if !strings.HasPrefix(ref.Name, refPath) {
+        continue
 			}
-			obj, err := repo.Object(plumbing.AnyObject, ref.Hash())
+		  refHash := plumbing.NewReferenceFromStrings(ref.Name, ref.Hash).Hash()
+			obj, err := repo.Object(plumbing.AnyObject, refHash)
 			if err != nil {
-				return nil
+        panic(err)
 			}
 
 			if blob, ok := obj.(*object.Blob); ok {
@@ -1904,7 +1906,7 @@ func getCommits(repo *git.Repository) tea.Cmd {
 				b, err := io.ReadAll(blobReader)
 				if err != nil {
 					fmt.Printf("Error reading blob content: %v\n", err)
-					return nil
+          panic(err)
 				}
 
 				var action Action
@@ -1914,13 +1916,9 @@ func getCommits(repo *git.Repository) tea.Cmd {
 				}
 
 				actions[action.CommitId] = append(actions[action.CommitId], action)
+        log.Debugf("🪚 actions: %#v", len(actions))
 			}
-			return nil
-		})
-
-		if err != nil {
-			panic(err)
-		}
+    }
 
 		commits := queryForCommits()
 		var commitsWithActions []Commit
@@ -1934,10 +1932,6 @@ func getCommits(repo *git.Repository) tea.Cmd {
 			})
 			commit.LatestActions = commitActions
 			commitsWithActions = append(commitsWithActions, commit)
-		}
-
-		if err != nil {
-			panic(err)
 		}
 
 		return CommitListReadyMsg(commitsWithActions)
