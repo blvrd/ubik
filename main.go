@@ -1913,7 +1913,6 @@ func getCommits(repo *git.Repository) tea.Cmd {
 				}
 
 				actions[action.CommitId] = append(actions[action.CommitId], action)
-        log.Debugf("🪚 actions: %#v", len(actions))
 			}
     }
 
