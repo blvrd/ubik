@@ -1680,10 +1680,11 @@ func (m Model) View() string {
 type Commit struct {
 	Hash            string    `json:"id"`
 	AbbreviatedHash string    `json:"abbreviatedId"`
-	Author          string    `json:"author"`
-	Description     string    `json:"description"`
+	AuthorEmail     string    `json:"author_email"`
+	AuthorName      string    `json:"author_name"`
+	Message         string    `json:"message"`
 	Timestamp       time.Time `json:"timestamp"`
-	LatestActions   []Action  `json:"latestAction"`
+	LatestActions   []Action  `json:"latestActions"`
 	Repo            *git.Repository
 }
 
@@ -1830,10 +1831,10 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 
 	var author string
 
-	if c.Author == "" {
+	if c.AuthorEmail == "" {
 		author = "unknown"
 	} else {
-		author = c.Author
+		author = c.AuthorEmail
 	}
 
 	titleFn := defaultItemStyles.NormalTitle.Padding(0).Render
@@ -1846,7 +1847,7 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 		}
 	}
 
-	title := fmt.Sprintf("%s", titleFn(c.AbbreviatedHash, truncate.StringWithTail(c.Description, 50, "...")))
+	title := fmt.Sprintf("%s", titleFn(c.AbbreviatedHash, truncate.StringWithTail(c.Message, 50, "...")))
 
 	if len(c.LatestActions) > 0 {
 		title = fmt.Sprintf("%s %s", title, c.AggregateActionStatus().Icon())
@@ -1939,9 +1940,9 @@ func getCommits(repo *git.Repository) tea.Cmd {
 			commits = append(commits, Commit{
 				Hash:            id,
 				AbbreviatedHash: id[:8],
-				Author:          c.Author.Email,
+				AuthorEmail:     c.Author.Email,
 				Timestamp:       c.Author.When,
-				Description:     strings.TrimSuffix(c.Message, "\n"),
+				Message:         strings.TrimSuffix(c.Message, "\n"),
 				LatestActions:   actions[id],
 				Repo:            repo,
 			})
@@ -2051,9 +2052,9 @@ func newCommitShow(commit Commit, layout Layout, expandActionDetails bool) commi
 	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("%s", commit.AbbreviatedHash))
 	var header string
 	if len(commit.LatestActions) > 0 {
-		header = fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, commit.Description, commit.AggregateActionStatus().PrettyString())
+		header = fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, commit.Message, commit.AggregateActionStatus().PrettyString())
 	} else {
-		header = fmt.Sprintf("%s %s\n\nNo actions yet.", identifier, commit.Description)
+		header = fmt.Sprintf("%s %s\n\nNo actions yet.", identifier, commit.Message)
 	}
 	s.WriteString(lipgloss.NewStyle().Render(header))
 	s.WriteString("\n")
