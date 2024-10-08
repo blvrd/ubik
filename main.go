@@ -1,3 +1,5 @@
+//go:generate go build -tags sqlite_vtable
+
 package main
 
 import (
@@ -1875,26 +1877,24 @@ func getGitRepo() tea.Msg {
 
 type CommitListReadyMsg []Commit
 
+type Ref struct {
+	Hash string
+	Name string
+}
+
 func getCommits(repo *git.Repository) tea.Cmd {
 	return func() tea.Msg {
-		var commits []Commit
 		actions := make(map[string][]Action)
 
-		refs, err := repo.References()
-
-		if err != nil {
-			panic(err)
-		}
-
 		refPath := "refs/ubik/actions"
+    query := fmt.Sprintf("SELECT hash, name FROM refs WHERE refs.name LIKE '%s%%'", refPath)
+    refs := queryForReferences(query)
 
-		err = refs.ForEach(func(ref *plumbing.Reference) error {
-			if !strings.HasPrefix(ref.Name().String(), refPath) {
-				return nil
-			}
-			obj, err := repo.Object(plumbing.AnyObject, ref.Hash())
+    for _, ref := range refs {
+		  refHash := plumbing.NewReferenceFromStrings(ref.Name, ref.Hash).Hash()
+			obj, err := repo.Object(plumbing.AnyObject, refHash)
 			if err != nil {
-				return nil
+        panic(err)
 			}
 
 			if blob, ok := obj.(*object.Blob); ok {
@@ -1903,7 +1903,7 @@ func getCommits(repo *git.Repository) tea.Cmd {
 				b, err := io.ReadAll(blobReader)
 				if err != nil {
 					fmt.Printf("Error reading blob content: %v\n", err)
-					return nil
+          panic(err)
 				}
 
 				var action Action
@@ -1914,46 +1914,23 @@ func getCommits(repo *git.Repository) tea.Cmd {
 
 				actions[action.CommitId] = append(actions[action.CommitId], action)
 			}
-			return nil
-		})
+    }
 
-		if err != nil {
-			panic(err)
-		}
+		commits := queryForCommits("select hash, message, author_email, timestamp from commits")
+		var commitsWithActions []Commit
 
-		logOptions := git.LogOptions{
-			Order: git.LogOrderCommitterTime,
-		}
-
-		gitCommits, err := repo.Log(&logOptions)
-
-		if err != nil {
-			panic(err)
-		}
-
-		err = gitCommits.ForEach(func(c *object.Commit) error {
-			id := c.Hash.String()
-			commitActions := actions[id]
+		for _, commit := range commits {
+			commit.AbbreviatedHash = commit.Hash[:8]
+			commit.Repo = repo
+			commitActions := actions[commit.Hash]
 			slices.SortFunc(commitActions, func(a, b Action) int {
 				return a.ExecutionPosition - b.ExecutionPosition
 			})
-			commits = append(commits, Commit{
-				Hash:            id,
-				AbbreviatedHash: id[:8],
-				AuthorEmail:     c.Author.Email,
-				Timestamp:       c.Author.When,
-				Message:         strings.TrimSuffix(c.Message, "\n"),
-				LatestActions:   actions[id],
-				Repo:            repo,
-			})
-			return nil
-		})
-
-		if err != nil {
-			panic(err)
+			commit.LatestActions = commitActions
+			commitsWithActions = append(commitsWithActions, commit)
 		}
 
-		return CommitListReadyMsg(commits)
+		return CommitListReadyMsg(commitsWithActions)
 	}
 }
 
@@ -2273,6 +2250,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	registerSQLiteExtensions()
 	m := InitialModel()
 
 	var logFile *os.File
