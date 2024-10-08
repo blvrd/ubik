@@ -13,13 +13,16 @@ import (
 	"github.com/mattn/go-sqlite3"
 )
 
-func queryForCommits() []Commit {
-	var commits []Commit
+func registerSQLiteExtensions() {
 	sql.Register("sqlite3_with_extensions", &sqlite3.SQLiteDriver{
 		ConnectHook: func(conn *sqlite3.SQLiteConn) error {
 			return conn.CreateModule("commits", &commitsModule{})
 		},
 	})
+}
+
+func queryForCommits() []Commit {
+	var commits []Commit
 	db, err := sql.Open("sqlite3_with_extensions", ":memory:")
 	if err != nil {
 		log.Fatal(err)

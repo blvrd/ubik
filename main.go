@@ -2289,6 +2289,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	registerSQLiteExtensions()
 	m := InitialModel()
 
 	var logFile *os.File
