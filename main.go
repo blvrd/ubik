@@ -1,3 +1,5 @@
+//go:generate go build -tags sqlite_vtable
+
 package main
 
 import (
@@ -1925,10 +1927,14 @@ func getCommits(repo *git.Repository) tea.Cmd {
 		var commitsWithActions []Commit
 
 		for _, commit := range commits {
-			commit.LatestActions = actions[commit.Hash]
-			commit.AbbreviatedHash = commit.Hash
+			commit.AbbreviatedHash = commit.Hash[:8]
 			commit.Repo = repo
-      commitsWithActions = append(commitsWithActions, commit)
+			commitActions := actions[commit.Hash]
+			slices.SortFunc(commitActions, func(a, b Action) int {
+				return a.ExecutionPosition - b.ExecutionPosition
+			})
+			commit.LatestActions = commitActions
+			commitsWithActions = append(commitsWithActions, commit)
 		}
 
 		// logOptions := git.LogOptions{
