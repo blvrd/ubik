@@ -1887,13 +1887,10 @@ func getCommits(repo *git.Repository) tea.Cmd {
 		actions := make(map[string][]Action)
 
 		refPath := "refs/ubik/actions"
-
-    refs := queryForReferences()
+    query := fmt.Sprintf("SELECT hash, name FROM refs WHERE refs.name LIKE '%s%%'", refPath)
+    refs := queryForReferences(query)
 
     for _, ref := range refs {
-			if !strings.HasPrefix(ref.Name, refPath) {
-        continue
-			}
 		  refHash := plumbing.NewReferenceFromStrings(ref.Name, ref.Hash).Hash()
 			obj, err := repo.Object(plumbing.AnyObject, refHash)
 			if err != nil {

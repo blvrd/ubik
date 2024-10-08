@@ -183,7 +183,7 @@ func (vc *commitCursor) Close() error {
 	return nil
 }
 
-func queryForReferences() []Ref {
+func queryForReferences(query string) []Ref {
 	var references []Ref
 	db, err := sql.Open("sqlite3_with_extensions", ":memory:")
 	if err != nil {
@@ -196,7 +196,7 @@ func queryForReferences() []Ref {
 		log.Fatal(err)
 	}
 
-	rows, err := db.Query("select hash, name from refs")
+	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
 	}
