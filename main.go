@@ -1877,7 +1877,7 @@ type CommitListReadyMsg []Commit
 
 func getCommits(repo *git.Repository) tea.Cmd {
 	return func() tea.Msg {
-		var commits []Commit
+		// var commits []Commit
 		actions := make(map[string][]Action)
 
 		refs, err := repo.References()
@@ -1921,39 +1921,49 @@ func getCommits(repo *git.Repository) tea.Cmd {
 			panic(err)
 		}
 
-		logOptions := git.LogOptions{
-			Order: git.LogOrderCommitterTime,
+		commits := queryForCommits()
+		var commitsWithActions []Commit
+
+		for _, commit := range commits {
+			commit.LatestActions = actions[commit.Hash]
+			commit.AbbreviatedHash = commit.Hash
+			commit.Repo = repo
+      commitsWithActions = append(commitsWithActions, commit)
 		}
 
-		gitCommits, err := repo.Log(&logOptions)
+		// logOptions := git.LogOptions{
+		// 	Order: git.LogOrderCommitterTime,
+		// }
+		//
+		// gitCommits, err := repo.Log(&logOptions)
+		//
+		// if err != nil {
+		// 	panic(err)
+		// }
+		//
+		// err = gitCommits.ForEach(func(c *object.Commit) error {
+		// 	id := c.Hash.String()
+		// 	commitActions := actions[id]
+		// 	slices.SortFunc(commitActions, func(a, b Action) int {
+		// 		return a.ExecutionPosition - b.ExecutionPosition
+		// 	})
+		// 	commits = append(commits, Commit{
+		// 		Hash:            id,
+		// 		AbbreviatedHash: id[:8],
+		// 		AuthorEmail:     c.Author.Email,
+		// 		Timestamp:       c.Author.When,
+		// 		Message:         strings.TrimSuffix(c.Message, "\n"),
+		// 		LatestActions:   actions[id],
+		// 		Repo:            repo,
+		// 	})
+		// 	return nil
+		// })
 
 		if err != nil {
 			panic(err)
 		}
 
-		err = gitCommits.ForEach(func(c *object.Commit) error {
-			id := c.Hash.String()
-			commitActions := actions[id]
-			slices.SortFunc(commitActions, func(a, b Action) int {
-				return a.ExecutionPosition - b.ExecutionPosition
-			})
-			commits = append(commits, Commit{
-				Hash:            id,
-				AbbreviatedHash: id[:8],
-				AuthorEmail:     c.Author.Email,
-				Timestamp:       c.Author.When,
-				Message:         strings.TrimSuffix(c.Message, "\n"),
-				LatestActions:   actions[id],
-				Repo:            repo,
-			})
-			return nil
-		})
-
-		if err != nil {
-			panic(err)
-		}
-
-		return CommitListReadyMsg(commits)
+		return CommitListReadyMsg(commitsWithActions)
 	}
 }
 
