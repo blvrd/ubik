@@ -35,6 +35,8 @@
           gopls
           gosec
         ];
+
+        GOFLAGS= "-tags=sqlite_vtable";
       };
     });
 
