@@ -502,24 +502,24 @@ func (m *Model) UpdateLayout(terminalSize Size) {
 }
 
 type Model struct {
-	loaded             bool
-	path               int
-	underlayPath       int // determines what view to display under the overlay
-	issueIndex         list.Model
-	issueShow          issueShow
-	issueForm          issueForm
-	commentForm        commentForm
-	commitIndex        list.Model
-	commitShow         commitShow
-	err                error
-	help               help.Model
-	styles             Styles
-	tabs               []string
-	msgDump            io.Writer
-	layout             Layout
-	router             *Router
-	gitConfig          *config.Config
-	repo               *git.Repository
+	loaded       bool
+	path         int
+	underlayPath int // determines what view to display under the overlay
+	issueIndex   list.Model
+	issueShow    issueShow
+	issueForm    issueForm
+	commentForm  commentForm
+	commitIndex  list.Model
+	commitShow   commitShow
+	err          error
+	help         help.Model
+	styles       Styles
+	tabs         []string
+	msgDump      io.Writer
+	layout       Layout
+	router       *Router
+	gitConfig    *config.Config
+	repo         *git.Repository
 }
 
 func (m Model) submitIssueForm() tea.Cmd {
@@ -1208,7 +1208,7 @@ func actionsIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 		var commit Commit
 		var commitIndex int
 		for i, c := range m.commitIndex.Items() {
-			if c.(Commit).Id == action.CommitId {
+			if c.(Commit).Hash == action.CommitId {
 				commit = c.(Commit)
 				commitIndex = i
 				break
@@ -1297,7 +1297,7 @@ func actionsShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 		var commit Commit
 		var commitIndex int
 		for i, c := range m.commitIndex.Items() {
-			if c.(Commit).Id == action.CommitId {
+			if c.(Commit).Hash == action.CommitId {
 				commit = c.(Commit)
 				commitIndex = i
 				break
@@ -1678,13 +1678,13 @@ func (m Model) View() string {
 }
 
 type Commit struct {
-	Id            string    `json:"id"`
-	AbbreviatedId string    `json:"abbreviatedId"`
-	Author        string    `json:"author"`
-	Description   string    `json:"description"`
-	Timestamp     time.Time `json:"timestamp"`
-	LatestActions []Action  `json:"latestAction"`
-	Repo          *git.Repository
+	Hash            string    `json:"id"`
+	AbbreviatedHash string    `json:"abbreviatedId"`
+	Author          string    `json:"author"`
+	Description     string    `json:"description"`
+	Timestamp       time.Time `json:"timestamp"`
+	LatestActions   []Action  `json:"latestAction"`
+	Repo            *git.Repository
 }
 
 func (c Commit) AggregateActionStatus() ActionStatus {
@@ -1774,7 +1774,7 @@ func NewActions(commit Commit) []Action {
 		Action{
 			Id:        uuid.NewString(),
 			Status:    running,
-			CommitId:  commit.Id,
+			CommitId:  commit.Hash,
 			Command:   exec.Command("go", "test"),
 			Name:      "Tests ('go test')",
 			StartedAt: time.Now().UTC(),
@@ -1782,7 +1782,7 @@ func NewActions(commit Commit) []Action {
 		Action{
 			Id:        uuid.NewString(),
 			Status:    running,
-			CommitId:  commit.Id,
+			CommitId:  commit.Hash,
 			Command:   exec.Command("gosec", "./"),
 			Name:      "Security ('gosec')",
 			StartedAt: time.Now().UTC(),
@@ -1810,7 +1810,7 @@ func (c Action) ElapsedTime() time.Duration {
 }
 
 func (c Commit) FilterValue() string {
-	return c.Id
+	return c.Hash
 }
 
 func (c Commit) Height() int  { return 2 }
@@ -1846,7 +1846,7 @@ func (c Commit) Render(w io.Writer, m list.Model, index int, listItem list.Item)
 		}
 	}
 
-	title := fmt.Sprintf("%s", titleFn(c.AbbreviatedId, truncate.StringWithTail(c.Description, 50, "...")))
+	title := fmt.Sprintf("%s", titleFn(c.AbbreviatedHash, truncate.StringWithTail(c.Description, 50, "...")))
 
 	if len(c.LatestActions) > 0 {
 		title = fmt.Sprintf("%s %s", title, c.AggregateActionStatus().Icon())
@@ -1937,13 +1937,13 @@ func getCommits(repo *git.Repository) tea.Cmd {
 				return a.ExecutionPosition - b.ExecutionPosition
 			})
 			commits = append(commits, Commit{
-				Id:            id,
-				AbbreviatedId: id[:8],
-				Author:        c.Author.Email,
-				Timestamp:     c.Author.When,
-				Description:   strings.TrimSuffix(c.Message, "\n"),
-				LatestActions: actions[id],
-				Repo:          repo,
+				Hash:            id,
+				AbbreviatedHash: id[:8],
+				Author:          c.Author.Email,
+				Timestamp:       c.Author.When,
+				Description:     strings.TrimSuffix(c.Message, "\n"),
+				LatestActions:   actions[id],
+				Repo:            repo,
 			})
 			return nil
 		})
@@ -2048,7 +2048,7 @@ func newCommitShow(commit Commit, layout Layout, expandActionDetails bool) commi
 	var s strings.Builder
 
 	viewport := viewport.New(layout.RightSize.Width, layout.RightSize.Height)
-	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("%s", commit.AbbreviatedId))
+	identifier := lipgloss.NewStyle().Foreground(styles.Theme.FaintText).Render(fmt.Sprintf("%s", commit.AbbreviatedHash))
 	var header string
 	if len(commit.LatestActions) > 0 {
 		header = fmt.Sprintf("%s %s\nStatus: %s\n\n", identifier, commit.Description, commit.AggregateActionStatus().PrettyString())
