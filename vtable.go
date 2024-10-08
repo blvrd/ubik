@@ -32,7 +32,7 @@ func registerSQLiteExtensions() {
 	})
 }
 
-func queryForCommits() []Commit {
+func queryForCommits(query string) []Commit {
 	var commits []Commit
 	db, err := sql.Open("sqlite3_with_extensions", ":memory:")
 	if err != nil {
@@ -45,7 +45,7 @@ func queryForCommits() []Commit {
 		log.Fatal(err)
 	}
 
-	rows, err := db.Query("select hash, message, author_email, timestamp from commits")
+	rows, err := db.Query(query)
 	if err != nil {
 		log.Fatal(err)
 	}
