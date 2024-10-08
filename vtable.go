@@ -3,6 +3,9 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/charmbracelet/log"
 
 	"github.com/go-git/go-git/v5"
@@ -28,19 +31,24 @@ func queryForCommits() []Commit {
 		log.Fatal(err)
 	}
 
-	rows, err := db.Query("select hash, message, author_email from commits")
+	rows, err := db.Query("select hash, message, author_email, timestamp from commits")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer rows.Close()
 	for rows.Next() {
-		var hash, message, authorEmail string
-		rows.Scan(&hash, &message, &authorEmail)
-    commits = append(commits, Commit{
-      Hash: hash,
-      Message: message,
-      AuthorEmail: authorEmail,
-    })
+		var hash, message, authorEmail, timestampStr string
+		rows.Scan(&hash, &message, &authorEmail, &timestampStr)
+		timestamp, err := time.Parse(object.DateFormat, timestampStr)
+		if err != nil {
+			panic(err)
+		}
+		commits = append(commits, Commit{
+			Hash:        hash,
+			Message:     strings.TrimSuffix(message, "\n"),
+			AuthorEmail: authorEmail,
+			Timestamp:   timestamp,
+		})
 	}
 
 	return commits
@@ -134,7 +142,7 @@ func (vc *commitCursor) Column(c *sqlite3.SQLiteContext, col int) error {
 		c.ResultText(vc.commits[vc.index].Author.Email)
 	case 4:
 		timestamp := vc.commits[vc.index].Author.When
-		c.ResultText(timestamp.String())
+		c.ResultText(timestamp.Format(object.DateFormat))
 	}
 	return nil
 }
