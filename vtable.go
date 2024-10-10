@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"io"
 	"strings"
 	"time"
 
@@ -23,6 +24,11 @@ func registerSQLiteExtensions() {
 			}
 
 			conn.CreateModule("commits", &commitsModule{})
+			if err != nil {
+				return err
+			}
+
+			conn.CreateModule("blobs", &blobsModule{})
 			if err != nil {
 				return err
 			}
@@ -315,5 +321,157 @@ func (vc *referenceCursor) Rowid() (int64, error) {
 }
 
 func (vc *referenceCursor) Close() error {
+	return nil
+}
+
+func queryForBlobs(query string) []Blob {
+	var blobs []Blob
+	db, err := sql.Open("sqlite3_with_extensions", ":memory:")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	_, err = db.Exec("create virtual table blobs using blobs(hash, size, content)")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	rows, err := db.Query(query)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var hash string
+		var size int64
+		var content []byte
+		err = rows.Scan(&hash, &size, &content)
+		if err != nil {
+			panic(err)
+		}
+
+		blobs = append(blobs, Blob{
+			Hash:    hash,
+			Size:    size,
+			Content: content,
+		})
+	}
+
+	return blobs
+}
+
+type blobsModule struct {
+}
+
+func (m *blobsModule) Create(c *sqlite3.SQLiteConn, args []string) (sqlite3.VTab, error) {
+	err := c.DeclareVTab(fmt.Sprintf(`
+		CREATE TABLE %s (
+      hash TEXT,
+      size INT,
+      content BLOB
+		)`, args[0]))
+	if err != nil {
+		return nil, err
+	}
+	return &blobsTable{}, nil
+}
+
+func (m *blobsModule) Connect(c *sqlite3.SQLiteConn, args []string) (sqlite3.VTab, error) {
+	return m.Create(c, args)
+}
+
+func (m *blobsModule) DestroyModule() {}
+
+type blobsTable struct {
+	blobs []*object.Blob
+}
+
+func (v *blobsTable) Open() (sqlite3.VTabCursor, error) {
+	var blobs []*object.Blob
+
+	repo, err := git.PlainOpen(".")
+
+	if err != nil {
+		panic(err)
+	}
+
+	objs, err := repo.BlobObjects()
+
+	if err != nil {
+		panic(err)
+	}
+
+	err = objs.ForEach(func(b *object.Blob) error {
+		blobs = append(blobs, b)
+		return nil
+	})
+
+	if err != nil {
+		panic(err)
+	}
+
+	return &blobCursor{0, blobs}, nil
+}
+
+func (v *blobsTable) BestIndex(csts []sqlite3.InfoConstraint, ob []sqlite3.InfoOrderBy) (*sqlite3.IndexResult, error) {
+	used := make([]bool, len(csts))
+	return &sqlite3.IndexResult{
+		IdxNum: 0,
+		IdxStr: "default",
+		Used:   used,
+	}, nil
+}
+
+func (v *blobsTable) Disconnect() error { return nil }
+func (v *blobsTable) Destroy() error    { return nil }
+
+type blobCursor struct {
+	index int
+	blobs []*object.Blob
+}
+
+func (vc *blobCursor) Column(c *sqlite3.SQLiteContext, col int) error {
+	switch col {
+	case 0:
+		c.ResultText(vc.blobs[vc.index].Hash.String())
+	case 1:
+		c.ResultInt64(vc.blobs[vc.index].Size)
+	case 2:
+		reader, err := vc.blobs[vc.index].Reader()
+		if err != nil {
+			panic(err)
+		}
+
+		b, err := io.ReadAll(reader)
+
+		if err != nil {
+			panic(err)
+		}
+
+		c.ResultBlob(b)
+	}
+	return nil
+}
+
+func (vc *blobCursor) Filter(idxNum int, idxStr string, vals []any) error {
+	vc.index = 0
+	return nil
+}
+
+func (vc *blobCursor) Next() error {
+	vc.index++
+	return nil
+}
+
+func (vc *blobCursor) EOF() bool {
+	return vc.index >= len(vc.blobs)
+}
+
+func (vc *blobCursor) Rowid() (int64, error) {
+	return int64(vc.index), nil
+}
+
+func (vc *blobCursor) Close() error {
 	return nil
 }
