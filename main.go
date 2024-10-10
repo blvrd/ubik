@@ -5,6 +5,7 @@ package main
 import (
 	"bytes"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -114,7 +115,7 @@ type issuePersistedMsg struct {
 	ScrollToBottom bool
 }
 
-func persistIssue(issue Issue, repo *git.Repository) tea.Cmd {
+func persistIssue(issue Issue, repo *git.Repository, db *sql.DB) tea.Cmd {
 	return func() tea.Msg {
 		var newIssue bool
 
@@ -149,36 +150,50 @@ func persistIssue(issue Issue, repo *git.Repository) tea.Cmd {
 			scrollToBottom = true
 		}
 
-		jsonData, err := json.Marshal(issue)
+		_, err := json.Marshal(issue)
 		if err != nil {
 			return err
 		}
 
-		obj := repo.Storer.NewEncodedObject()
-		obj.SetType(plumbing.BlobObject)
-		obj.SetSize(int64(len(jsonData)))
-		writer, err := obj.Writer()
-		if err != nil {
-			debug("%#v", err.Error())
-			return err
-		}
-		_, err = writer.Write(jsonData)
-		if err != nil {
-			debug("%#v", err.Error())
-			return err
-		}
-		err = writer.Close()
-		if err != nil {
-			debug("%#v", err.Error())
-			return err
-		}
-		hash, err := repo.Storer.SetEncodedObject(obj)
-		if err != nil {
-			debug("%#v", err.Error())
-			return err
-		}
-		ref := plumbing.NewReferenceFromStrings(fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash.String())
-		err = repo.Storer.SetReference(ref)
+		queryForBlobs("INSERT INTO blobs (content) VALUES (\"yoooo\");", db)
+    row := db.QueryRow("SELECT last_insert_rowid();")
+    if err != nil {
+      panic(err)
+    }
+    var rowid int64
+    err = row.Scan(&rowid)
+    if err != nil {
+      panic(err)
+    }
+
+		log.Debugf("🪚 rowid: %#v", rowid)
+		blob := queryForBlobs("SELECT hash, size, content FROM blobs ORDER BY ROWID DESC LIMIT 1", db)[0]
+		log.Debugf("🪚 blob: %#v", blob)
+		// obj := repo.Storer.NewEncodedObject()
+		// obj.SetType(plumbing.BlobObject)
+		// obj.SetSize(int64(len(jsonData)))
+		// writer, err := obj.Writer()
+		// if err != nil {
+		// 	debug("%#v", err.Error())
+		// 	return err
+		// }
+		// _, err = writer.Write(jsonData)
+		// if err != nil {
+		// 	debug("%#v", err.Error())
+		// 	return err
+		// }
+		// err = writer.Close()
+		// if err != nil {
+		// 	debug("%#v", err.Error())
+		// 	return err
+		// }
+		// hash, err := repo.Storer.SetEncodedObject(obj)
+		// if err != nil {
+		// 	debug("%#v", err.Error())
+		// 	return err
+		// }
+		// ref := plumbing.NewReferenceFromStrings(fmt.Sprintf("refs/ubik/issues/%s", issue.Id), hash.String())
+		// err = repo.Storer.SetReference(ref)
 
 		if err != nil {
 			debug("%#v", err.Error())
@@ -522,6 +537,7 @@ type Model struct {
 	router       *Router
 	gitConfig    *config.Config
 	repo         *git.Repository
+	db           *sql.DB
 }
 
 func (m Model) submitIssueForm() tea.Cmd {
@@ -536,7 +552,7 @@ func (m Model) submitIssueForm() tea.Cmd {
 		currentIssue.Title = title
 		currentIssue.Description = description
 		currentIssue.Labels = labels
-		cmd = persistIssue(currentIssue, m.repo)
+		cmd = persistIssue(currentIssue, m.repo, m.db)
 	} else {
 		description := form.descriptionInput.Value()
 
@@ -548,7 +564,7 @@ func (m Model) submitIssueForm() tea.Cmd {
 			Status:      todo,
 			Author:      m.gitConfig.User.Email,
 		}
-		cmd = persistIssue(newIssue, m.repo)
+		cmd = persistIssue(newIssue, m.repo, m.db)
 	}
 
 	return cmd
@@ -618,6 +634,28 @@ func InitialModel() Model {
 	router.AddRoute(actionsIndexPath, actionsIndexHandler)
 	router.AddRoute(actionsShowPath, actionsShowHandler)
 
+  db, err := sql.Open("sqlite3_with_extensions", ":memory:")
+  if err != nil {
+  	log.Fatal(err)
+  }
+
+  _, err = db.Exec("create virtual table commits using commits(hash, message, author_name, author_email, timestamp)")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+  _, err = db.Exec("create virtual table refs using refs(hash, name)")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+
+  _, err = db.Exec("create virtual table blobs using blobs(hash, size, content)")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+
 	return Model{
 		path:        issuesIndexPath,
 		help:        helpModel,
@@ -630,6 +668,7 @@ func InitialModel() Model {
 		issueForm:   newIssueForm("", "", "", []string{}, false),
 		issueShow:   newIssueShow(Issue{}, layout),
 		router:      router,
+    db: db,
 	}
 }
 
@@ -769,7 +808,7 @@ func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			} else {
 				currentIssue.Status = done
 			}
-			cmd = persistIssue(currentIssue, m.repo)
+			cmd = persistIssue(currentIssue, m.repo, m.db)
 			return m, cmd
 		case key.Matches(msg, keys.IssueStatusWontDo):
 			currentIssue := m.issueIndex.SelectedItem().(Issue)
@@ -778,7 +817,7 @@ func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			} else {
 				currentIssue.Status = wontDo
 			}
-			cmd = persistIssue(currentIssue, m.repo)
+			cmd = persistIssue(currentIssue, m.repo, m.db)
 			return m, cmd
 		case key.Matches(msg, keys.IssueStatusInProgress):
 			currentIssue := m.issueIndex.SelectedItem().(Issue)
@@ -787,7 +826,7 @@ func issuesIndexHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			} else {
 				currentIssue.Status = inProgress
 			}
-			cmd = persistIssue(currentIssue, m.repo)
+			cmd = persistIssue(currentIssue, m.repo, m.db)
 			return m, cmd
 		case key.Matches(msg, keys.IssueCommentFormFocus):
 			m.commentForm = newCommentForm()
@@ -853,7 +892,7 @@ func issuesShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			}
 			m.commentForm = newCommentForm()
 			m.issueShow = newIssueShow(currentIssue, m.layout)
-			cmd = persistIssue(currentIssue, m.repo)
+			cmd = persistIssue(currentIssue, m.repo, m.db)
 			return m, cmd
 		case key.Matches(msg, keys.IssueStatusWontDo):
 			currentIssue := m.issueIndex.SelectedItem().(Issue)
@@ -864,7 +903,7 @@ func issuesShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			}
 			m.commentForm = newCommentForm()
 			m.issueShow = newIssueShow(currentIssue, m.layout)
-			cmd = persistIssue(currentIssue, m.repo)
+			cmd = persistIssue(currentIssue, m.repo, m.db)
 			return m, cmd
 		case key.Matches(msg, keys.IssueStatusInProgress):
 			currentIssue := m.issueIndex.SelectedItem().(Issue)
@@ -875,7 +914,7 @@ func issuesShowHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			}
 			m.commentForm = newCommentForm()
 			m.issueShow = newIssueShow(currentIssue, m.layout)
-			cmd = persistIssue(currentIssue, m.repo)
+			cmd = persistIssue(currentIssue, m.repo, m.db)
 			return m, cmd
 		case key.Matches(msg, keys.IssueEditForm):
 			selectedIssue := m.issueIndex.SelectedItem().(Issue)
@@ -933,7 +972,7 @@ func issuesDeleteHandler(m Model, msg tea.Msg) (Model, tea.Cmd) {
 			}
 			issue := selectedItem.(Issue)
 			issue.DeletedAt = time.Now().UTC()
-			cmd = persistIssue(issue, m.repo)
+			cmd = persistIssue(issue, m.repo, m.db)
 			m.path = issuesIndexPath
 			m.underlayPath = 0
 			m.UpdateLayout(m.layout.TerminalSize)
@@ -1355,13 +1394,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		return m, tea.Sequence(getCommits(m.repo))
+		return m, tea.Sequence(getCommits(m.repo, m.db))
 	case tea.BlurMsg:
 		return m, nil
 	case GitRepoReadyMsg:
 		m.repo = msg.repo
 		m.gitConfig = msg.cfg
-		return m, tea.Sequence(getIssues(m.repo), getCommits(m.repo))
+		return m, tea.Sequence(getIssues(m.repo), getCommits(m.repo, m.db))
 	case IssuesReadyMsg:
 		var listItems []list.Item
 		for _, issue := range msg {
@@ -1381,7 +1420,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Content: msg.contentInput.Value(),
 		})
 
-		cmd = persistIssue(currentIssue, m.repo)
+		cmd = persistIssue(currentIssue, m.repo, m.db)
 		return m, cmd
 	case issuePersistedMsg:
 		if !msg.Issue.DeletedAt.IsZero() {
@@ -1888,13 +1927,13 @@ type Blob struct {
 	Content []byte
 }
 
-func getCommits(repo *git.Repository) tea.Cmd {
+func getCommits(repo *git.Repository, db *sql.DB) tea.Cmd {
 	return func() tea.Msg {
 		actions := make(map[string][]Action)
 
 		refPath := "refs/ubik/actions"
 		query := fmt.Sprintf("SELECT hash, name FROM refs WHERE refs.name LIKE '%s%%'", refPath)
-		refs := queryForReferences(query)
+		refs := queryForReferences(query, db)
 		var refHashes []string
 		for _, ref := range refs {
 			refHashes = append(refHashes, fmt.Sprintf("\"%s\"", ref.Hash))
@@ -1904,7 +1943,7 @@ func getCommits(repo *git.Repository) tea.Cmd {
 			"SELECT hash, size, content FROM blobs WHERE blobs.hash IN (%s)",
 			strings.Join(refHashes, ", "),
 		)
-		blobs := queryForBlobs(query)
+		blobs := queryForBlobs(query, db)
 
 		for _, blob := range blobs {
 			var action Action
@@ -1915,7 +1954,7 @@ func getCommits(repo *git.Repository) tea.Cmd {
 			actions[action.CommitId] = append(actions[action.CommitId], action)
 		}
 
-		commits := queryForCommits("select hash, message, author_email, timestamp from commits")
+		commits := queryForCommits("select hash, message, author_email, timestamp from commits", db)
 		var commitsWithActions []Commit
 
 		for _, commit := range commits {

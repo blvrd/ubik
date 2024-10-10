@@ -38,18 +38,8 @@ func registerSQLiteExtensions() {
 	})
 }
 
-func queryForCommits(query string) []Commit {
+func queryForCommits(query string, db *sql.DB) []Commit {
 	var commits []Commit
-	db, err := sql.Open("sqlite3_with_extensions", ":memory:")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	_, err = db.Exec("create virtual table commits using commits(hash, message, author_name, author_email, timestamp)")
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -189,18 +179,8 @@ func (vc *commitCursor) Close() error {
 	return nil
 }
 
-func queryForReferences(query string) []Ref {
+func queryForReferences(query string, db *sql.DB) []Ref {
 	var references []Ref
-	db, err := sql.Open("sqlite3_with_extensions", ":memory:")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	_, err = db.Exec("create virtual table refs using refs(hash, name)")
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -324,18 +304,8 @@ func (vc *referenceCursor) Close() error {
 	return nil
 }
 
-func queryForBlobs(query string) []Blob {
+func queryForBlobs(query string, db *sql.DB) []Blob {
 	var blobs []Blob
-	db, err := sql.Open("sqlite3_with_extensions", ":memory:")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
-
-	_, err = db.Exec("create virtual table blobs using blobs(hash, size, content)")
-	if err != nil {
-		log.Fatal(err)
-	}
 
 	rows, err := db.Query(query)
 	if err != nil {
@@ -423,8 +393,48 @@ func (v *blobsTable) BestIndex(csts []sqlite3.InfoConstraint, ob []sqlite3.InfoO
 	}, nil
 }
 
-func (v *blobsTable) Disconnect() error { return nil }
-func (v *blobsTable) Destroy() error    { return nil }
+func (v *blobsTable) Disconnect() error  { return nil }
+func (v *blobsTable) Destroy() error     { return nil }
+func (v *blobsTable) Delete(x any) error { panic("trying to delete") }
+func (v *blobsTable) Insert(id any, vals []any) (int64, error) {
+  jsonData := []byte(vals[2].(string))
+	repo, _ := git.PlainOpen(".")
+  obj := repo.Storer.NewEncodedObject()
+  obj.SetType(plumbing.BlobObject)
+  obj.SetSize(int64(len(jsonData)))
+  writer, err := obj.Writer()
+  if err != nil {
+    debug("%#v", err.Error())
+    return 0, err
+  }
+  _, err = writer.Write(jsonData)
+  if err != nil {
+    debug("%#v", err.Error())
+    return 0, err
+  }
+  err = writer.Close()
+  if err != nil {
+    debug("%#v", err.Error())
+    return 0, err
+  }
+  hash, err := repo.Storer.SetEncodedObject(obj)
+  if err != nil {
+    debug("%#v", err.Error())
+    return 0, err
+  }
+
+  blob, err := object.GetBlob(repo.Storer, hash)
+  if err != nil {
+    debug("%#v", err.Error())
+    return 0, err
+  }
+
+  v.blobs = append(v.blobs, blob)
+
+	return 0, nil
+}
+
+func (v *blobsTable) Update(any, []any) error { panic("trying to update") }
 
 type blobCursor struct {
 	index int
