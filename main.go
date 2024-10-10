@@ -1882,39 +1882,38 @@ type Ref struct {
 	Name string
 }
 
+type Blob struct {
+	Hash    string
+	Size    int64
+	Content []byte
+}
+
 func getCommits(repo *git.Repository) tea.Cmd {
 	return func() tea.Msg {
 		actions := make(map[string][]Action)
 
 		refPath := "refs/ubik/actions"
-    query := fmt.Sprintf("SELECT hash, name FROM refs WHERE refs.name LIKE '%s%%'", refPath)
-    refs := queryForReferences(query)
+		query := fmt.Sprintf("SELECT hash, name FROM refs WHERE refs.name LIKE '%s%%'", refPath)
+		refs := queryForReferences(query)
+		var refHashes []string
+		for _, ref := range refs {
+			refHashes = append(refHashes, fmt.Sprintf("\"%s\"", ref.Hash))
+		}
 
-    for _, ref := range refs {
-		  refHash := plumbing.NewReferenceFromStrings(ref.Name, ref.Hash).Hash()
-			obj, err := repo.Object(plumbing.AnyObject, refHash)
+		query = fmt.Sprintf(
+			"SELECT hash, size, content FROM blobs WHERE blobs.hash IN (%s)",
+			strings.Join(refHashes, ", "),
+		)
+		blobs := queryForBlobs(query)
+
+		for _, blob := range blobs {
+			var action Action
+			err := json.Unmarshal(blob.Content, &action)
 			if err != nil {
-        panic(err)
+				panic(err)
 			}
-
-			if blob, ok := obj.(*object.Blob); ok {
-				// Read the contents of the blob
-				blobReader, _ := blob.Reader()
-				b, err := io.ReadAll(blobReader)
-				if err != nil {
-					fmt.Printf("Error reading blob content: %v\n", err)
-          panic(err)
-				}
-
-				var action Action
-				err = json.Unmarshal(b, &action)
-				if err != nil {
-					panic(err)
-				}
-
-				actions[action.CommitId] = append(actions[action.CommitId], action)
-			}
-    }
+			actions[action.CommitId] = append(actions[action.CommitId], action)
+		}
 
 		commits := queryForCommits("select hash, message, author_email, timestamp from commits")
 		var commitsWithActions []Commit
