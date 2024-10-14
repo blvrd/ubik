@@ -23,12 +23,12 @@ func registerSQLiteExtensions() {
 				return err
 			}
 
-			conn.CreateModule("commits", &commitsModule{})
+			err = conn.CreateModule("commits", &commitsModule{})
 			if err != nil {
 				return err
 			}
 
-			conn.CreateModule("blobs", &blobsModule{})
+			err = conn.CreateModule("blobs", &blobsModule{})
 			if err != nil {
 				return err
 			}
@@ -48,7 +48,10 @@ func queryForCommits(query string, db *sql.DB) []Commit {
 	defer rows.Close()
 	for rows.Next() {
 		var hash, message, authorEmail, timestampStr string
-		rows.Scan(&hash, &message, &authorEmail, &timestampStr)
+		err = rows.Scan(&hash, &message, &authorEmail, &timestampStr)
+		if err != nil {
+			panic(err)
+		}
 		timestamp, err := time.Parse(object.DateFormat, timestampStr)
 		if err != nil {
 			panic(err)
@@ -189,7 +192,7 @@ func queryForReferences(query string, db *sql.DB) []Ref {
 	defer rows.Close()
 	for rows.Next() {
 		var hash, name string
-		rows.Scan(&hash, &name)
+		err = rows.Scan(&hash, &name)
 		if err != nil {
 			panic(err)
 		}
