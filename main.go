@@ -155,20 +155,31 @@ func persistIssue(issue Issue, repo *git.Repository, db *sql.DB) tea.Cmd {
 			return err
 		}
 
-		queryForBlobs("INSERT INTO blobs (content) VALUES (\"yoooo\");", db)
-    row := db.QueryRow("SELECT last_insert_rowid();")
-    if err != nil {
-      panic(err)
-    }
-    var rowid int64
-    err = row.Scan(&rowid)
-    if err != nil {
-      panic(err)
-    }
+    result, err := db.Exec("INSERT INTO blobs (hash, size, content) VALUES (?, ?, ?) RETURNING blobs.hash", "", 0, "yoooooooooooooo")
+		if err != nil {
+			log.Debugf("🪚 err: %#v", err)
+			panic(err)
+		}
 
+		lastID, err := result.LastInsertId()
+		if err != nil {
+			return err
+		}
+
+		log.Debugf("🪚 last id: %s", lastID)
+
+		row := db.QueryRow("SELECT last_insert_rowid();")
+		if err != nil {
+		  panic(err)
+		}
+		var rowid int64
+		err = row.Scan(&rowid)
+		if err != nil {
+		  panic(err)
+		}
 		log.Debugf("🪚 rowid: %#v", rowid)
-		blob := queryForBlobs("SELECT hash, size, content FROM blobs ORDER BY ROWID DESC LIMIT 1", db)[0]
-		log.Debugf("🪚 blob: %#v", blob)
+
+		// blob := queryForBlobs("SELECT hash, size, content FROM blobs ORDER BY ROWID DESC LIMIT 1", db)[0]
 		// obj := repo.Storer.NewEncodedObject()
 		// obj.SetType(plumbing.BlobObject)
 		// obj.SetSize(int64(len(jsonData)))
@@ -634,27 +645,25 @@ func InitialModel() Model {
 	router.AddRoute(actionsIndexPath, actionsIndexHandler)
 	router.AddRoute(actionsShowPath, actionsShowHandler)
 
-  db, err := sql.Open("sqlite3_with_extensions", ":memory:")
-  if err != nil {
-  	log.Fatal(err)
-  }
-
-  _, err = db.Exec("create virtual table commits using commits(hash, message, author_name, author_email, timestamp)")
+	db, err := sql.Open("sqlite3_with_extensions", ":memory:")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-  _, err = db.Exec("create virtual table refs using refs(hash, name)")
+	_, err = db.Exec("create virtual table commits using commits(hash, message, author_name, author_email, timestamp)")
 	if err != nil {
 		log.Fatal(err)
 	}
 
-
-  _, err = db.Exec("create virtual table blobs using blobs(hash, size, content)")
+	_, err = db.Exec("create virtual table refs using refs(hash, name)")
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	_, err = db.Exec("create virtual table blobs using blobs(hash, size, content)")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	return Model{
 		path:        issuesIndexPath,
@@ -668,7 +677,7 @@ func InitialModel() Model {
 		issueForm:   newIssueForm("", "", "", []string{}, false),
 		issueShow:   newIssueShow(Issue{}, layout),
 		router:      router,
-    db: db,
+		db:          db,
 	}
 }
 

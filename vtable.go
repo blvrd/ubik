@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -340,8 +341,9 @@ type blobsModule struct {
 func (m *blobsModule) Create(c *sqlite3.SQLiteConn, args []string) (sqlite3.VTab, error) {
 	err := c.DeclareVTab(fmt.Sprintf(`
 		CREATE TABLE %s (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       hash TEXT,
-      size INT,
+      size INTEGER,
       content BLOB
 		)`, args[0]))
 	if err != nil {
@@ -351,6 +353,7 @@ func (m *blobsModule) Create(c *sqlite3.SQLiteConn, args []string) (sqlite3.VTab
 }
 
 func (m *blobsModule) Connect(c *sqlite3.SQLiteConn, args []string) (sqlite3.VTab, error) {
+	log.Debugf("🪚 args: %#v", args)
 	return m.Create(c, args)
 }
 
@@ -400,7 +403,11 @@ func (v *blobsTable) Disconnect() error  { return nil }
 func (v *blobsTable) Destroy() error     { return nil }
 func (v *blobsTable) Delete(x any) error { panic("trying to delete") }
 func (v *blobsTable) Insert(id any, vals []any) (int64, error) {
-  jsonData := []byte(vals[2].(string))
+  str, ok := vals[3].(string)
+  if !ok {
+    return 0, errors.New("value is not a string")
+  }
+  jsonData := []byte(str)
 	repo, _ := git.PlainOpen(".")
   obj := repo.Storer.NewEncodedObject()
   obj.SetType(plumbing.BlobObject)
@@ -434,7 +441,7 @@ func (v *blobsTable) Insert(id any, vals []any) (int64, error) {
 
   v.blobs = append(v.blobs, blob)
 
-	return 0, nil
+	return int64(len(v.blobs)), nil
 }
 
 func (v *blobsTable) Update(any, []any) error { panic("trying to update") }
@@ -447,22 +454,25 @@ type blobCursor struct {
 func (vc *blobCursor) Column(c *sqlite3.SQLiteContext, col int) error {
 	switch col {
 	case 0:
-		c.ResultText(vc.blobs[vc.index].Hash.String())
+    rowid, _ := vc.Rowid()
+    c.ResultInt64(rowid)
 	case 1:
-		c.ResultInt64(vc.blobs[vc.index].Size)
+    c.ResultText(vc.blobs[vc.index].Hash.String())
 	case 2:
-		reader, err := vc.blobs[vc.index].Reader()
-		if err != nil {
-			panic(err)
-		}
+    c.ResultInt64(vc.blobs[vc.index].Size)
+  case 3:
+    reader, err := vc.blobs[vc.index].Reader()
+    if err != nil {
+      panic(err)
+    }
 
-		b, err := io.ReadAll(reader)
+    b, err := io.ReadAll(reader)
 
-		if err != nil {
-			panic(err)
-		}
+    if err != nil {
+      panic(err)
+    }
 
-		c.ResultBlob(b)
+    c.ResultBlob(b)
 	}
 	return nil
 }
